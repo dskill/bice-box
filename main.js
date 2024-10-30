@@ -1,14 +1,9 @@
 // Key Prioritized Tasks TODO:
 /*
- ** Start a FRESH REPO that can be public...
- -- this repo should have all API keys stripped out and git reset to zero
  ** @use-gesture/react
  ** Fresh SD Card build with no credentials
  -- make sure credentials in git are wiped
  -- hook back up the startup script. Otherwise, keep it pretty vanilla.
- ** Figure out why we leak memory
- -- try a version that doesn't load sketches
- -- then try a version that doesn't load synths
  ** WIFI login from device
  ** Just pull new effects on startup maybe?
    - Display the Pi's IP address on-screen for easy connection.
@@ -18,7 +13,6 @@
    Not Necessary:
  ** Long ribbon cable for display
  ** Get touch working on that small display
-
 */
 
 
