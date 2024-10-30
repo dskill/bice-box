@@ -1,0 +1,38 @@
+.toggle-button {
+    display: inline-block;
+    margin: 5px;
+}
+
+.toggle-text {
+    font-family: 'VT323', monospace;
+    font-size: 16px;
+    background: none;
+    border: none;
+    padding: 5px 10px;
+    cursor: pointer;
+    transition: color 0.3s ease;
+    text-transform: uppercase;
+}
+
+.toggle-text.on {
+  opacity: 0.4;
+}
+
+.toggle-text.off {
+  opacity: 0.4;
+}
+
+.toggle-text:hover {
+    opacity: 0.8;
+}
+
+.toggle-text:focus {
+    outline: none;
+}
+
+.toggle-button-container {
+    position: fixed;
+    bottom: 10px;
+    left: 10px;
+    z-index: 1000;
+}

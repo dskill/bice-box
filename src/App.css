@@ -1,0 +1,603 @@
+/* src/App.css */
+@font-face {
+  font-family: 'Haettenschweiler';
+  src: url('../public/Haettenschweiler-Regular.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'Kanit';
+  src: url('../public/Kanit-Regular.ttf') format('truetype');
+}
+
+@import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Carter+One&family=Press+Start+2P&display=swap');
+
+  html {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    background: linear-gradient(180deg, rgb(114, 124, 133) 0%, rgb(46, 50, 55) 77.33%, rgb(43, 47, 52) 100%);
+  }
+  
+
+  body {
+    min-height: 100%; /* Ensure body fills the entire height of html */
+    margin: 0;
+    padding: 0;
+    font-family: 'VT323', monospace;
+    color: #333;
+    text-align: center;
+  }
+
+.App {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  font-family: 'VT323', monospace;
+}
+
+.App-header {
+  align-items: center;
+  color: rgb(198, 202, 224);
+  font-family: 'Carter One';
+  font-size: 25px;
+  margin: 0px;
+  padding: 0px;
+  /* Center items vertically */
+}
+
+.App-logo{
+  width: 200px;
+  margin-top: 0px;
+  padding: 0px;
+  filter:  hue-rotate(240deg)  drop-shadow(0px 4px 4px rgba(0, 0, 0, 0.25)) brightness(.0) contrast(0.5);
+}
+.utility-buttons {
+  position: absolute;
+  
+  color: white;
+  display: flex;
+  justify-content: flex-end; /* Align items to the right */
+  align-items: center; /* Center items vertically */
+  bottom: 0; /* Align to the bottom of the container */
+  right: 0; /* Align to the right of the container */
+  z-index: 2000;
+}
+
+
+.main-layout {
+  display: flex;
+  flex-direction: column;
+  /* Stack children vertically */
+  justify-content: flex-start;
+  align-items: stretch;
+  /* Make children fill the width */
+  padding: 10px;
+  gap: 10px;
+  /* Spacing between rows */
+  /*height: calc(100vh - 60px - 40px); /* Adjust the height to account for header and padding */
+}
+
+.top-layout {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: flex-start;
+  width: 750px;
+  margin: 0 auto;
+  border-radius: 0px; /* Rounded corners */
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* A subtle shadow for depth */
+  background-color: rgba(0, 0, 0, 0.1); /* Background color */
+  overflow: hidden; /* Ensures the content does not overflow the rounded corners */
+}
+
+
+.left-column,
+.right-column {
+  display: flex;
+  flex-direction: column;
+  justify-content: start;
+  text-align: left;
+  max-height:160px;
+  height:160px;
+
+  /* Align items vertically in the center */
+
+}
+
+.left-column {
+  flex: none; /* Remove the flex property to prevent stretching */
+  width: 150px; /* Set a fixed width */
+  padding-right: 10px; /* Spacing between columns */
+}
+
+.right-column {
+  flex: 1; /* Adjusted from flex: 2; */
+  padding-left: 10px;
+  overflow: auto; /* Added overflow property */
+  padding: 5px;
+}
+
+.bottom-layout {
+  /* New bottom layout section */
+  width: 750px;
+  /* Span the full width of the main layout */
+  /* Add any additional styles needed for the bottom layout */
+}
+
+
+.knobs-container {
+  display: flex;
+  /* Use flexbox to layout children */
+  justify-content: center;
+  /* Center the knobs horizontally */
+  align-items: center;
+  /* Align the knobs vertically */
+  gap: 20px;
+  /* Space between each knob */
+  margin: 10px 0;
+  /* Margin around the knobs container */
+}
+
+.toggles-container {
+  display: flex;
+  /* Use flexbox to layout children */
+  justify-content: center;
+  /* Center the knobs horizontally */
+  align-items: center;
+  /* Align the knobs vertically */
+  gap: 20px;
+  /* Space between each knob */
+  margin: 10px 0;
+  /* Margin around the knobs container */
+
+}
+
+.buttons-container {
+  display: flex;
+  /* Use flexbox to layout children */
+  justify-content: center;
+  /* Center the knobs horizontally */
+  align-items: center;
+  /* Align the knobs vertically */
+  gap: 30px;
+  /* Space between each knob */
+  margin: 20px 0;
+  /* Margin around the knobs container */
+}
+
+.button-column {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;  /* Adds space between buttons */
+}
+
+.button-column button {
+  width: 100%;  /* Makes buttons full width of their container */
+}
+
+main {
+  margin-top: 0px;
+
+}
+
+.status-text {
+  font-size: 12px;
+  color: rgb(176, 192, 211);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.websocket-display {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 140px;
+  /* Adjust the height as necessary */
+  background-color: #2b2637;
+  /* Light grey background */
+  border-top: 1px solid #ccc;
+  /* A subtle top border */
+  padding: 10px;
+  box-sizing: border-box;
+  font-size: 0.8em;
+  /* Smaller font size */
+  color: #e3cece;
+  /* Dark grey text color */
+  z-index: 1000;
+  /* Make sure it sits above other content */
+}
+
+.websocket-display textarea {
+  width: calc(100% - 20px);
+  /* Full width minus padding */
+  height: 100%;
+  /* Adjust based on your preference, keeping within the parent's height */
+  font-size: 0.8em;
+  /* Smaller font size */
+  border: none;
+  color: #857c7c;
+  /* Dark grey text color */
+  background-color: transparent;
+  /* Make the textarea transparent */
+  resize: none;
+  /* Disable resizing */
+  overflow-y: auto;
+  /* Make only the textarea scrollable */
+}
+
+/* Update the effect-select styles */
+.effect-select {
+  font-family: 'VT323', monospace;
+  font-size: 16px;
+  color: rgb(198, 202, 224);
+  background-color: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(198, 202, 224, 0.3);
+  border-radius: 0;
+  padding: 5px 30px 5px 10px;
+  margin: 10px 0;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.effect-select:hover {
+  background-color: rgba(0, 0, 0, 0.0);
+  color: white;
+}
+
+.effect-select:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(198, 202, 224, 0.5);
+}
+
+/* Custom dropdown arrow */
+.effect-select-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.effect-select-wrapper::after {
+  content: '\25BC';
+  font-family: 'VT323', monospace;
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  transform: translateY(-50%);
+  color: rgb(198, 202, 224);
+  pointer-events: none;
+  font-size: 12px;
+}
+
+/* Style for the options */
+.effect-select option {
+  background-color: rgb(46, 50, 55);
+  color: rgb(198, 202, 224);
+}
+
+/* Knob.css */
+.knob-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-family: 'Kanit';
+}
+
+.knob-outer {
+  width: 100px;
+  /* Set the width of the knob */
+  height: 100px;
+  
+  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.5);
+  /* The shadow now appears circular */
+  cursor: grab;
+  user-select: none;
+  position: relative;
+}
+
+.knob {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background-color: rgb(46, 45, 54);
+}
+
+.knob:active {
+  cursor: grabbing;
+}
+
+.knob-indicator {
+  width: 2px;
+  height: 20px;
+  background-color: #595959;
+  position: absolute;
+  top: 10px;
+}
+
+.knob-label {
+  user-select: none;
+  margin-top: 15px;
+  /* Adjust based on the size of your knob */
+  text-align: center;
+  font-family: 'VT323', monospace;
+  color: white;
+}
+
+.gpt-explanation {
+  max-width: 100%;
+  /* Limit width to prevent overflow */
+  overflow-x: auto;
+  /* Enable horizontal scrolling for long lines */
+  white-space: pre-wrap;
+  /* Wrap text to the next line */
+  word-wrap: break-word;
+  /* Break long words */
+  padding: 2px;
+  /* Padding around the text */
+}
+
+.whisper-text {
+  max-width: 100%;
+  /* Limit width to prevent overflow */
+  overflow-x: auto;
+  /* Enable horizontal scrolling for long lines */
+  white-space: pre-wrap;
+  /* Wrap text to the next line */
+  word-wrap: break-word;
+  /* Break long words */
+  color: white;
+  padding: 2px;
+  /* Padding around the text */
+}
+
+/* Custom Dropdown Style */
+.custom-select {
+  font-family: 'VT323', monospace;
+  /* Monospaced font for a retro feel */
+  font-size: 16px;
+  /* Match the font size to the rest of the UI */
+  color: rgb(127, 127, 127);
+  width: 100px;
+  background-color: #333;
+  /* Dark background to match the theme */
+  border: 1px solid #555;
+  /* Slightly lighter border for depth */
+  border-radius: 2px;
+  /* Rounded corners to fit with the knob aesthetics */
+  padding: 5px 10px;
+  /* Padding for aesthetic spacing */
+  outline: none;
+  /* Remove default focus outline */
+  -moz-appearance: none;
+  /* Remove the default arrow in Firefox */
+  -webkit-appearance: none;
+  /* Remove the default arrow in Chrome/Safari */
+  appearance: none;
+  /* Remove the default arrow in modern browsers */
+  cursor: pointer;
+}
+
+.device-selectors {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.device-selectors > div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.button-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.error-message {
+  color: #ff6b6b;
+  margin-top: 10px;
+}
+
+/* Hide the arrow icon in IE */
+.custom-select::-ms-expand {
+  display: none;
+}
+
+/* Custom focus styles */
+.custom-select:focus {
+  border-color: #E3CECE;
+  /* Light grey border color when focused */
+  box-shadow: 0 0 5px rgba(227, 206, 206, 0.5);
+  /* Glow effect on focus */
+}
+
+.understated-text {
+  color: rgb(198, 202, 224);
+}
+
+/* New button styles */
+button {
+  font-family: 'VT323', monospace;
+  font-size: 16px;
+  color: rgb(198, 202, 224);
+  background: none;
+  border: none;
+  padding: 5px 10px;
+  cursor: pointer;
+  transition: color 0.3s ease;
+  text-transform: uppercase; /* Optional: if you want all caps text */
+}
+
+button:hover {
+  color: white;
+}
+
+button:active {
+  color: rgb(150, 155, 180);
+}
+
+/* Remove any existing styles that add borders or backgrounds to buttons */
+.button-row button,
+.device-selectors button {
+  background: none;
+  border: none;
+  box-shadow: none;
+}
+/* Add a custom dropdown arrow */
+.custom-select::after {
+  content: '\25BC';
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+/* Adjust the close-button styles for the snapshot preview */
+.close-button {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  background: none;
+  color: white;
+  border: none;
+  padding: 5px;
+  cursor: pointer;
+  font-family: 'VT323', monospace;
+  font-size: 14px;
+}
+
+.close-button:hover {
+  color: rgb(255, 100, 100);
+}
+
+/* SnapshotPreview.css */
+.snapshot-preview {
+  position: fixed;
+  bottom: 10px;
+  left: 10px;
+  border: 2px solid #ccc;
+  border-radius: 8px;
+  overflow: hidden;
+  z-index: 1000;
+  background-color: white;
+}
+
+.snapshot-preview img {
+  display: block;
+  max-width: 150px;
+  max-height: 150px;
+}
+
+.supercollider-boot-management {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  z-index: 2000;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  user-select: none;
+}
+
+.management-toggle-button {
+  opacity: 0.5;
+  transition: opacity 0.3s ease;
+}
+
+.management-toggle-button:hover {
+  opacity: 0.8;
+}
+
+.management-content {
+  background-color: rgba(0, 0, 0, 0.8);
+  color: rgb(198, 202, 224);
+  padding: 10px;
+  margin-top: 5px;
+  transition: max-height 0.3s ease-out, opacity 0.3s ease-out;
+  max-height: 500px;
+  overflow: hidden;
+  border-radius: 4px;
+}
+
+.management-content.collapsed {
+  max-height: 0;
+  opacity: 0;
+  padding: 0;
+}
+
+/* Style for the custom select dropdowns within the management content */
+.management-content .custom-select {
+  background-color: rgba(0, 0, 0, 0.5);
+  color: rgb(198, 202, 224);
+  border: 1px solid rgba(198, 202, 224, 0.3);
+}
+
+/* Style for labels within the management content */
+.management-content label {
+  color: rgb(198, 202, 224);
+}
+
+/* Style for buttons within the management content */
+.management-content button {
+  color: rgb(198, 202, 224);
+}
+
+.management-content button:hover {
+  color: white;
+}
+
+.visualization-mode {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+}
+
+.visualization-overlay {
+  position: fixed;
+  top: 10px;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+}
+
+.effect-select-container {
+  display: flex;
+  justify-content: center;
+}
+
+.visualization-controls {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: row;
+  justify-content: center; /* Center the faders horizontally */
+  align-items: stretch;
+  padding: 10px;
+  box-sizing: border-box;
+}
+
+.visualization-mode .effect-select-wrapper {
+  margin-bottom: 0px;
+}
+
+.visualization-mode .effect-select {
+  width: auto;
+  min-width: 200px;
+  user-select: none;
+}
