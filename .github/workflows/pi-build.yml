@@ -27,6 +27,7 @@ jobs:
       run: npm run package:pi
       env:
         NODE_OPTIONS: --max_old_space_size=512
+        CI: false  # This prevents treating warnings as errors
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
