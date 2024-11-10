@@ -1,3 +1,5 @@
+# disabled because it's not build for armv7l
+# and it's not obvious how to make github actions build for armv7l
 name: Raspberry Pi Build
 
 on:
