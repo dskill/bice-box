@@ -13,7 +13,14 @@
    Not Necessary:
  ** Long ribbon cable for display
  ** Get touch working on that small display
- ** (testing github actions)
+
+ # Create a script like update-bice-box.sh
+#!/bin/bash
+LATEST=$(curl -s https://api.github.com/repos/YOUR_USERNAME/bice-box/releases/latest | grep "browser_download_url.*zip" | cut -d '"' -f 4)
+wget $LATEST -O bice-box.zip
+unzip -o bice-box.zip -d /home/pi/bice-box/
+rm bice-box.zip
+
 */
 
 
