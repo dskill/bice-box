@@ -241,7 +241,7 @@ main {
   border: 1px solid rgba(198, 202, 224, 0.3);
   border-radius: 0;
   padding: 5px 30px 5px 10px;
-  margin: 10px 0;
+  margin: 0;
   cursor: pointer;
   appearance: none;
   -webkit-appearance: none;
@@ -251,6 +251,7 @@ main {
   min-width: 200px;
   opacity: 1;
   pointer-events: auto;
+  
 }
 
 .effect-select:hover {
@@ -260,15 +261,20 @@ main {
 
 .effect-select:focus {
   outline: none;
-  box-shadow: 0 0 0 2px rgba(198, 202, 224, 0.5);
+
 }
 
 /* Custom dropdown arrow */
 .effect-select-wrapper {
-  position: relative;
-  display: inline-block;
-  z-index: 1000;
-  margin-top: 20px;
+  position: fixed;
+  top: 15px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2000;
+  margin-top: 0;
+  width: auto;
+  display: flex;
+  justify-content: center;
 }
 
 .effect-select-wrapper::after {
@@ -606,7 +612,8 @@ button:active {
 }
 
 .visualization-mode .effect-select-wrapper {
-  margin-bottom: 0px;
+  margin-bottom: 0;
+  margin-top: 0;
 }
 
 .visualization-mode .effect-select {
