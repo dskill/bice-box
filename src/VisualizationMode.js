@@ -27,20 +27,41 @@ function VisualizationMode({ synths, currentSynth, switchSynth, nextSynth, previ
     }
   };
 
+  // Add state for current gesture and active fader
+  const [currentGestureState, setCurrentGestureState] = React.useState(null);
+  const [activeFaderId, setActiveFaderId] = React.useState(null);
+
   const bind = useGesture({
-    onDrag: ({ movement: [mx, my], direction: [dx, dy], cancel, event }) => {
+    onDrag: ({ movement: [mx, my], direction: [dx, dy], cancel, event, ...rest }) => {
       const now = Date.now();
-      // Check if enough time has passed since last swipe
       if (now - lastSwipeTime < SWIPE_COOLDOWN) {
         return;
       }
 
-      // Increase threshold for horizontal movement
+      // Get the closest fader element to the drag start point
+      if (!activeFaderId) {
+        const faderElement = event.target.closest('.param-fader');
+        if (faderElement) {
+          setActiveFaderId(faderElement.dataset.faderId);
+        }
+      }
+
+      // Handle horizontal swipes
       if (Math.abs(mx) > 50 && Math.abs(mx) > Math.abs(my) * 2) {
         handleSwipe(dx > 0 ? 'right' : 'left');
         setLastSwipeTime(now);
         cancel();
+        return;
       }
+      
+      // Only update gesture state if we have an active fader
+      if (activeFaderId) {
+        setCurrentGestureState({ dragging: true, movement: [mx, my], ...rest });
+      }
+    },
+    onDragEnd: () => {
+      setCurrentGestureState(null);
+      setActiveFaderId(null);
     }
   }, {
     drag: {
@@ -51,47 +72,33 @@ function VisualizationMode({ synths, currentSynth, switchSynth, nextSynth, previ
   });
 
   return (
-    <div className="visualization-mode">
+    <div className="visualization-mode" {...bind()} style={{ touchAction: 'none' }}>
       {window.electron && (
-          <div className="supercollider-management-wrapper">
-            <SuperColliderBootManagement 
-              reloadEffectList={reloadEffectList} 
-              pullEffectsRepo={pullEffectsRepo}
-              currentSynth={currentSynth}
-              switchSynth={switchSynth}            
-            />
-          </div>
-        )}
-        
-      <div 
-        className="visualization-overlay" 
-        {...bind()} 
-        style={{ 
-          touchAction: 'none',
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          zIndex: 2  // Higher z-index to capture all touch events
-        }}
-      >
-        <div className="effect-select-wrapper">
-          <select 
-            className="effect-select" 
-            onChange={(e) => switchSynth(e.target.value)} 
-            value={currentSynth ? currentSynth.name : ''}
-          >
-            {!currentSynth && <option value="">Select a synth</option>}
-            {synths.map(synth => (
-              <option key={synth.name} value={synth.name}>
-                {prettifySynthName(synth.name)}
-              </option>
-            ))}
-          </select>
+        <div className="supercollider-management-wrapper">
+          <SuperColliderBootManagement 
+            reloadEffectList={reloadEffectList} 
+            pullEffectsRepo={pullEffectsRepo}
+            currentSynth={currentSynth}
+            switchSynth={switchSynth}            
+          />
         </div>
-        
+      )}
+      
+      <div className="effect-select-wrapper">
+        <select 
+          className="effect-select" 
+          onChange={(e) => switchSynth(e.target.value)} 
+          value={currentSynth ? currentSynth.name : ''}
+        >
+          {!currentSynth && <option value="">Select a synth</option>}
+          {synths.map(synth => (
+            <option key={synth.name} value={synth.name}>
+              {prettifySynthName(synth.name)}
+            </option>
+          ))}
+        </select>
       </div>
+
       <VisualizationCanvas currentEffect={currentSynth} />
       <div className="visualization-controls">
         <div className="knobs-container">
@@ -101,6 +108,7 @@ function VisualizationMode({ synths, currentSynth, switchSynth, nextSynth, previ
               faderId={`${currentSynth.name}-${param.name}`}
               synthName={currentSynth.name}
               param={param}
+              gestureState={activeFaderId === `${currentSynth.name}-${param.name}` ? currentGestureState : null}
             />
           ))}
         </div>

@@ -248,6 +248,9 @@ main {
   -moz-appearance: none;
   transition: all 0.3s ease;
   position: relative;
+  min-width: 200px;
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .effect-select:hover {
@@ -264,6 +267,8 @@ main {
 .effect-select-wrapper {
   position: relative;
   display: inline-block;
+  z-index: 1000;
+  margin-top: 20px;
 }
 
 .effect-select-wrapper::after {
@@ -564,6 +569,9 @@ button:active {
   width: 100%;
   height: 100vh;
   z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .visualization-overlay {
