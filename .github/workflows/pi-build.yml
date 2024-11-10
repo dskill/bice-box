@@ -43,11 +43,19 @@ jobs:
         name: pi-build
         path: out/
 
+    - name: Install zip
+      run: apt-get update && apt-get install -y zip
+
+    - name: Create release archive
+      run: |
+        cd out
+        zip -r ../bice-box-release.zip *
+        cd ..
+
     - name: Create Release
       if: startsWith(github.ref, 'refs/tags/v')  # Only create release on version tags
       uses: softprops/action-gh-release@v1
       with:
-        files: |
-          out/**/*
+        files: bice-box-release.zip
         draft: false
         prerelease: false
