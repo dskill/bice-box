@@ -9,6 +9,10 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
+# Add these permissions at the top level of the workflow
+permissions:
+  contents: write  # This allows the workflow to create releases
+
 jobs:
   build:
     runs-on: ubuntu-latest
