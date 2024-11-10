@@ -2,6 +2,7 @@ import React from 'react';
 import SuperColliderBootManagement from './SuperColliderBootManagement';
 import ParamFader from './ParamFader';
 import VisualizationCanvas from './VisualizationCanvas';
+import { useGesture } from '@use-gesture/react'
 
 function VisualizationMode({ synths, currentSynth, switchSynth, reloadEffectList, pullEffectsRepo }) {
   const prettifySynthName = (name) => {
@@ -9,6 +10,35 @@ function VisualizationMode({ synths, currentSynth, switchSynth, reloadEffectList
     name = name.replace(/_/g, " ");
     return name.replace(/(?:^|\s)\S/g, function (a) { return a.toUpperCase(); });
   };
+
+  const handleSwipe = (direction) => {
+    if (!currentSynth || synths.length === 0) return;
+    
+    const currentIndex = synths.findIndex(synth => synth.name === currentSynth.name);
+    let newIndex;
+    
+    if (direction === 'right') {
+      newIndex = (currentIndex + 1) % synths.length;
+    } else {
+      newIndex = (currentIndex - 1 + synths.length) % synths.length;
+    }
+    
+    switchSynth(synths[newIndex].name);
+  };
+
+  const bind = useGesture({
+    onSwipe: ({ direction: [x], velocity }) => {
+      if (velocity > 0.3) {
+        handleSwipe(x > 0 ? 'right' : 'left');
+      }
+    },
+    onTouchStart: () => {
+      console.log('Touch started');
+    },
+    onTouchEnd: () => {
+      console.log('Touch ended');
+    }
+  });
 
   return (
     <div className="visualization-mode">
@@ -23,7 +53,11 @@ function VisualizationMode({ synths, currentSynth, switchSynth, reloadEffectList
           </div>
         )}
         
-      <div className="visualization-overlay">
+      <div 
+        className="visualization-overlay" 
+        {...bind()} 
+        style={{ touchAction: 'none' }}
+      >
         <div className="effect-select-wrapper">
           <select 
             className="effect-select" 
