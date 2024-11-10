@@ -4,7 +4,10 @@ import ParamFader from './ParamFader';
 import VisualizationCanvas from './VisualizationCanvas';
 import { useGesture } from '@use-gesture/react'
 
-function VisualizationMode({ synths, currentSynth, switchSynth, reloadEffectList, pullEffectsRepo }) {
+function VisualizationMode({ synths, currentSynth, switchSynth, nextSynth, previousSynth,  reloadEffectList, pullEffectsRepo }) {
+  const [lastSwipeTime, setLastSwipeTime] = React.useState(0);
+  const SWIPE_COOLDOWN = 500; // milliseconds between allowed swipes
+
   const prettifySynthName = (name) => {
     if (!name) return '';
     name = name.replace(/_/g, " ");
@@ -12,31 +15,38 @@ function VisualizationMode({ synths, currentSynth, switchSynth, reloadEffectList
   };
 
   const handleSwipe = (direction) => {
-    if (!currentSynth || synths.length === 0) return;
-    
-    const currentIndex = synths.findIndex(synth => synth.name === currentSynth.name);
-    let newIndex;
-    
-    if (direction === 'right') {
-      newIndex = (currentIndex + 1) % synths.length;
-    } else {
-      newIndex = (currentIndex - 1 + synths.length) % synths.length;
+    if (!currentSynth || !Array.isArray(synths) || synths.length === 0) {
+      console.log('Swipe aborted: invalid state', { currentSynth, synths });
+      return;
     }
     
-    switchSynth(synths[newIndex].name);
+    if (direction === 'right') {
+      nextSynth();
+    } else {
+      previousSynth();
+    }
   };
 
   const bind = useGesture({
-    onSwipe: ({ direction: [x], velocity }) => {
-      if (velocity > 0.3) {
-        handleSwipe(x > 0 ? 'right' : 'left');
+    onDrag: ({ movement: [mx, my], direction: [dx, dy], cancel, event }) => {
+      const now = Date.now();
+      // Check if enough time has passed since last swipe
+      if (now - lastSwipeTime < SWIPE_COOLDOWN) {
+        return;
       }
-    },
-    onTouchStart: () => {
-      console.log('Touch started');
-    },
-    onTouchEnd: () => {
-      console.log('Touch ended');
+
+      // Increase threshold for horizontal movement
+      if (Math.abs(mx) > 50 && Math.abs(mx) > Math.abs(my) * 2) {
+        handleSwipe(dx > 0 ? 'right' : 'left');
+        setLastSwipeTime(now);
+        cancel();
+      }
+    }
+  }, {
+    drag: {
+      filterTaps: true,
+      threshold: 10,
+      delay: 50
     }
   });
 
@@ -56,7 +66,15 @@ function VisualizationMode({ synths, currentSynth, switchSynth, reloadEffectList
       <div 
         className="visualization-overlay" 
         {...bind()} 
-        style={{ touchAction: 'none' }}
+        style={{ 
+          touchAction: 'none',
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          zIndex: 2  // Higher z-index to capture all touch events
+        }}
       >
         <div className="effect-select-wrapper">
           <select 

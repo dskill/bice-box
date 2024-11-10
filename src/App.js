@@ -198,6 +198,30 @@ function App() {
     });
   };
 
+  const switchSynthByIndex = (index) => {
+    if (typeof index !== 'number' || synths.length === 0) {
+      console.error('Invalid index or no synths available:', index);
+      return;
+    }
+
+    // Use modulo to wrap around the index
+    const wrappedIndex = ((index % synths.length) + synths.length) % synths.length;
+    const selectedSynth = synths[wrappedIndex];
+    switchSynth(selectedSynth.name);
+  };
+
+  const nextSynth = () => {
+    if (!currentSynth || synths.length === 0) return;
+    const currentIndex = synths.findIndex(synth => synth.name === currentSynth.name);
+    switchSynthByIndex(currentIndex + 1);
+  };
+
+  const previousSynth = () => {
+    if (!currentSynth || synths.length === 0) return;
+    const currentIndex = synths.findIndex(synth => synth.name === currentSynth.name);
+    switchSynthByIndex(currentIndex - 1);
+  };
+
   if (error) {
     return <div className="error-message">{error}</div>;
   }
@@ -208,6 +232,8 @@ function App() {
         synths={synths}
         currentSynth={currentSynth}
         switchSynth={switchSynth}
+        nextSynth={nextSynth}
+        previousSynth={previousSynth}
         reloadEffectList={getEffectList}
         pullEffectsRepo={pullEffectsRepo}
       />
