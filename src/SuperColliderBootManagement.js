@@ -16,10 +16,13 @@ function SuperColliderBootManagement({ reloadEffectList, pullEffectsRepo, curren
     const [isExpanded, setIsExpanded] = useState(false);
     const [ipAddress, setIpAddress] = useState('');
 
-    useEffect(() => {
+    useEffect(() =>
+    {
         console.log("Component mounted, electron object:", electron);
-        if (electron && electron.ipcRenderer) {
-            const handleIpAddressReply = (address) => {
+        if (electron && electron.ipcRenderer)
+        {
+            const handleIpAddressReply = (address) =>
+            {
                 console.log("IP address received:", address);
                 setIpAddress(address);
             };
@@ -27,37 +30,46 @@ function SuperColliderBootManagement({ reloadEffectList, pullEffectsRepo, curren
             electron.ipcRenderer.on('ip-address-reply', handleIpAddressReply);
             fetchIp();
 
-            return () => {
+            return () =>
+            {
                 electron.ipcRenderer.removeListener('ip-address-reply', handleIpAddressReply);
             };
-        } else {
+        } else
+        {
             console.warn("Electron or ipcRenderer not available");
         }
     }, []);
 
-    const fetchIp = () => {
+    const fetchIp = () =>
+    {
         console.log("Fetching IP address...");
-        if (!electron || !electron.ipcRenderer) {
+        if (!electron || !electron.ipcRenderer)
+        {
             console.warn('Electron or ipcRenderer is not available');
             setErrorMessage('Electron is not available');
             return Promise.reject(new Error('Electron is not available'));
         }
 
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve, reject) =>
+        {
             electron.ipcRenderer.send('get-ip-address');
             console.log("get-ip-address IPC message sent");
-            
-            const timeoutId = setTimeout(() => {
+
+            const timeoutId = setTimeout(() =>
+            {
                 reject(new Error("Timeout while waiting for IP address"));
             }, 5000);
 
-            electron.ipcRenderer.once('ip-address-reply', (address) => {
+            electron.ipcRenderer.once('ip-address-reply', (address) =>
+            {
                 clearTimeout(timeoutId);
-                if (address) {
+                if (address)
+                {
                     console.log("IP address received:", address);
                     setIpAddress(address);
                     resolve(address);
-                } else {
+                } else
+                {
                     console.error("Failed to fetch IP address");
                     setErrorMessage('Failed to fetch IP address');
                     reject(new Error('Failed to fetch IP address'));
@@ -116,8 +128,10 @@ function SuperColliderBootManagement({ reloadEffectList, pullEffectsRepo, curren
 
     useEffect(() =>
     {
-        if (electron) {
-            fetchAudioDevices().catch(error => {
+        if (electron)
+        {
+            fetchAudioDevices().catch(error =>
+            {
                 console.error("Error fetching audio devices:", error);
                 setErrorMessage(`Error fetching audio devices: ${error.message}`);
             });
@@ -126,7 +140,8 @@ function SuperColliderBootManagement({ reloadEffectList, pullEffectsRepo, curren
 
     const rebootServer = () =>
     {
-        if (electron) {
+        if (electron)
+        {
             electron.ipcRenderer.send('reboot-server');
         }
     }
@@ -135,7 +150,8 @@ function SuperColliderBootManagement({ reloadEffectList, pullEffectsRepo, curren
     {
         const selectedDevice = event.target.value;
         setSelectedInputDevice(selectedDevice);
-        if (electron) {
+        if (electron)
+        {
             electron.ipcRenderer.send('set-audio-devices', { inputDevice: selectedDevice, outputDevice: selectedOutputDevice });
         }
     };
@@ -144,7 +160,8 @@ function SuperColliderBootManagement({ reloadEffectList, pullEffectsRepo, curren
     {
         const selectedDevice = event.target.value;
         setSelectedOutputDevice(selectedDevice);
-        if (electron) {
+        if (electron)
+        {
             electron.ipcRenderer.send('set-audio-devices', { inputDevice: selectedInputDevice, outputDevice: selectedDevice });
         }
     };
@@ -160,22 +177,28 @@ function SuperColliderBootManagement({ reloadEffectList, pullEffectsRepo, curren
         setIsExpanded(!isExpanded);
     };
 
-    const handlePullEffectsRepo = () => {
+    const handlePullEffectsRepo = () =>
+    {
         pullEffectsRepo()
-            .then(() => {
+            .then(() =>
+            {
                 console.log('Effects repo updated and reloaded successfully');
                 // You can add any additional actions here if needed
             })
-            .catch(error => {
+            .catch(error =>
+            {
                 console.error('Failed to update and reload effects:', error);
                 setErrorMessage(`Failed to update and reload effects: ${error.message}`);
             });
     };
 
-    const handleReloadCurrentEffect = () => {
-        if (currentSynth && currentSynth.name) {
+    const handleReloadCurrentEffect = () =>
+    {
+        if (currentSynth && currentSynth.name)
+        {
             switchSynth(currentSynth.name);
-        } else {
+        } else
+        {
             setErrorMessage('No current effect selected to reload');
         }
     };
@@ -191,17 +214,18 @@ function SuperColliderBootManagement({ reloadEffectList, pullEffectsRepo, curren
 
             {isExpanded && (
                 <div className="management-content">
-                    <div className="button-column">
-                        <Button label={"Reload Effect List"} onClick={reloadEffectList} />
-                        <Button label={"Reload Current Effect"} onClick={handleReloadCurrentEffect} />
-                        <Button label={"Reboot Server"} onClick={rebootServer} />
-                        <Button label={"Refresh Devices"} onClick={refreshDevices} />
-                        <Button label={"Update Effects"} onClick={handlePullEffectsRepo} />
-                    </div>
-
-                    <div className="ip-address">
+                     <div className="ip-address">
                         <p>Device IP: {ipAddress}</p>
                     </div>
+                    <div className="button-column">
+                        {/* <Button label={"Reload Effect List"} onClick={reloadEffectList} /> */}
+                        {/*  <Button label={"Reload Current Effect"} onClick={handleReloadCurrentEffect} />*/}
+                        <Button label={"Git Pull Effects"} onClick={handlePullEffectsRepo} />
+                        <Button label={"Refresh Devices"} onClick={refreshDevices} />
+                        <Button label={"Reboot Server"} onClick={rebootServer} />
+                    </div>
+
+                   
 
                     <div className="device-selectors">
                         <div>
@@ -223,6 +247,10 @@ function SuperColliderBootManagement({ reloadEffectList, pullEffectsRepo, curren
                             </select>
                         </div>
                     </div>
+
+                    <div className="button-column">
+                    </div>
+
                     {errorMessage && <div className="error-message">{errorMessage}</div>}
                 </div>
             )}

@@ -27,6 +27,8 @@
     font-family: 'VT323', monospace;
     color: #333;
     text-align: center;
+    text-transform: uppercase; /* Optional: if you want all caps text */
+
   }
 
 .App {
@@ -173,11 +175,16 @@
 .button-column {
   display: flex;
   flex-direction: column;
-  gap: 10px;  /* Adds space between buttons */
+  gap: 5px;
+  align-items: flex-end;
+  width: 100%;
+  padding-right: 5px;
 }
 
 .button-column button {
-  width: 100%;  /* Makes buttons full width of their container */
+  min-width: 150px; /* or whatever width matches your longest button */
+  text-align: right;
+  padding-right: 5px;
 }
 
 main {
@@ -235,6 +242,7 @@ main {
 /* Update the effect-select styles */
 .effect-select {
   font-family: 'VT323', monospace;
+  text-transform: uppercase; /* Optional: if you want all caps text */
   font-size: 16px;
   color: rgb(198, 202, 224);
   background-color: rgba(0, 0, 0, 0.3);
@@ -402,12 +410,15 @@ main {
   flex-direction: column;
   gap: 10px;
   margin-top: 10px;
+  align-items: flex-end;
+  padding-right: 5px;
 }
 
 .device-selectors > div {
   display: flex;
   align-items: center;
   gap: 10px;
+  justify-content: flex-end;
 }
 
 .button-row {
@@ -541,6 +552,7 @@ button:active {
   max-height: 500px;
   overflow: hidden;
   border-radius: 4px;
+  text-align: right;
 }
 
 .management-content.collapsed {
@@ -625,4 +637,11 @@ button:active {
 /* Make sure the actual faders can receive events */
 .visualization-controls .knobs-container {
   pointer-events: auto;
+}
+
+.ip-address {
+  text-align: right;
+  margin-bottom: 10px;
+  padding-right: 5px;
+  color: rgb(198, 202, 224);
 }
