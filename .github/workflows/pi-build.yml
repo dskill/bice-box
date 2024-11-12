@@ -34,7 +34,7 @@ jobs:
       run: npm ci
 
     - name: Build for Raspberry Pi
-      run: npm run package:pi
+      run: npm run electron:build:pi
       env:
         NODE_OPTIONS: --max_old_space_size=512
         CI: false  # This prevents treating warnings as errors
@@ -43,14 +43,14 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: pi-build
-        path: out/
+        path: dist/
 
     - name: Install zip
       run: apt-get update && apt-get install -y zip
 
     - name: Create release archive
       run: |
-        cd out
+        cd dist
         zip -r ../bice-box-release.zip *
         cd ..
 
