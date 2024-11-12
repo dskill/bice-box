@@ -53,7 +53,8 @@
     "linux": {
       "target": ["zip", "deb"],
       "category": "Development",
-      "artifactName": "${productName}-${version}-${arch}.${ext}"
+      "artifactName": "${productName}-${version}-${arch}.${ext}",
+      "arch": ["armv7l"]
     },
     "electronDownload": {
         "mirror": "https://github.com/electron/electron/releases/download/"
@@ -96,7 +97,7 @@
     "@electron/fuses": "^1.8.0",
     "concurrently": "^8.2.2",
     "cross-env": "^7.0.3",
-    "electron": "^29.4.6",
+    "electron": "^27.1.0",
     "electron-is-dev": "^3.0.1",
     "electron-reload": "^2.0.0-alpha.1",
     "wait-on": "^8.0.0",

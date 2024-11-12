@@ -74,14 +74,10 @@
 .main-layout {
   display: flex;
   flex-direction: column;
-  /* Stack children vertically */
   justify-content: flex-start;
   align-items: stretch;
-  /* Make children fill the width */
   padding: 10px;
   gap: 10px;
-  /* Spacing between rows */
-  /*height: calc(100vh - 60px - 40px); /* Adjust the height to account for header and padding */
 }
 
 .top-layout {
@@ -102,7 +98,7 @@
 .right-column {
   display: flex;
   flex-direction: column;
-  justify-content: start;
+  justify-content: flex-start;
   text-align: left;
   max-height:160px;
   height:160px;
