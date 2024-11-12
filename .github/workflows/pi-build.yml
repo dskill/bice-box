@@ -37,7 +37,7 @@ jobs:
 
     - name: Install dependencies
       run: |
-        npm config set python python3
+        npm config set python /usr/bin/python3
         npm ci
 
     - name: Build for Raspberry Pi
