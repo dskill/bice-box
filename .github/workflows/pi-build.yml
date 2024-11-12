@@ -18,6 +18,8 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      npm_config_python: /usr/bin/python3
     container: 
       image: debian:bullseye
 
@@ -37,7 +39,6 @@ jobs:
 
     - name: Install dependencies
       run: |
-        npm config set python /usr/bin/python3
         npm ci
 
     - name: Build for Raspberry Pi
