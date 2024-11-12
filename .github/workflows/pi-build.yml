@@ -24,6 +24,11 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
+    - name: Install system dependencies
+      run: |
+        apt-get update
+        apt-get install -y python3 python3-pip build-essential zip
+
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
@@ -31,7 +36,9 @@ jobs:
         cache: 'npm'
 
     - name: Install dependencies
-      run: npm ci
+      run: |
+        npm config set python python3
+        npm ci
 
     - name: Build for Raspberry Pi
       run: npm run electron:build:pi

@@ -118,5 +118,7 @@
         }
       ]
     }
-  }
+  },
+  "description": "Bice-Box - An Audio Visual Effects Box",
+  "author": "Drew Skillman <drewskillman@gmail.com>"
 }
