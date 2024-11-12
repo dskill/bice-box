@@ -31,28 +31,40 @@
     "package": "react-scripts build && electron-forge package",
     "package:pi": "NODE_OPTIONS=--max_old_space_size=512 react-scripts build && electron-forge package",
     "make": "react-scripts build && electron-forge make",
-    "clean": "rm -rf out build"
+    "clean": "rm -rf out build dist",
+    "electron:build": "react-scripts build && electron-builder build",
+    "electron:build:pi": "NODE_OPTIONS=--max_old_space_size=512 react-scripts build && electron-builder build --linux --armv7l"
   },
   "build": {
     "appId": "com.bicebox.id",
     "productName": "Bice-Box",
     "files": [
       "build/**/*",
-      "main.js"
+      "main.js",
+      "preload.js"
     ],
     "directories": {
-      "buildResources": "assets"
+      "buildResources": "assets",
+      "output": "dist"
     },
+    "extraMetadata": {
+      "main": "./main.js"
+    },
+    "linux": {
+      "target": ["zip", "deb"],
+      "category": "Development",
+      "artifactName": "${productName}-${version}-${arch}.${ext}"
+    },
+    "electronDownload": {
+        "mirror": "https://github.com/electron/electron/releases/download/"
+      },
     "mac": {
+      "hardenedRuntime": true,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
       "extendInfo": {
         "NSMicrophoneUsageDescription": "This app requires microphone access for audio input."
-      },
-      "extraResources": [
-        {
-          "from": "resources/Info.plist",
-          "to": "Info.plist"
-        }
-      ]
+      }
     }
   },
   "eslintConfig": {
@@ -87,7 +99,8 @@
     "electron": "^29.4.6",
     "electron-is-dev": "^3.0.1",
     "electron-reload": "^2.0.0-alpha.1",
-    "wait-on": "^8.0.0"
+    "wait-on": "^8.0.0",
+    "electron-builder": "^24.13.3"
   },
   "config": {
     "forge": {
