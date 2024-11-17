@@ -799,6 +799,12 @@ button:active {
   font-size: 13px;
   text-align: center;
   white-space: nowrap;
+  transition: color 0.3s ease;
+}
+
+.effect-tile-wrapper .effect-tile.active + .effect-name {
+  color: rgba(255, 255, 255, 1);
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
 }
 
 .effect-select-screen {
