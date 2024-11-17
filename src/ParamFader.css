@@ -30,10 +30,12 @@
   left: 50%;
   transform-origin: bottom;
   transform: translateX(-50%) scaleY(var(--fader-scale, 0));
+  transition: transform 0.1s ease-out;
 }
 
 .fader-thumb.dragging {
-  width: 4px; /* Make it slightly wider when dragging */
+  transition: transform 0.1s ease-out;
+  width: 4px;
   background: linear-gradient(
     to top,
     transparent 0%,
