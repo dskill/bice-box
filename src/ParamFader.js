@@ -1,6 +1,18 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import useSuperCollider from './hooks/useSuperCollider';
 import './ParamFader.css';
+
+// Throttle helper function
+const throttle = (func, limit) => {
+  let inThrottle;
+  return function(...args) {
+    if (!inThrottle) {
+      func.apply(this, args);
+      inThrottle = true;
+      setTimeout(() => inThrottle = false, limit);
+    }
+  }
+};
 
 const ParamFader = ({ synthName, param, faderId, gestureState }) => {
   const { name, value, range } = param;
@@ -9,6 +21,13 @@ const ParamFader = ({ synthName, param, faderId, gestureState }) => {
   const [isDragging, setIsDragging] = useState(false);
   const currentValueRef = useRef(value);
   const initialValueRef = useRef(null);
+  const lastUpdateTime = useRef(0);
+
+  // Throttled version of sendCode
+  const throttledSendCode = useCallback(
+    throttle((code) => sendCode(code), 16), // ~60fps
+    [sendCode]
+  );
 
   // Helper function to convert camelCase to Title Case
   const toTitleCase = (str) => {
@@ -30,25 +49,23 @@ const ParamFader = ({ synthName, param, faderId, gestureState }) => {
   useEffect(() => {
     if (faderValue !== currentValueRef.current) {
       currentValueRef.current = faderValue;
-      sendCode(`~effect.set(\\${name}, ${faderValue})`);
+      throttledSendCode(`~effect.set(\\${name}, ${faderValue})`);
     }
-  }, [faderValue, name, sendCode]);
+  }, [faderValue, name, throttledSendCode]);
 
-  // Add this new useEffect to set initial value when dragging starts
+  // Handle gesture updates with performance optimizations
   useEffect(() => {
-    if (gestureState?.dragging && !isDragging) {
-      // Set initial value when drag starts
-      gestureState.initialValue = faderValue;
-    }
-  }, [gestureState?.dragging]);
-
-  // Handle gesture updates
-  useEffect(() => {
-    if (!gestureState || !gestureState.dragging) {
+    if (!gestureState?.dragging) {
       setIsDragging(false);
       initialValueRef.current = null;
       return;
     }
+
+    const now = performance.now();
+    if (now - lastUpdateTime.current < 16) { // Skip updates faster than 60fps
+      return;
+    }
+    lastUpdateTime.current = now;
 
     if (initialValueRef.current === null) {
       initialValueRef.current = faderValue;
@@ -58,16 +75,14 @@ const ParamFader = ({ synthName, param, faderId, gestureState }) => {
     if (Math.abs(my) > Math.abs(gestureState.movement[0])) {
       setIsDragging(true);
       
-      // Convert pixel movement to percentage of screen height
+      // Optimize movement calculation
       const normalizedMovement = my / window.innerHeight;
-      
-      // Use the initial value from our ref
       const valueRange = range[1] - range[0];
       const newValue = Math.max(range[0], Math.min(range[1], 
         initialValueRef.current + -(normalizedMovement * valueRange)
       ));
       
-      if (newValue !== currentValueRef.current) {
+      if (Math.abs(newValue - currentValueRef.current) > 0.001) { // Add threshold
         setFaderValue(newValue);
       }
     }
