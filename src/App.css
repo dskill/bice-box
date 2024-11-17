@@ -194,7 +194,7 @@ main {
 }
 
 .status-text {
-  font-size: 12px;
+  font-size: 14px;
   color: rgb(176, 192, 211);
   display: flex;
   align-items: center;
@@ -214,7 +214,7 @@ main {
   /* A subtle top border */
   padding: 10px;
   box-sizing: border-box;
-  font-size: 0.8em;
+  font-size: 0.95em;
   /* Smaller font size */
   color: #e3cece;
   /* Dark grey text color */
@@ -227,7 +227,7 @@ main {
   /* Full width minus padding */
   height: 100%;
   /* Adjust based on your preference, keeping within the parent's height */
-  font-size: 0.8em;
+  font-size: 0.95em;
   /* Smaller font size */
   border: none;
   color: #857c7c;
@@ -243,7 +243,7 @@ main {
 /* Update the effect-select styles */
 .effect-select {
   font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
-  font-size: 16px;
+  font-size: 18px;
   color: rgb(198, 202, 224);
   background-color: rgba(0, 0, 0, 0.3);
   border: 1px solid rgba(198, 202, 224, 0.3);
@@ -421,7 +421,7 @@ main {
 /* New button styles */
 button {
   font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
-  font-size: 16px;
+  font-size: 18px;
   color: rgb(198, 202, 224);
   background: none;
   border: none;
@@ -494,18 +494,17 @@ button:active {
 
 .supercollider-boot-management {
   position: fixed;
-  top: 10px;
-  right: 10px;
+  top: 15px;
+  right: 15px;
   z-index: 2000;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
   user-select: none;
-  font-size: 12px;
 }
 
 .management-toggle-button {
-  opacity: 0.5;
+  opacity: 0.75;
   transition: opacity 0.3s ease;
 }
 
@@ -514,15 +513,33 @@ button:active {
 }
 
 .management-content {
-  background-color: rgba(0, 0, 0, 0.8);
+  background-color: rgba(0, 0, 0, 0.3);
   color: rgb(198, 202, 224);
-  padding: 10px;
+  padding: 12px 30px;
   margin-top: 5px;
-  transition: max-height 0.3s ease-out, opacity 0.3s ease-out;
+  transition: all 0.3s ease;
   max-height: 500px;
   overflow: hidden;
-  border-radius: 4px;
   text-align: right;
+}
+
+.management-content:hover {
+  background: rgba(198, 202, 224, 0.1);
+}
+
+/* Update button styles within management content */
+.management-content button {
+  color: rgb(198, 202, 224);
+  font-size: 18px;
+  transition: all 0.3s ease;
+}
+
+/* Update labels and text within management content */
+.management-content label,
+.ip-address,
+.management-content .custom-select {
+  font-size: 18px;
+  color: rgb(198, 202, 224);
 }
 
 .management-content.collapsed {
@@ -536,19 +553,19 @@ button:active {
   background-color: rgba(0, 0, 0, 0.5);
   color: rgb(198, 202, 224);
   border: 1px solid rgba(198, 202, 224, 0.3);
-  font-size: 12px;
+  font-size: 14px;
 }
 
 /* Style for labels within the management content */
 .management-content label {
   color: rgb(198, 202, 224);
-  font-size: 12px;
+  font-size: 14px;
 }
 
 /* Style for buttons within the management content */
 .management-content button {
   color: rgb(198, 202, 224);
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .management-content button:hover {
@@ -617,7 +634,7 @@ button:active {
   margin-bottom: 10px;
   padding-right: 5px;
   color: rgb(198, 202, 224);
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .nav-button {
@@ -773,7 +790,7 @@ button:active {
 .effect-name {
   color: rgba(255, 255, 255, 0.7);
   font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
-  font-size: 11px;
+  font-size: 13px;
   text-align: center;
   white-space: nowrap;
 }
@@ -824,7 +841,7 @@ button:active {
 .select-screen-button .chevron {
   display: inline-block;
   margin-left: 8px;
-  font-size: 14px;
+  font-size: 16px;
   opacity: 0.7;
   vertical-align: middle;
   line-height: 1;
