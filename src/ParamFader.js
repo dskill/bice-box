@@ -14,13 +14,14 @@ const throttle = (func, limit) => {
   }
 };
 
-const ParamFader = ({ synthName, param, faderId, gestureState }) => {
+const ParamFader = ({ synthName, param }) => {
   const { name, value, range } = param;
   const { sendCode } = useSuperCollider();
   const [faderValue, setFaderValue] = useState(value);
   const [isDragging, setIsDragging] = useState(false);
   const currentValueRef = useRef(value);
   const initialValueRef = useRef(null);
+  const initialMouseYRef = useRef(null);
   const lastUpdateTime = useRef(0);
 
   // Throttled version of sendCode
@@ -53,40 +54,58 @@ const ParamFader = ({ synthName, param, faderId, gestureState }) => {
     }
   }, [faderValue, name, throttledSendCode]);
 
-  // Handle gesture updates with performance optimizations
   useEffect(() => {
-    if (!gestureState?.dragging) {
-      setIsDragging(false);
-      initialValueRef.current = null;
-      return;
-    }
-
-    const now = performance.now();
-    if (now - lastUpdateTime.current < 16) { // Skip updates faster than 60fps
-      return;
-    }
-    lastUpdateTime.current = now;
-
-    if (initialValueRef.current === null) {
-      initialValueRef.current = faderValue;
-    }
-
-    const [_, my] = gestureState.movement;
-    if (Math.abs(my) > Math.abs(gestureState.movement[0])) {
-      setIsDragging(true);
+    const handleMouseMove = (e) => {
+      if (!isDragging) return;
       
-      // Optimize movement calculation
-      const normalizedMovement = my / window.innerHeight;
+      const now = performance.now();
+      if (now - lastUpdateTime.current < 16) return; // 60fps throttle
+      lastUpdateTime.current = now;
+
+      const deltaY = (e.clientY - initialMouseYRef.current) / window.innerHeight;
       const valueRange = range[1] - range[0];
-      const newValue = Math.max(range[0], Math.min(range[1], 
-        initialValueRef.current + -(normalizedMovement * valueRange)
+      const newValue = Math.max(range[0], Math.min(range[1],
+        initialValueRef.current + -(deltaY * valueRange)
       ));
-      
-      if (Math.abs(newValue - currentValueRef.current) > 0.001) { // Add threshold
+
+      if (Math.abs(newValue - currentValueRef.current) > 0.001) {
         setFaderValue(newValue);
       }
+    };
+
+    const handleMouseUp = (e) => {
+      console.log('Mouse up event:', e); // Add logging
+      setIsDragging(false);
+      initialValueRef.current = null;
+      initialMouseYRef.current = null;
+    };
+
+    if (isDragging) {
+      // Add both mouse and pointer events
+      window.addEventListener('mousemove', handleMouseMove, { passive: false });
+      window.addEventListener('pointermove', handleMouseMove, { passive: false });
+      window.addEventListener('mouseup', handleMouseUp);
+      window.addEventListener('pointerup', handleMouseUp);
+      window.addEventListener('pointercancel', handleMouseUp); // Handle touch cancellation
     }
-  }, [gestureState, range, faderValue]);
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('pointermove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('pointerup', handleMouseUp);
+      window.removeEventListener('pointercancel', handleMouseUp);
+    };
+  }, [isDragging, range]);
+
+  const handleMouseDown = (e) => {
+    e.preventDefault();
+    e.stopPropagation(); // Prevent event bubbling
+    console.log('Mouse down event:', e);
+    setIsDragging(true);
+    initialValueRef.current = faderValue;
+    initialMouseYRef.current = e.clientY;
+  };
 
   const faderPosition = ((faderValue - range[0]) / (range[1] - range[0])) * 100;
 
@@ -102,7 +121,15 @@ const ParamFader = ({ synthName, param, faderId, gestureState }) => {
   };
 
   return (
-    <div className="param-fader" data-fader-id={faderId}>
+    <div 
+      className="param-fader" 
+      onMouseDown={handleMouseDown}
+      onPointerDown={handleMouseDown}
+      style={{ 
+        touchAction: 'none',
+        cursor: isDragging ? 'grabbing' : 'grab' // Better cursor feedback
+      }}
+    >
       <div className="fader-track">
         <div
           className={`fader-thumb ${isDragging ? 'dragging' : ''}`}
