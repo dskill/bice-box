@@ -28,7 +28,12 @@
     color: #333;
     text-align: center;
     text-transform: uppercase; /* Optional: if you want all caps text */
-
+    cursor: none !important;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    overflow: hidden;
   }
 
 .App {
@@ -799,4 +804,8 @@ button:active {
 .select-screen-button:hover {
   background: rgba(198, 202, 224, 0.1);
   color: white;
+}
+
+* {
+  cursor: none !important;
 }

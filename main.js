@@ -131,6 +131,7 @@ function createWindow()
   let windowOptions = {
     width: 800,
     height: 480,
+    fullscreen: true,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -138,16 +139,9 @@ function createWindow()
       worldSafeExecuteJavaScript: true,
       preload: path.join(__dirname, 'preload.js')
     },
+    frame: false,
+    kiosk: true
   };
-
-  if (isRaspberryPi || (isDev && process.env.FULLSCREEN === 'true'))
-  {
-    windowOptions.fullscreen = true;
-  } else
-  {
-    // Center the window on macOS or in dev mode
-    windowOptions.center = true;
-  }
 
   mainWindow = new BrowserWindow(windowOptions);
 
@@ -157,6 +151,11 @@ function createWindow()
       ? 'http://localhost:3000'
       : `file://${path.join(__dirname, './build/index.html')}`
   );
+
+  // Hide the cursor
+  mainWindow.webContents.on('dom-ready', () => {
+    mainWindow.webContents.insertCSS('* { cursor: none !important; }');
+  });
 
   // Open the DevTools in development mode
   if (isDev)

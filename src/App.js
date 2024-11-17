@@ -3,6 +3,17 @@ import VisualizationMode from './VisualizationMode';
 import EffectSelectScreen from './EffectSelectScreen';
 import './App.css';
 
+// Add this style to your existing CSS or create a new style block
+const styles = {
+  app: {
+    cursor: 'none', // Hide cursor at the React level
+    userSelect: 'none', // Prevent text selection
+    WebkitUserSelect: 'none', // For Safari
+    MozUserSelect: 'none', // For Firefox
+    msUserSelect: 'none', // For IE/Edge
+  }
+};
+
 const electron = window.electron;
 
 function App() {
@@ -238,7 +249,7 @@ function App() {
   }
 
   return (
-    <div className="App">
+    <div className="App" style={styles.app}>
       {currentScreen === 'visualization' ? (
         <VisualizationMode
           synths={synths}
