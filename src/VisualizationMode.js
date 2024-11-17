@@ -11,31 +11,28 @@ function VisualizationMode({ synths, currentSynth, switchSynth, nextSynth, previ
     return name.replace(/(?:^|\s)\S/g, function (a) { return a.toUpperCase(); });
   };
 
-  const [currentGestureState, setCurrentGestureState] = React.useState(null);
   const [activeFaderId, setActiveFaderId] = React.useState(null);
+  const [currentGestureState, setCurrentGestureState] = React.useState(null);
 
   const bind = useGesture({
-    onDrag: ({ movement: [mx, my], event, ...rest }) => {
-      if (!activeFaderId) {
-        const faderElement = event.target.closest('.param-fader');
-        if (faderElement) {
-          setActiveFaderId(faderElement.dataset.faderId);
-        }
+    onDragStart: ({ event }) => {
+      const faderElement = event.target.closest('.param-fader');
+      if (faderElement) {
+        setActiveFaderId(faderElement.dataset.faderId);
       }
-      
+    },
+    onDrag: ({ movement: [mx, my], ...rest }) => {
       if (activeFaderId) {
         setCurrentGestureState({ dragging: true, movement: [mx, my], ...rest });
       }
     },
     onDragEnd: () => {
-      setCurrentGestureState(null);
       setActiveFaderId(null);
+      setCurrentGestureState(null);
     }
   }, {
     drag: {
-      filterTaps: true,
-      threshold: 10,
-      delay: 50
+      filterTaps: true
     }
   });
 
