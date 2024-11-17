@@ -72,7 +72,7 @@ const ParamFader = ({ synthName, param, faderId, gestureState }) => {
       <div className="fader-track">
         <div
           className={`fader-thumb ${isDragging ? 'dragging' : ''}`}
-          style={{ bottom: `${faderPosition}%` }}
+          style={{ '--fader-scale': `${faderPosition / 100}` }}
         />
       </div>
       <div className={`fader-label ${isDragging ? 'dragging' : ''}`}>{name}</div>
