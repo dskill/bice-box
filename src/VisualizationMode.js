@@ -52,11 +52,9 @@ function VisualizationMode({ synths, currentSynth, switchSynth, nextSynth, previ
         </div>
       )}
       
-      <div className="effect-select-wrapper">
-        <button onClick={onOpenEffectSelect}>
-          {currentSynth ? prettifySynthName(currentSynth.name) : 'Select Effect'}
-        </button>
-      </div>
+      <button className="select-screen-button" onClick={onOpenEffectSelect}>
+        {currentSynth ? prettifySynthName(currentSynth.name) : 'No Effect Selected'}
+      </button>
 
       <VisualizationCanvas currentEffect={currentSynth} />
       <div className="visualization-controls">

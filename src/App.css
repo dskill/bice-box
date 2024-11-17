@@ -268,37 +268,6 @@ main {
 
 }
 
-/* Custom dropdown arrow */
-.effect-select-wrapper {
-  position: fixed;
-  top: 15px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 2000;
-  margin-top: 0;
-  width: auto;
-  display: flex;
-  justify-content: center;
-}
-
-.effect-select-wrapper::after {
-  content: '\25BC';
-  font-family: 'VT323', monospace;
-  position: absolute;
-  top: 50%;
-  right: 10px;
-  transform: translateY(-50%);
-  color: rgb(198, 202, 224);
-  pointer-events: none;
-  font-size: 12px;
-}
-
-/* Style for the options */
-.effect-select option {
-  background-color: rgb(46, 50, 55);
-  color: rgb(198, 202, 224);
-}
-
 /* Knob.css */
 .knob-container {
   display: flex;
@@ -728,28 +697,24 @@ button:active {
   background: rgba(198, 202, 224, 0.2);
 }
 
-/* Update the existing effect-select-wrapper to be a button */
-.effect-select-wrapper {
+/* Update the select-screen-button styles */
+.select-screen-button {
   position: fixed;
   top: 15px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 2000;
-}
-
-.effect-select-wrapper button {
   font-family: 'VT323', monospace;
   font-size: 16px;
   color: rgb(198, 202, 224);
   background: rgba(0, 0, 0, 0.3);
   border: 1px solid rgba(198, 202, 224, 0.3);
   padding: 8px 20px;
-  min-width: 200px;
   cursor: pointer;
   transition: all 0.3s ease;
 }
 
-.effect-select-wrapper button:hover {
+.select-screen-button:hover {
   background: rgba(198, 202, 224, 0.1);
   color: white;
 }
