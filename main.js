@@ -1,6 +1,5 @@
 // Key Prioritized Tasks TODO:
 /*
- ** @use-gesture/react
  ** Fresh SD Card build with no credentials
  -- make sure credentials in git are wiped
  -- hook back up the startup script. Otherwise, keep it pretty vanilla.
@@ -294,7 +293,7 @@ function initializeSuperCollider()
 
   sclang.stdout.on('data', (data) =>
   {
-    console.log(`SC stdout: ${data}`);
+   // console.log(`SC stdout: ${data}`);
     mainWindow.webContents.send('sclang-output', data.toString());
 
     if (data.toString().includes('Server booted successfully.'))
@@ -355,17 +354,17 @@ function sendCodeToSclang(code)
 
     let sclangFriendlyFormatting = code.trim();
     sclangFriendlyFormatting += '\n';
-    console.log(`Sending to SuperCollider:\n${sclangFriendlyFormatting}`);
+    // SuperCollider:\n${sclangFriendlyFormatting}`);
     sclang.stdin.write(sclangFriendlyFormatting);
 
-    console.log(`to sclang:\n${sclangFriendlyFormatting}`);
+    //console.log(`to sclang:\n${sclangFriendlyFormatting}`);
     sclang.stdin.write(sclangFriendlyFormatting);
 
     // Set up a one-time listener for the sclang output
     sclang.stdout.once('data', (data) =>
     {
       const output = data.toString();
-      console.log('from sclang:', output);
+      //console.log('from sclang:', output);
       resolve(output);
     });
 

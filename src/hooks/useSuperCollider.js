@@ -13,7 +13,7 @@ export default function useSuperCollider() {
     let removeErrorListener;
 
     const handleSclangOutput = (message) => {
-      console.log('SuperCollider output:', message);
+      //console.log('SuperCollider output:', message);
       // Handle the output as needed
     };
 
