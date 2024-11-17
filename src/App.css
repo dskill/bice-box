@@ -797,15 +797,44 @@ button:active {
   transform: translateX(-50%);
   z-index: 2000;
   background: rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(198, 202, 224, 0.3);
   padding: 12px 30px;
   cursor: pointer;
   transition: all 0.3s ease;
+  outline: none;
 }
 
 .select-screen-button:hover {
   background: rgba(198, 202, 224, 0.1);
   color: white;
+}
+
+.select-screen-button .effect-name {
+  outline: none;
+}
+
+.select-screen-button:focus {
+  outline: none;
+}
+
+.select-screen-button .effect-name:focus {
+  outline: none;
+}
+
+.select-screen-button .chevron {
+  display: inline-block;
+  margin-left: 8px;
+  font-size: 14px;
+  opacity: 0.7;
+  vertical-align: middle;
+  line-height: 1;
+  position: relative;
+  top: -2px; /* Adjusted for better vertical centering */
+  transform: translateY(-1px); /* Added transform for fine-tuned centering */
+  transition: opacity 0.3s ease;
+}
+
+.select-screen-button:hover .chevron {
+  opacity: 1;
 }
 
 * {

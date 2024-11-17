@@ -55,6 +55,7 @@ function VisualizationMode({ synths, currentSynth, switchSynth, nextSynth, previ
       <button className="select-screen-button" onClick={onOpenEffectSelect}>
         <div className="effect-name">
           {currentSynth ? prettifySynthName(currentSynth.name) : 'No Effect Selected'}
+          <span className="chevron">⌵</span>
         </div>
       </button>
 

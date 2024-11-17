@@ -10,6 +10,14 @@ const ParamFader = ({ synthName, param, faderId, gestureState }) => {
   const currentValueRef = useRef(value);
   const initialValueRef = useRef(null);
 
+  // Helper function to convert camelCase to Title Case
+  const toTitleCase = (str) => {
+    // First split the camelCase string into words
+    const result = str.replace(/([A-Z])/g, ' $1');
+    // Convert first character to uppercase and trim any extra spaces
+    return result.charAt(0).toUpperCase() + result.slice(1).trim();
+  };
+
   // Handle initial value and external value changes
   useEffect(() => {
     if (value !== currentValueRef.current) {
@@ -75,7 +83,9 @@ const ParamFader = ({ synthName, param, faderId, gestureState }) => {
           style={{ '--fader-scale': `${faderPosition / 100}` }}
         />
       </div>
-      <div className={`fader-label ${isDragging ? 'dragging' : ''}`}>{name}</div>
+      <div className={`fader-label ${isDragging ? 'dragging' : ''}`}>
+        {toTitleCase(name)}
+      </div>
     </div>
   );
 };
