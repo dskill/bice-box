@@ -657,6 +657,7 @@ button:active {
   display: flex;
   align-items: center;
   justify-content: center;
+  
 }
 
 .effect-grid {
@@ -665,7 +666,7 @@ button:active {
   gap: 25px;
   padding: 20px;
   max-width: 1200px;
-  width: 100%;
+  width: 90%;
 }
 
 .effect-tile-wrapper {
@@ -680,7 +681,7 @@ button:active {
   height: 80px;
   border: 2px solid rgba(255, 255, 255, 0.3);
   border-radius: 50%;
-  padding: 0;
+  padding: 15px;
   cursor: pointer;
   transition: all 0.3s ease;
   position: relative;
