@@ -77,13 +77,13 @@ function VisualizationMode({ synths, currentSynth, switchSynth, nextSynth, previ
         className="nav-button prev-button" 
         onClick={previousSynth}
       >
-        ←
+        ‹
       </button>
       <button 
         className="nav-button next-button" 
         onClick={nextSynth}
       >
-        →
+        ›
       </button>
     </div>
   );
