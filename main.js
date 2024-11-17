@@ -131,7 +131,7 @@ function createWindow()
   let windowOptions = {
     width: 800,
     height: 480,
-    fullscreen: true,
+    fullscreen: isRaspberryPi,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -140,7 +140,7 @@ function createWindow()
       preload: path.join(__dirname, 'preload.js')
     },
     frame: false,
-    kiosk: true
+    kiosk: isRaspberryPi
   };
 
   mainWindow = new BrowserWindow(windowOptions);

@@ -209,7 +209,7 @@ function SuperColliderBootManagement({ reloadEffectList, pullEffectsRepo, curren
                 isOn={isExpanded}
                 setIsOn={setIsExpanded}
                 onText="Hide Tools"
-                offText="Show Tools"
+                offText="Tools"
             />
 
             {isExpanded && (

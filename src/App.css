@@ -17,6 +17,7 @@
     margin: 0;
     padding: 0;
     background: linear-gradient(180deg, rgb(114, 124, 133) 0%, rgb(46, 50, 55) 77.33%, rgb(43, 47, 52) 100%);
+    font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
   }
   
 
@@ -24,10 +25,9 @@
     min-height: 100%; /* Ensure body fills the entire height of html */
     margin: 0;
     padding: 0;
-    font-family: 'VT323', monospace;
+    font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
     color: #333;
     text-align: center;
-    text-transform: uppercase; /* Optional: if you want all caps text */
     cursor: none !important;
     user-select: none;
     -webkit-user-select: none;
@@ -44,13 +44,13 @@
   padding: 0;
   scrollbar-width: none;
   -ms-overflow-style: none;
-  font-family: 'VT323', monospace;
+  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
 }
 
 .App-header {
   align-items: center;
   color: rgb(198, 202, 224);
-  font-family: 'Carter One';
+  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
   font-size: 25px;
   margin: 0px;
   padding: 0px;
@@ -242,8 +242,7 @@ main {
 
 /* Update the effect-select styles */
 .effect-select {
-  font-family: 'VT323', monospace;
-  text-transform: uppercase; /* Optional: if you want all caps text */
+  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
   font-size: 16px;
   color: rgb(198, 202, 224);
   background-color: rgba(0, 0, 0, 0.3);
@@ -350,7 +349,7 @@ main {
 
 /* Custom Dropdown Style */
 .custom-select {
-  font-family: 'VT323', monospace;
+  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
   /* Monospaced font for a retro feel */
   font-size: 16px;
   /* Match the font size to the rest of the UI */
@@ -421,7 +420,7 @@ main {
 
 /* New button styles */
 button {
-  font-family: 'VT323', monospace;
+  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
   font-size: 16px;
   color: rgb(198, 202, 224);
   background: none;
@@ -429,7 +428,7 @@ button {
   padding: 5px 10px;
   cursor: pointer;
   transition: color 0.3s ease;
-  text-transform: uppercase; /* Optional: if you want all caps text */
+  text-transform: none;
 }
 
 button:hover {
@@ -502,6 +501,7 @@ button:active {
   flex-direction: column;
   align-items: flex-end;
   user-select: none;
+  font-size: 12px;
 }
 
 .management-toggle-button {
@@ -536,16 +536,19 @@ button:active {
   background-color: rgba(0, 0, 0, 0.5);
   color: rgb(198, 202, 224);
   border: 1px solid rgba(198, 202, 224, 0.3);
+  font-size: 12px;
 }
 
 /* Style for labels within the management content */
 .management-content label {
   color: rgb(198, 202, 224);
+  font-size: 12px;
 }
 
 /* Style for buttons within the management content */
 .management-content button {
   color: rgb(198, 202, 224);
+  font-size: 12px;
 }
 
 .management-content button:hover {
@@ -614,6 +617,7 @@ button:active {
   margin-bottom: 10px;
   padding-right: 5px;
   color: rgb(198, 202, 224);
+  font-size: 12px;
 }
 
 .nav-button {

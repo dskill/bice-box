@@ -4,14 +4,14 @@
 }
 
 .toggle-text {
-    font-family: 'VT323', monospace;
-    font-size: 16px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+    font-size: 12px;
     background: none;
     border: none;
     padding: 5px 10px;
     cursor: pointer;
     transition: color 0.3s ease;
-    text-transform: uppercase;
+    text-transform: none;
 }
 
 .toggle-text.on {
