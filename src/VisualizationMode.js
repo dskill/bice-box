@@ -52,12 +52,25 @@ function VisualizationMode({ synths, currentSynth, switchSynth, nextSynth, previ
         </div>
       )}
       
-      <button className="select-screen-button" onClick={onOpenEffectSelect}>
-        <div className="effect-name">
-          {currentSynth ? prettifySynthName(currentSynth.name) : 'No Effect Selected'}
-          <span className="chevron">⌵</span>
-        </div>
-      </button>
+      <div className="effect-select-container">
+        <button 
+          className="nav-button effect-nav-button prev-button" 
+          onClick={previousSynth}
+        >
+          ‹
+        </button>
+        <button className="select-screen-button" onClick={onOpenEffectSelect}>
+          <div className="effect-name">
+            {currentSynth ? prettifySynthName(currentSynth.name) : 'No Effect Selected'}
+          </div>
+        </button>
+        <button 
+          className="nav-button effect-nav-button next-button" 
+          onClick={nextSynth}
+        >
+          ›
+        </button>
+      </div>
 
       <VisualizationCanvas currentEffect={currentSynth} />
       <div className="visualization-controls">

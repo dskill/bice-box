@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import useSuperCollider from './hooks/useSuperCollider';
 import './ParamFader.css';
 
-const ParamFader = ({ synthName, param, faderId, gestureState, currentSynth }) => {
+const ParamFader = ({ synthName, param, faderId, gestureState }) => {
   const { name, value, range } = param;
   const { sendCode } = useSuperCollider();
   const [faderValue, setFaderValue] = useState(value);
@@ -75,23 +75,15 @@ const ParamFader = ({ synthName, param, faderId, gestureState, currentSynth }) =
 
   const faderPosition = ((faderValue - range[0]) / (range[1] - range[0])) * 100;
 
-  // Update the color generation function to ensure better distribution
-  const generateColor = (synthName, paramName, index) => {
+  // Update the color generation function to use both synthName and param name
+  const generateColor = (synthName, paramName) => {
     const str = `${synthName}-${paramName}`;
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
       hash = str.charCodeAt(i) + ((hash << 5) - hash);
     }
-    
-    // Get a base hue from the hash
-    const baseHue = (hash % 360 + 360) % 360;
-    
-    // Add an offset based on the parameter's position
-    const paramIndex = currentSynth?.params?.findIndex(p => p.name === paramName) || 0;
-    const hueOffset = (paramIndex * 60) % 360; // Distribute colors evenly around the color wheel
-    
-    const finalHue = (baseHue + hueOffset) % 360;
-    return `hsla(${finalHue}, 85%, 60%, 0.8)`;
+    const h = (hash % 360 + 360) % 360; // Ensure positive hue value
+    return `hsla(${h}, 85%, 60%, 0.8)`;
   };
 
   return (

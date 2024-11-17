@@ -593,8 +593,14 @@ button:active {
 }
 
 .effect-select-container {
+  position: fixed;
+  top: 15px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2000;
   display: flex;
-  justify-content: center;
+  align-items: center;
+  gap: 5px;
 }
 
 .visualization-controls {
@@ -809,11 +815,7 @@ button:active {
 
 /* Update the select-screen-button styles */
 .select-screen-button {
-  position: fixed;
-  top: 15px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 2000;
+  width: 300px; /* Fixed width */
   background: rgba(0, 0, 0, 0.3);
   padding: 12px 30px;
   cursor: pointer;
@@ -839,20 +841,32 @@ button:active {
 }
 
 .select-screen-button .chevron {
-  display: inline-block;
-  margin-left: 8px;
-  font-size: 16px;
-  opacity: 0.7;
-  vertical-align: middle;
-  line-height: 1;
-  position: relative;
-  top: -2px; /* Adjusted for better vertical centering */
-  transform: translateY(-1px); /* Added transform for fine-tuned centering */
-  transition: opacity 0.3s ease;
+  display: none;
 }
 
-.select-screen-button:hover .chevron {
-  opacity: 1;
+.select-screen-button .chevron {
+  display: none;
+}
+
+/* Update the nav buttons for the new layout */
+.effect-nav-button {
+  position: relative;
+  transform: none;
+  padding: 12px 20px;
+  background: rgba(0, 0, 0, 0.3);
+  margin: 0 -50px;
+  z-index: 2001;
+}
+
+/* Remove the original nav-button positioning */
+.nav-button.prev-button,
+.nav-button.next-button {
+  position: static;
+}
+
+/* Hide the original nav buttons at the sides */
+.visualization-mode > .nav-button {
+  display: none;
 }
 
 * {
