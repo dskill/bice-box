@@ -75,15 +75,33 @@ const ParamFader = ({ synthName, param, faderId, gestureState }) => {
 
   const faderPosition = ((faderValue - range[0]) / (range[1] - range[0])) * 100;
 
+  // Add this helper function at the top of the component
+  const generateColor = (str) => {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const h = hash % 360;
+    return `hsl(${h}, 100%, 50%)`; // High saturation, mid brightness
+  };
+
   return (
     <div className="param-fader" data-fader-id={faderId}>
       <div className="fader-track">
         <div
           className={`fader-thumb ${isDragging ? 'dragging' : ''}`}
-          style={{ '--fader-scale': `${faderPosition / 100}` }}
+          style={{ 
+            '--fader-scale': `${faderPosition / 100}`,
+            '--fader-color': generateColor(faderId)
+          }}
         />
       </div>
-      <div className={`fader-label ${isDragging ? 'dragging' : ''}`}>
+      <div 
+        className={`fader-label ${isDragging ? 'dragging' : ''}`}
+        style={{ 
+          '--fader-color': generateColor(faderId)
+        }}
+      >
         {toTitleCase(name)}
       </div>
     </div>
