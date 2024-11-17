@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import VisualizationMode from './VisualizationMode';
+import EffectSelectScreen from './EffectSelectScreen';
 import './App.css';
 
 const electron = window.electron;
@@ -8,6 +9,7 @@ function App() {
   const [synths, setSynths] = useState([]);
   const [currentSynth, setCurrentSynth] = useState(null);
   const [error, setError] = useState(null);
+  const [currentScreen, setCurrentScreen] = useState('visualization'); // 'visualization' or 'select'
 
   useEffect(() => {
     // Load synths on component mount
@@ -222,21 +224,39 @@ function App() {
     switchSynthByIndex(currentIndex - 1);
   };
 
+  const handleEffectSelect = (synthName) => {
+    switchSynth(synthName);
+    setCurrentScreen('visualization');
+  };
+
+  const openEffectSelect = () => {
+    setCurrentScreen('select');
+  };
+
   if (error) {
     return <div className="error-message">{error}</div>;
   }
 
   return (
-    <div className="App visualization-mode">
-      <VisualizationMode
-        synths={synths}
-        currentSynth={currentSynth}
-        switchSynth={switchSynth}
-        nextSynth={nextSynth}
-        previousSynth={previousSynth}
-        reloadEffectList={getEffectList}
-        pullEffectsRepo={pullEffectsRepo}
-      />
+    <div className="App">
+      {currentScreen === 'visualization' ? (
+        <VisualizationMode
+          synths={synths}
+          currentSynth={currentSynth}
+          switchSynth={handleEffectSelect}
+          nextSynth={nextSynth}
+          previousSynth={previousSynth}
+          reloadEffectList={getEffectList}
+          pullEffectsRepo={pullEffectsRepo}
+          onOpenEffectSelect={openEffectSelect}
+        />
+      ) : (
+        <EffectSelectScreen
+          synths={synths}
+          onSelectEffect={handleEffectSelect}
+          currentSynth={currentSynth}
+        />
+      )}
     </div>
   );
 }

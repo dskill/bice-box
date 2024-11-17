@@ -4,35 +4,38 @@ import ParamFader from './ParamFader';
 import VisualizationCanvas from './VisualizationCanvas';
 import { useGesture } from '@use-gesture/react'
 
-function VisualizationMode({ synths, currentSynth, switchSynth, nextSynth, previousSynth,  reloadEffectList, pullEffectsRepo }) {
+function VisualizationMode({ synths, currentSynth, switchSynth, nextSynth, previousSynth,  reloadEffectList, pullEffectsRepo, onOpenEffectSelect }) {
   const prettifySynthName = (name) => {
     if (!name) return '';
     name = name.replace(/_/g, " ");
     return name.replace(/(?:^|\s)\S/g, function (a) { return a.toUpperCase(); });
   };
 
-  const [activeFaderId, setActiveFaderId] = React.useState(null);
   const [currentGestureState, setCurrentGestureState] = React.useState(null);
+  const [activeFaderId, setActiveFaderId] = React.useState(null);
 
   const bind = useGesture({
-    onDragStart: ({ event }) => {
-      const faderElement = event.target.closest('.param-fader');
-      if (faderElement) {
-        setActiveFaderId(faderElement.dataset.faderId);
+    onDrag: ({ movement: [mx, my], event, ...rest }) => {
+      if (!activeFaderId) {
+        const faderElement = event.target.closest('.param-fader');
+        if (faderElement) {
+          setActiveFaderId(faderElement.dataset.faderId);
+        }
       }
-    },
-    onDrag: ({ movement: [mx, my], ...rest }) => {
+      
       if (activeFaderId) {
         setCurrentGestureState({ dragging: true, movement: [mx, my], ...rest });
       }
     },
     onDragEnd: () => {
-      setActiveFaderId(null);
       setCurrentGestureState(null);
+      setActiveFaderId(null);
     }
   }, {
     drag: {
-      filterTaps: true
+      filterTaps: true,
+      threshold: 10,
+      delay: 50
     }
   });
 
@@ -50,18 +53,9 @@ function VisualizationMode({ synths, currentSynth, switchSynth, nextSynth, previ
       )}
       
       <div className="effect-select-wrapper">
-        <select 
-          className="effect-select" 
-          onChange={(e) => switchSynth(e.target.value)} 
-          value={currentSynth ? currentSynth.name : ''}
-        >
-          {!currentSynth && <option value="">Select a synth</option>}
-          {synths.map(synth => (
-            <option key={synth.name} value={synth.name}>
-              {prettifySynthName(synth.name)}
-            </option>
-          ))}
-        </select>
+        <button onClick={onOpenEffectSelect}>
+          {currentSynth ? prettifySynthName(currentSynth.name) : 'Select Effect'}
+        </button>
       </div>
 
       <VisualizationCanvas currentEffect={currentSynth} />
