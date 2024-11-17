@@ -218,8 +218,8 @@ function SuperColliderBootManagement({ reloadEffectList, pullEffectsRepo, curren
                         <p>Device IP: {ipAddress}</p>
                     </div>
                     <div className="button-column">
-                        {/* <Button label={"Reload Effect List"} onClick={reloadEffectList} /> */}
-                        {/*  <Button label={"Reload Current Effect"} onClick={handleReloadCurrentEffect} />*/}
+                        <Button label={"Reload All Effects"} onClick={reloadEffectList} />
+                        <Button label={"Reload Current Effect"} onClick={handleReloadCurrentEffect} />
                         <Button label={"Git Pull Effects"} onClick={handlePullEffectsRepo} />
                         <Button label={"Refresh Devices"} onClick={refreshDevices} />
                         <Button label={"Reboot Server"} onClick={rebootServer} />

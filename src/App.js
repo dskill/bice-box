@@ -112,7 +112,7 @@ function App() {
     return new Promise((resolve, reject) => {
       console.log("loadEffects function called");
       if (electron) {
-        electron.ipcRenderer.send('request-effects'); 
+        electron.ipcRenderer.send('reload-all-effects'); 
         electron.ipcRenderer.once('effects-data', (data) => {
           console.log("Received effects data:", data);
           if (Array.isArray(data) && data.length > 0) {

@@ -535,19 +535,15 @@ ipcMain.on('stop-synth', (event, synthName) =>
   console.log(`Stopped ${synthName}`);
 });
 
-ipcMain.on('request-effects', (event) =>
-{
-  console.log('Received request for effects');
-  try
-  {
+ipcMain.on('reload-all-effects', (event) => {
+  console.log('Reloading all effects...');
+  try {
     const loadedSynths = loadEffectsList();
-    // Ensure we're sending valid data
     const validSynths = loadedSynths.filter(synth => synth && synth.name);
     console.log('Effects data to be sent:', validSynths);
     event.reply('effects-data', validSynths);
     console.log('Effects data sent to renderer process');
-  } catch (error)
-  {
+  } catch (error) {
     console.error('Error loading or sending effects data:', error);
     event.reply('effects-error', error.message);
   }
