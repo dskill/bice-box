@@ -646,21 +646,9 @@ button:active {
   padding: 20px;
   box-sizing: border-box;
   overflow-y: auto;
-}
-
-.effect-select-header {
-  text-align: center;
-  margin-bottom: 30px;
-}
-
-.effect-select-header h1 {
-  color: rgba(255, 255, 255, 0.9);
-  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
-  font-size: 20px;
-  font-weight: 400;
-  letter-spacing: 1px;
-  margin: 0;
-  padding: 15px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .effect-grid {
@@ -668,7 +656,8 @@ button:active {
   grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
   gap: 20px;
   padding: 20px;
-  background-color: #000;
+  max-width: 1200px;
+  width: 100%;
 }
 
 .effect-tile {

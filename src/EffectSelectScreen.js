@@ -9,9 +9,6 @@ function EffectSelectScreen({ synths, onSelectEffect, currentSynth }) {
 
   return (
     <div className="effect-select-screen">
-      <div className="effect-select-header">
-        <h1>Select Effect</h1>
-      </div>
       <div className="effect-grid">
         {synths.map(synth => (
           <button
