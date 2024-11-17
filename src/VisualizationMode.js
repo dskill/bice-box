@@ -5,56 +5,24 @@ import VisualizationCanvas from './VisualizationCanvas';
 import { useGesture } from '@use-gesture/react'
 
 function VisualizationMode({ synths, currentSynth, switchSynth, nextSynth, previousSynth,  reloadEffectList, pullEffectsRepo }) {
-  const [lastSwipeTime, setLastSwipeTime] = React.useState(0);
-  const SWIPE_COOLDOWN = 500; // milliseconds between allowed swipes
-
   const prettifySynthName = (name) => {
     if (!name) return '';
     name = name.replace(/_/g, " ");
     return name.replace(/(?:^|\s)\S/g, function (a) { return a.toUpperCase(); });
   };
 
-  const handleSwipe = (direction) => {
-    if (!currentSynth || !Array.isArray(synths) || synths.length === 0) {
-      console.log('Swipe aborted: invalid state', { currentSynth, synths });
-      return;
-    }
-    
-    if (direction === 'right') {
-      nextSynth();
-    } else {
-      previousSynth();
-    }
-  };
-
-  // Add state for current gesture and active fader
   const [currentGestureState, setCurrentGestureState] = React.useState(null);
   const [activeFaderId, setActiveFaderId] = React.useState(null);
 
   const bind = useGesture({
-    onDrag: ({ movement: [mx, my], direction: [dx, dy], cancel, event, ...rest }) => {
-      const now = Date.now();
-      if (now - lastSwipeTime < SWIPE_COOLDOWN) {
-        return;
-      }
-
-      // Get the closest fader element to the drag start point
+    onDrag: ({ movement: [mx, my], event, ...rest }) => {
       if (!activeFaderId) {
         const faderElement = event.target.closest('.param-fader');
         if (faderElement) {
           setActiveFaderId(faderElement.dataset.faderId);
         }
       }
-
-      // Handle horizontal swipes
-      if (Math.abs(mx) > 50 && Math.abs(mx) > Math.abs(my) * 2) {
-        handleSwipe(dx > 0 ? 'right' : 'left');
-        setLastSwipeTime(now);
-        cancel();
-        return;
-      }
       
-      // Only update gesture state if we have an active fader
       if (activeFaderId) {
         setCurrentGestureState({ dragging: true, movement: [mx, my], ...rest });
       }
@@ -113,6 +81,19 @@ function VisualizationMode({ synths, currentSynth, switchSynth, nextSynth, previ
           ))}
         </div>
       </div>
+
+      <button 
+        className="nav-button prev-button" 
+        onClick={previousSynth}
+      >
+        ←
+      </button>
+      <button 
+        className="nav-button next-button" 
+        onClick={nextSynth}
+      >
+        →
+      </button>
     </div>
   );
 }

@@ -641,3 +641,31 @@ button:active {
   padding-right: 5px;
   color: rgb(198, 202, 224);
 }
+
+.nav-button {
+  position: fixed;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1000;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 24px;
+  color: rgb(198, 202, 224);
+  transition: all 0.3s ease;
+}
+
+.nav-button:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+}
+
+.prev-button {
+  left: 10px;
+}
+
+.next-button {
+  right: 10px;
+}
