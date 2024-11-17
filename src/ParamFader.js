@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import useSuperCollider from './hooks/useSuperCollider';
 import './ParamFader.css';
 
-const ParamFader = ({ synthName, param, faderId, gestureState }) => {
+const ParamFader = ({ synthName, param, faderId, gestureState, currentSynth }) => {
   const { name, value, range } = param;
   const { sendCode } = useSuperCollider();
   const [faderValue, setFaderValue] = useState(value);
@@ -75,14 +75,23 @@ const ParamFader = ({ synthName, param, faderId, gestureState }) => {
 
   const faderPosition = ((faderValue - range[0]) / (range[1] - range[0])) * 100;
 
-  // Add this helper function at the top of the component
-  const generateColor = (str) => {
+  // Update the color generation function to ensure better distribution
+  const generateColor = (synthName, paramName, index) => {
+    const str = `${synthName}-${paramName}`;
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
       hash = str.charCodeAt(i) + ((hash << 5) - hash);
     }
-    const h = hash % 360;
-    return `hsl(${h}, 100%, 50%)`; // High saturation, mid brightness
+    
+    // Get a base hue from the hash
+    const baseHue = (hash % 360 + 360) % 360;
+    
+    // Add an offset based on the parameter's position
+    const paramIndex = currentSynth?.params?.findIndex(p => p.name === paramName) || 0;
+    const hueOffset = (paramIndex * 60) % 360; // Distribute colors evenly around the color wheel
+    
+    const finalHue = (baseHue + hueOffset) % 360;
+    return `hsla(${finalHue}, 85%, 60%, 0.8)`;
   };
 
   return (
@@ -92,14 +101,14 @@ const ParamFader = ({ synthName, param, faderId, gestureState }) => {
           className={`fader-thumb ${isDragging ? 'dragging' : ''}`}
           style={{ 
             '--fader-scale': `${faderPosition / 100}`,
-            '--fader-color': generateColor(faderId)
+            '--fader-color': generateColor(synthName, name)
           }}
         />
       </div>
       <div 
         className={`fader-label ${isDragging ? 'dragging' : ''}`}
         style={{ 
-          '--fader-color': generateColor(faderId)
+          '--fader-color': generateColor(synthName, name)
         }}
       >
         {toTitleCase(name)}
