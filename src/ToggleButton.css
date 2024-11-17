@@ -6,24 +6,29 @@
 .toggle-text {
     font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
     font-size: 14px;
-    background: none;
+    background: rgba(0, 0, 0, 0.0);
     border: none;
-    padding: 5px 10px;
+    padding: 15px 30px;
     cursor: pointer;
-    transition: color 0.3s ease;
+    transition: all 0.3s ease;
     text-transform: none;
+    min-width: 200px;
+    color: rgb(198, 202, 224);
 }
 
 .toggle-text.on {
-  opacity: 0.8;
+    background: rgba(198, 202, 224, .8);
+    color: white;
+    opacity: 0.8;
 }
 
 .toggle-text.off {
-  opacity: 0.8;
+    opacity: 0.8;
 }
 
 .toggle-text:hover {
-    opacity: 0.8;
+    background: rgba(198, 202, 224, 0.0);
+    color: white;
 }
 
 .toggle-text:focus {

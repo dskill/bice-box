@@ -2,6 +2,7 @@ import React from 'react';
 import SuperColliderBootManagement from './SuperColliderBootManagement';
 import ParamFader from './ParamFader';
 import VisualizationCanvas from './VisualizationCanvas';
+import ToggleButton from './ToggleButton';
 
 function VisualizationMode({ synths, currentSynth, switchSynth, nextSynth, previousSynth,  reloadEffectList, pullEffectsRepo, onOpenEffectSelect }) {
   const prettifySynthName = (name) => {
@@ -30,11 +31,12 @@ function VisualizationMode({ synths, currentSynth, switchSynth, nextSynth, previ
         >
           ‹
         </button>
-        <button className="select-screen-button" onClick={onOpenEffectSelect}>
-          <div className="effect-name">
-            {currentSynth ? prettifySynthName(currentSynth.name) : 'No Effect Selected'}
-          </div>
-        </button>
+        <ToggleButton
+          isOn={false}
+          setIsOn={() => onOpenEffectSelect()}
+          onText={currentSynth ? prettifySynthName(currentSynth.name) : 'No Effect Selected'}
+          offText={currentSynth ? prettifySynthName(currentSynth.name) : 'No Effect Selected'}
+        />
         <button 
           className="nav-button effect-nav-button next-button" 
           onClick={nextSynth}
