@@ -250,23 +250,24 @@ function App() {
 
   return (
     <div className="App" style={styles.app}>
-      {currentScreen === 'visualization' ? (
-        <VisualizationMode
-          synths={synths}
-          currentSynth={currentSynth}
-          switchSynth={handleEffectSelect}
-          nextSynth={nextSynth}
-          previousSynth={previousSynth}
-          reloadEffectList={getEffectList}
-          pullEffectsRepo={pullEffectsRepo}
-          onOpenEffectSelect={openEffectSelect}
-        />
-      ) : (
-        <EffectSelectScreen
-          synths={synths}
-          onSelectEffect={handleEffectSelect}
-          currentSynth={currentSynth}
-        />
+      <VisualizationMode
+        synths={synths}
+        currentSynth={currentSynth}
+        switchSynth={handleEffectSelect}
+        nextSynth={nextSynth}
+        previousSynth={previousSynth}
+        reloadEffectList={getEffectList}
+        pullEffectsRepo={pullEffectsRepo}
+        onOpenEffectSelect={openEffectSelect}
+      />
+      {currentScreen === 'select' && (
+        <div className="effect-select-overlay">
+          <EffectSelectScreen
+            synths={synths}
+            onSelectEffect={handleEffectSelect}
+            currentSynth={currentSynth}
+          />
+        </div>
       )}
     </div>
   );
