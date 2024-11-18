@@ -720,77 +720,32 @@ button:active {
   left: 0;
   right: 0;
   height: 100%;
-  background: rgba(255, 255, 255, 0.15);
-}
-
-/* Different waveform patterns */
-.effect-tile:nth-child(5n)::before {
-  clip-path: polygon(
-    0% 100%,
-    0% 70%,
-    20% 40%,
-    40% 70%,
-    60% 100%,
-    80% 70%,
-    100% 40%,
-    100% 100%
+  background: linear-gradient(180deg,
+    rgba(255, 255, 255, 0.01) 0%,
+    rgba(255, 255, 255, 0.15) 100%
   );
-}
-
-.effect-tile:nth-child(5n+1)::before {
   clip-path: polygon(
-    0% 100%,
     0% 50%,
-    25% 30%,
-    50% 80%,
-    75% 50%,
     100% 50%,
-    100% 100%
+    100% 100%,
+    0% 100%
   );
+  transition: all 1.3s ease;
 }
 
-.effect-tile:nth-child(5n+2)::before {
-  clip-path: polygon(
-    0% 100%,
-    0% 60%,
-    50% 20%,
-    100% 60%,
-    100% 100%
-  );
-}
-
-.effect-tile:nth-child(5n+3)::before {
-  clip-path: polygon(
-    0% 100%,
-    0% 70%,
-    20% 40%,
-    40% 90%,
-    60% 60%,
-    80% 30%,
-    100% 70%,
-    100% 100%
-  );
-}
-
-.effect-tile:nth-child(5n+4)::before {
-  clip-path: polygon(
-    0% 100%,
-    0% 50%,
-    25% 70%,
-    50% 50%,
-    75% 70%,
-    100% 50%,
-    100% 100%
-  );
-}
-
-/* Active state */
-.effect-tile.active {
-  border-color: rgba(255, 255, 255, 1);
-}
-
+/* Active state - make the waveform more prominent */
 .effect-tile.active::before {
-  background: linear-gradient(180deg, var(--active-color) 0%, color-mix(in srgb, var(--active-color) 80%, black) 100%);
+  background: linear-gradient(180deg,
+    rgba(255, 255, 255, 0.1) 0%,
+    rgba(255, 255, 255, 0.5) 50%,
+    rgba(255, 255, 255, 0.3) 100%
+  );
+  clip-path: polygon(
+    0% 50%,
+    100% 50%,
+    100% 100%,
+    0% 100%
+  );
 }
 
 .effect-name {
