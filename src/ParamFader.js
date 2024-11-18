@@ -14,6 +14,16 @@ const throttle = (func, limit) => {
   }
 };
 
+// Vapor wave color palette
+const colors = [
+  '#00FFFF', // cyan
+  '#FF71CE', // neon pink
+  '#01CDFE', // bright blue
+  '#FF00FF', // hot magenta
+  '#05FFA1', // neon green
+  '#B967FF'  // bright purple
+];
+
 const ParamFader = ({ synthName, param }) => {
   const { name, value, range } = param;
   const { sendCode } = useSuperCollider();
@@ -109,12 +119,10 @@ const ParamFader = ({ synthName, param }) => {
 
   const faderPosition = ((faderValue - range[0]) / (range[1] - range[0])) * 100;
 
-  // Generate color based on parameter index
   const generateColor = (index) => {
-    // Use golden ratio to create well-distributed hues
-    const goldenRatio = 0.618033988749895;
-    const hue = (index * goldenRatio * 360) % 360;
-    return `hsla(${hue}, 85%, 60%, 0.8)`;
+    // Use modulo to wrap around the colors array
+    const colorIndex = index % colors.length;
+    return colors[colorIndex];
   };
 
   return (

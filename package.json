@@ -51,14 +51,19 @@
       "main": "./main.js"
     },
     "linux": {
-      "target": ["zip", "deb"],
+      "target": [
+        "zip",
+        "deb"
+      ],
       "category": "Development",
       "artifactName": "${productName}-${version}-${arch}.${ext}",
-      "arch": ["armv7l"]
+      "arch": [
+        "armv7l"
+      ]
     },
     "electronDownload": {
-        "mirror": "https://github.com/electron/electron/releases/download/"
-      },
+      "mirror": "https://github.com/electron/electron/releases/download/"
+    },
     "mac": {
       "hardenedRuntime": true,
       "entitlements": "build/entitlements.mac.plist",
@@ -98,10 +103,10 @@
     "concurrently": "^8.2.2",
     "cross-env": "^7.0.3",
     "electron": "^27.1.0",
+    "electron-builder": "^24.13.3",
     "electron-is-dev": "^3.0.1",
     "electron-reload": "^2.0.0-alpha.1",
-    "wait-on": "^8.0.0",
-    "electron-builder": "^24.13.3"
+    "wait-on": "^8.0.0"
   },
   "config": {
     "forge": {

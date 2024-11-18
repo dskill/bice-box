@@ -429,7 +429,7 @@ function loadEffectsList()
     return effect;
   });
 
-  console.log('Effects list loaded and reloaded:', synths);
+  //console.log('Effects list loaded and reloaded:', synths);
 
   // Notify renderer about updated effects
   if (mainWindow && mainWindow.webContents)
@@ -539,7 +539,7 @@ ipcMain.on('reload-all-effects', (event) => {
   try {
     const loadedSynths = loadEffectsList();
     const validSynths = loadedSynths.filter(synth => synth && synth.name);
-    console.log('Effects data to be sent:', validSynths);
+    //console.log('Effects data to be sent:', validSynths);
     event.reply('effects-data', validSynths);
     console.log('Effects data sent to renderer process');
   } catch (error) {
@@ -712,10 +712,10 @@ function reloadFullEffect(jsonPath)
     {
       console.log(`Reading JSON file: ${jsonPath}`);
       const fileContent = fs.readFileSync(jsonPath, 'utf8');
-      console.log(`File content: ${fileContent}`);
+      //console.log(`File content: ${fileContent}`);
 
       const newEffectData = JSON.parse(fileContent);
-      console.log(`Parsed effect data:`, newEffectData);
+      //console.log(`Parsed effect data:`, newEffectData);
 
       // Update the effect in the synths array
       const updatedEffect = {
