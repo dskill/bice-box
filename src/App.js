@@ -261,13 +261,11 @@ function App() {
         onOpenEffectSelect={openEffectSelect}
       />
       {currentScreen === 'select' && (
-        <div className="effect-select-overlay">
-          <EffectSelectScreen
-            synths={synths}
-            onSelectEffect={handleEffectSelect}
-            currentSynth={currentSynth}
-          />
-        </div>
+        <EffectSelectScreen
+          synths={synths}
+          onSelectEffect={handleEffectSelect}
+          currentSynth={currentSynth}
+        />
       )}
     </div>
   );
