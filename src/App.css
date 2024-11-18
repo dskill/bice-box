@@ -790,7 +790,7 @@ button:active {
 }
 
 .effect-tile.active::before {
-  background: linear-gradient(180deg, #0066ff 0%, #0044cc 100%);
+  background: linear-gradient(180deg, var(--active-color) 0%, color-mix(in srgb, var(--active-color) 80%, black) 100%);
 }
 
 .effect-name {

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import useSuperCollider from './hooks/useSuperCollider';
+import { generateColor } from './theme';
 import './ParamFader.css';
 
 // Throttle helper function
@@ -13,16 +14,6 @@ const throttle = (func, limit) => {
     }
   }
 };
-
-// Vapor wave color palette
-const colors = [
-  '#00FFFF', // cyan
-  '#FF71CE', // neon pink
-  '#01CDFE', // bright blue
-  '#FF00FF', // hot magenta
-  '#05FFA1', // neon green
-  '#B967FF'  // bright purple
-];
 
 const ParamFader = ({ synthName, param }) => {
   const { name, value, range } = param;
@@ -119,11 +110,7 @@ const ParamFader = ({ synthName, param }) => {
 
   const faderPosition = ((faderValue - range[0]) / (range[1] - range[0])) * 100;
 
-  const generateColor = (index) => {
-    // Use modulo to wrap around the colors array
-    const colorIndex = index % colors.length;
-    return colors[colorIndex];
-  };
+  const faderColor = generateColor(param.index);
 
   return (
     <div 
@@ -140,14 +127,14 @@ const ParamFader = ({ synthName, param }) => {
           className={`fader-thumb ${isDragging ? 'dragging' : ''}`}
           style={{ 
             '--fader-scale': `${faderPosition / 100}`,
-            '--fader-color': generateColor(param.index)
+            '--fader-color': faderColor
           }}
         />
       </div>
       <div 
         className={`fader-label ${isDragging ? 'dragging' : ''}`}
         style={{ 
-          '--fader-color': generateColor(param.index)
+          '--fader-color': faderColor
         }}
       >
         {toTitleCase(name)}

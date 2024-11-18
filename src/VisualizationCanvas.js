@@ -121,6 +121,7 @@ function VisualizationCanvas({ currentEffect }) {
         // Add FFT data to p5 instance
         p5InstanceRef.current.fft0 = fft0DataRef.current;
         p5InstanceRef.current.fft1 = fft1DataRef.current;
+
         console.log('New p5 instance created');
       } catch (error) {
         console.error('Error updating p5 sketch:', error);
@@ -221,6 +222,7 @@ function VisualizationCanvas({ currentEffect }) {
             p5InstanceRef.current.tunerData = tunerDataRef.current;
             p5InstanceRef.current.fft0 = fft0DataRef.current;
             p5InstanceRef.current.fft1 = fft1DataRef.current;
+
             p5InstanceCountRef.current += 1;
             console.log(`Current p5 instance count: ${p5InstanceCountRef.current}`);
 
