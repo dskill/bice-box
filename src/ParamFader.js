@@ -109,15 +109,12 @@ const ParamFader = ({ synthName, param }) => {
 
   const faderPosition = ((faderValue - range[0]) / (range[1] - range[0])) * 100;
 
-  // Update the color generation function to use both synthName and param name
-  const generateColor = (synthName, paramName) => {
-    const str = `${synthName}-${paramName}`;
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      hash = str.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    const h = (hash % 360 + 360) % 360; // Ensure positive hue value
-    return `hsla(${h}, 85%, 60%, 0.8)`;
+  // Generate color based on parameter index
+  const generateColor = (index) => {
+    // Use golden ratio to create well-distributed hues
+    const goldenRatio = 0.618033988749895;
+    const hue = (index * goldenRatio * 360) % 360;
+    return `hsla(${hue}, 85%, 60%, 0.8)`;
   };
 
   return (
@@ -127,7 +124,7 @@ const ParamFader = ({ synthName, param }) => {
       onPointerDown={handleMouseDown}
       style={{ 
         touchAction: 'none',
-        cursor: isDragging ? 'grabbing' : 'grab' // Better cursor feedback
+        cursor: isDragging ? 'grabbing' : 'grab'
       }}
     >
       <div className="fader-track">
@@ -135,14 +132,14 @@ const ParamFader = ({ synthName, param }) => {
           className={`fader-thumb ${isDragging ? 'dragging' : ''}`}
           style={{ 
             '--fader-scale': `${faderPosition / 100}`,
-            '--fader-color': generateColor(synthName, name)
+            '--fader-color': generateColor(param.index)
           }}
         />
       </div>
       <div 
         className={`fader-label ${isDragging ? 'dragging' : ''}`}
         style={{ 
-          '--fader-color': generateColor(synthName, name)
+          '--fader-color': generateColor(param.index)
         }}
       >
         {toTitleCase(name)}

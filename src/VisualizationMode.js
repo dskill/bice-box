@@ -48,11 +48,11 @@ function VisualizationMode({ synths, currentSynth, switchSynth, nextSynth, previ
       <VisualizationCanvas currentEffect={currentSynth} />
       <div className="visualization-controls">
         <div className="knobs-container">
-          {currentSynth && currentSynth.params && currentSynth.params.map(param => (
+          {currentSynth && currentSynth.params && currentSynth.params.map((param, index) => (
             <ParamFader
               key={`${currentSynth.name}-${param.name}`}
               synthName={currentSynth.name}
-              param={param}
+              param={{ ...param, index }}
             />
           ))}
         </div>
