@@ -38,6 +38,7 @@
   },
   "build": {
     "appId": "com.bicebox.id",
+    "artifactName": "${productName}-${version}-${arch}.${ext}",
     "productName": "Bice-Box",
     "files": [
       "build/**/*",
@@ -56,11 +57,8 @@
         "zip",
         "deb"
       ],
-      "category": "Development",
-      "artifactName": "${productName}-${version}-${arch}.${ext}",
-      "arch": [
-        "armv7l"
-      ]
+      "category": "Audio",
+      "defaultArch": "armv7l"
     },
     "electronDownload": {
       "mirror": "https://github.com/electron/electron/releases/download/"
