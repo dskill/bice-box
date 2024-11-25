@@ -58,8 +58,7 @@
         "deb"
       ],
       "category": "Audio",
-      "defaultArch": "arm64",
-      "arch": ["arm64"]
+      "defaultArch": "arm64"
     },
     "electronDownload": {
       "mirror": "https://github.com/electron/electron/releases/download/"
