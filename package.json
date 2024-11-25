@@ -70,8 +70,7 @@
       "extendInfo": {
         "NSMicrophoneUsageDescription": "This app requires microphone access for audio input."
       }
-    },
-    "electronMain": "main.js"
+    }
   },
   "eslintConfig": {
     "extends": [
