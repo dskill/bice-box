@@ -121,6 +121,17 @@ if (isDev)
   }
 }
 
+// Configure for Pi's GPU
+app.commandLine.appendSwitch('enable-features', 'VaapiVideoDecoder');
+app.commandLine.appendSwitch('enable-gpu-rasterization');
+app.commandLine.appendSwitch('ignore-gpu-blacklist');
+app.commandLine.appendSwitch('enable-native-gpu-memory-buffers');
+
+// If you're using Wayland
+app.commandLine.appendSwitch('ozone-platform', 'wayland');
+// OR if you're using X11
+// app.commandLine.appendSwitch('ozone-platform', 'x11');
+
 function createWindow()
 {
   console.log('Creating main window...');
