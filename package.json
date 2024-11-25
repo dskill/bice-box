@@ -33,7 +33,8 @@
     "make": "react-scripts build && electron-forge make",
     "clean": "rm -rf out build dist",
     "electron:build": "react-scripts build && electron-builder build",
-    "electron:build:pi": "NODE_OPTIONS=--max_old_space_size=512 react-scripts build && electron-builder build --linux --armv7l"
+    "electron:build:pi": "NODE_OPTIONS=--max_old_space_size=512 react-scripts build && electron-builder build --linux --armv7l",
+    "create-release": "chmod +x ./scripts/create-release.sh && ./scripts/create-release.sh"
   },
   "build": {
     "appId": "com.bicebox.id",
