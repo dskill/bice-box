@@ -104,7 +104,8 @@ process.on('unhandledRejection', (reason, promise) =>
 console.log('Logging initialized');
 
 // Determine if we're in development mode
-const isDev = !app.isPackaged;
+//const isDev = !app.isPackaged;
+const isDev = false;
 
 // Enable live reload for Electron
 if (isDev)
