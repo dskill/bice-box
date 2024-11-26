@@ -128,9 +128,14 @@ app.commandLine.appendSwitch('enable-features', 'VaapiVideoDecoder');
 app.commandLine.appendSwitch('enable-gpu-rasterization');
 app.commandLine.appendSwitch('ignore-gpu-blacklist');
 app.commandLine.appendSwitch('enable-native-gpu-memory-buffers');
-
-// If you're using Wayland
+app.commandLine.appendSwitch('enable-zero-copy');
+app.commandLine.appendSwitch('enable-accelerated-video-decode');
+app.commandLine.appendSwitch('enable-hardware-overlays');
+app.commandLine.appendSwitch('enable-features', 'UseOzonePlatform');
 app.commandLine.appendSwitch('ozone-platform', 'wayland');
+app.commandLine.appendSwitch('disable-gpu-vsync'); // Can help with performance
+app.commandLine.appendSwitch('disable-software-rasterizer');
+app.commandLine.appendSwitch('force-device-scale-factor', '1');
 
 function createWindow()
 {
