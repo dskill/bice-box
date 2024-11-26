@@ -548,6 +548,8 @@ app.whenReady().then(() => {
   if (!fs.existsSync(electronJsPath)) {
     console.error(`ERROR: electron.js not found at ${electronJsPath}`);
     console.error('This may cause startup issues. Make sure the file is being copied correctly during build.');
+  } else {
+    console.log(`electron.js found at ${electronJsPath}`);
   }
   
   createWindow();
