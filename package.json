@@ -33,7 +33,7 @@
     "make": "react-scripts build && electron-forge make",
     "clean": "rm -rf out build dist",
     "electron:build": "react-scripts build && electron-builder build",
-    "electron:build:pi": "NODE_OPTIONS=--max_old_space_size=512 react-scripts build && electron-builder build --linux",
+    "electron:build:pi": "NODE_OPTIONS=--max_old_space_size=512 react-scripts build && electron-builder build --linux --arm64",
     "create-release": "chmod +x ./scripts/create-release.sh && ./scripts/create-release.sh"
   },
   "build": {
@@ -55,10 +55,12 @@
     "linux": {
       "target": [
         "zip",
-        "deb"
+        "AppImage"
       ],
       "category": "Audio",
-      "defaultArch": "arm64"
+      "defaultArch": "arm64",
+      "artifactName": "${productName}-${version}-${arch}.${ext}",
+      "icon": "assets/icon.png"
     },
     "electronDownload": {
       "mirror": "https://github.com/electron/electron/releases/download/"
