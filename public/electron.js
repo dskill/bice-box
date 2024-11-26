@@ -153,7 +153,7 @@ function createWindow()
       devTools: true
     },
     frame: true,
-    kiosk: isRaspberryPi,
+    //kiosk: isRaspberryPi,
     backgroundColor: '#000000',
     show: false
   };
