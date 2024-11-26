@@ -23,7 +23,7 @@
     "start": "mkdir -p build && cp public/electron.js build/electron.js && concurrently \"npm run start:react\" \"wait-on http://localhost:3000 && npm run start:electron\"",
     "start:react": "cross-env BROWSER=none react-scripts start",
     "start:electron": "cross-env NODE_ENV=development electron .",
-    "electron": "cross-env electron .",
+    "electron": "mkdir -p build && cp public/electron.js build/electron.js && cross-env electron .",
     "build": "react-scripts build && cp public/electron.js build/electron.js",
     "build:pi": "NODE_OPTIONS=--max_old_space_size=512 npm run build",
     "test": "react-scripts test",
