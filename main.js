@@ -109,7 +109,8 @@ console.log('Logging initialized');
 // Use dynamic import for electron-is-dev
 // we do this cause we're using require syntax
 let isDev;
-(async () => {
+(async () =>
+{
   isDev = (await import('electron-is-dev')).default;
 })();
 
@@ -169,6 +170,18 @@ function createWindow()
       ? 'http://localhost:3000'
       : `file://${path.join(__dirname, './build/index.html')}`
   );
+
+  // Add after mainWindow.loadURL():
+  mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) =>
+  {
+    console.error('Failed to load:', errorCode, errorDescription);
+  });
+
+  // Add this for debugging
+  mainWindow.webContents.on('dom-ready', () =>
+  {
+    console.log('DOM is ready');
+  });
 
   // Hide the cursor
   mainWindow.webContents.on('dom-ready', () =>
@@ -643,37 +656,37 @@ ipcMain.on('reboot-server', (event) =>
 app.on('will-quit', async () =>
 {
   console.log('Application shutting down...');
- 
-    // Kill SuperCollider servers
-    if (sclang)
-    {
-      try
-      {
-        console.log('Shutting down SuperCollider servers...');
-        await sendCodeToSclang('Server.killAll;');
-        console.log('SuperCollider servers killed successfully');
 
-        // Kill the sclang process
-        sclang.kill();
-        console.log('sclang process terminated');
-      } catch (error)
-      {
-        console.error('Error shutting down SuperCollider:', error);
-      }
-    }
-
-    // Close OSC server
-    if (oscServer)
+  // Kill SuperCollider servers
+  if (sclang)
+  {
+    try
     {
-      oscServer.close();
-      console.log('OSC server closed');
-    }
+      console.log('Shutting down SuperCollider servers...');
+      await sendCodeToSclang('Server.killAll;');
+      console.log('SuperCollider servers killed successfully');
 
-    logStream.end();
-    if (oscServer)
+      // Kill the sclang process
+      sclang.kill();
+      console.log('sclang process terminated');
+    } catch (error)
     {
-      oscServer.close();
+      console.error('Error shutting down SuperCollider:', error);
     }
+  }
+
+  // Close OSC server
+  if (oscServer)
+  {
+    oscServer.close();
+    console.log('OSC server closed');
+  }
+
+  logStream.end();
+  if (oscServer)
+  {
+    oscServer.close();
+  }
 });
 
 function getSclangPath()
