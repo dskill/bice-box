@@ -104,7 +104,14 @@ process.on('unhandledRejection', (reason, promise) =>
 console.log('Logging initialized');
 
 // Determine if we're in development mode
-const isDev = !app.isPackaged;
+// const isDev = !app.isPackaged;
+
+// Use dynamic import for electron-is-dev
+// we do this cause we're using require syntax
+let isDev;
+(async () => {
+  isDev = (await import('electron-is-dev')).default;
+})();
 
 // Enable live reload for Electron
 if (isDev)
