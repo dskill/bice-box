@@ -150,7 +150,8 @@ function createWindow()
       //webSecurity: false,
       enableRemoteModule: true,
       worldSafeExecuteJavaScript: true,
-      preload: path.join(__dirname, '../preload.js')
+      preload: path.join(__dirname, '../preload.js'),
+      devtools: true
     },
     frame: false,
     kiosk: isRaspberryPi,

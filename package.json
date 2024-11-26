@@ -27,7 +27,6 @@
     "build:pi": "NODE_OPTIONS=--max_old_space_size=512 npm run build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
-    "electron": "electron-forge start",
     "package": "react-scripts build && electron-forge package",
     "package:pi": "NODE_OPTIONS=--max_old_space_size=512 react-scripts build && electron-forge package",
     "make": "react-scripts build && electron-forge make",
