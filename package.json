@@ -19,20 +19,18 @@
     "web-vitals": "^2.1.4"
   },
   "scripts": {
-    "start": "mkdir -p build && cp public/electron.js build/electron.js && concurrently \"npm run start:react\" \"wait-on http://localhost:3000 && npm run start:electron\"",
-    "start:react": "cross-env BROWSER=none react-scripts start",
-    "start:electron": "cross-env NODE_ENV=development electron .",
-    "electron": "mkdir -p build && cp public/electron.js build/electron.js && cross-env electron .",
-    "build": "react-scripts build && cp public/electron.js build/electron.js",
-    "build:pi": "NODE_OPTIONS=--max_old_space_size=512 npm run build",
-    "test": "react-scripts test",
+    "dev": "mkdir -p build && cp public/electron.js build/electron.js && concurrently \"npm run dev:react\" \"wait-on http://localhost:3000 && npm run dev:electron\"",
+    "dev:react": "cross-env BROWSER=none react-scripts start",
+    "dev:electron": "cross-env NODE_ENV=development electron .",
+    "build:react": "react-scripts build && cp public/electron.js build/electron.js",
+    "build:react:pi": "NODE_OPTIONS=--max_old_space_size=512 npm run build:react",
+    "start:electron": "mkdir -p build && cp public/electron.js build/electron.js && cross-env electron .",
     "eject": "react-scripts eject",
     "clean": "rm -rf out build dist",
-    "electron:build": "source .venv/bin/activate && react-scripts build && electron-builder build",
-    "electron:build:pi": "NODE_OPTIONS=--max_old_space_size=512 react-scripts build && electron-builder build --linux --arm64",
-    "create-release": "chmod +x ./scripts/create-release.sh && ./scripts/create-release.sh",
-    "publish:pi": "electron-builder build --linux --arm64 --publish always",
-    "publish:draft": "electron-builder build --linux --arm64 --publish onTagOrDraft"
+    "build:electron": "source .venv/bin/activate && react-scripts build && electron-builder build",
+    "build:electron:pi": "NODE_OPTIONS=--max_old_space_size=512 react-scripts build && electron-builder build --linux --arm64",
+    "release:publish": "electron-builder build --linux --arm64 --publish always",
+    "release:publish:draft": "electron-builder build --linux --arm64 --publish onTagOrDraft"
   },
   "build": {
     "appId": "com.bicebox.id",

@@ -494,7 +494,7 @@ function loadP5SketchSync(sketchPath)
   {
     const effectsPath = getEffectsPath();
     const fullPath = path.join(effectsPath, sketchPath);
-    console.log(`Attempting to load p5 sketch from: ${fullPath}`);
+    //console.log(`Attempting to load p5 sketch from: ${fullPath}`);
 
     if (!fs.existsSync(fullPath))
     {
@@ -503,7 +503,7 @@ function loadP5SketchSync(sketchPath)
     }
 
     const content = fs.readFileSync(fullPath, 'utf-8');
-    console.log(`Successfully loaded p5 sketch: ${sketchPath}`);
+    //console.log(`Successfully loaded p5 sketch: ${sketchPath}`);
     return content;
   } catch (error)
   {
