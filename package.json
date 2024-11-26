@@ -118,7 +118,6 @@
     "cross-env": "^7.0.3",
     "electron": "^33.2.0",
     "electron-builder": "^25.1.8",
-    "electron-is-dev": "^3.0.1",
     "electron-reload": "^2.0.0-alpha.1",
     "wait-on": "^8.0.0"
   },
