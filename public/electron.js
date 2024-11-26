@@ -128,8 +128,7 @@ app.commandLine.appendSwitch('enable-features', 'VaapiVideoDecoder');
 app.commandLine.appendSwitch('enable-gpu-rasterization');
 app.commandLine.appendSwitch('ignore-gpu-blacklist');
 app.commandLine.appendSwitch('enable-native-gpu-memory-buffers');
-app.commandLine.appendSwitch('disable-gpu-sandbox');
-
+  
 // If you're using Wayland
 app.commandLine.appendSwitch('ozone-platform', 'wayland');
 
