@@ -13,7 +13,7 @@
  ** Long ribbon cable for display
  ** Get touch working on that small display
 
- # Create a script like update-bice-box.sh
+ # Create a script like update-bice-box.shå
 #!/bin/bash
 LATEST=$(curl -s https://api.github.com/repos/dskill/bice-box/releases/latest | grep "browser_download_url.*zip" | cut -d '"' -f 4)
 wget $LATEST -O bice-box.zip
@@ -104,15 +104,7 @@ process.on('unhandledRejection', (reason, promise) =>
 console.log('Logging initialized');
 
 // Determine if we're in development mode
-// const isDev = !app.isPackaged;
-
-// Use dynamic import for electron-is-dev
-// we do this cause we're using require syntax
-let isDev;
-(async () =>
-{
-  isDev = (await import('electron-is-dev')).default;
-})();
+const isDev = !app.isPackaged;
 
 // Enable live reload for Electron
 if (isDev)
@@ -135,16 +127,15 @@ if (isDev)
 //app.commandLine.appendSwitch('enable-gpu-rasterization');
 //app.commandLine.appendSwitch('ignore-gpu-blacklist');
 //app.commandLine.appendSwitch('enable-native-gpu-memory-buffers');
-//app.commandLine.appendSwitch('disable-gpu-sandbox');
 
 // If you're using Wayland
-app.commandLine.appendSwitch('ozone-platform', 'wayland');
+//app.commandLine.appendSwitch('ozone-platform', 'wayland');
 
 function createWindow()
 {
   console.log('Creating main window...');
 
-  const isRaspberryPi = process.platform === 'linux';
+  let isRaspberryPi = process.platform === 'linux';
 
   let windowOptions = {
     width: 800,
@@ -153,13 +144,15 @@ function createWindow()
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      webSecurity: false,
+      //webSecurity: false,
       enableRemoteModule: true,
       worldSafeExecuteJavaScript: true,
-      preload: path.join(__dirname, '../preload.js')
+      preload: path.join(__dirname, '../preload.js'),
     },
-    frame: false,
-    kiosk: isRaspberryPi
+    frame: true,
+    kiosk: isRaspberryPi,
+    backgroundColor: '#000000',
+    show: false
   };
 
   mainWindow = new BrowserWindow(windowOptions);
@@ -193,8 +186,9 @@ function createWindow()
   // Open the DevTools in development mode
   if (isDev)
   {
+    console.log('Opening DevTools');
     mainWindow.webContents.openDevTools();
-  }
+  } 
 
   // Initialize SuperCollider
   initializeSuperCollider();
@@ -204,6 +198,10 @@ function createWindow()
 
   // Set up file watcher for hot reloading
   setupEffectsWatcher();
+
+  mainWindow.once('ready-to-show', () => {
+    mainWindow.show();
+  });
 }
 
 function initializeOSCServer()
@@ -542,7 +540,18 @@ function loadScFile(filePath)
     .catch(error => console.error('Error loading SC file:', error));
 }
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  // Add check for electron.js file
+  const electronJsPath = path.join(__dirname, '../build/electron.js');
+  if (!fs.existsSync(electronJsPath)) {
+    console.error(`ERROR: electron.js not found at ${electronJsPath}`);
+    console.error('This may cause startup issues. Make sure the file is being copied correctly during build.');
+  } else {
+    console.log(`electron.js found at ${electronJsPath}`);
+  }
+  
+  createWindow();
+});
 
 app.on('window-all-closed', () =>
 {

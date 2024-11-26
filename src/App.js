@@ -261,11 +261,11 @@ function App() {
         onOpenEffectSelect={openEffectSelect}
       />
       {currentScreen === 'select' && (
-        <EffectSelectScreen
-          synths={synths}
-          onSelectEffect={handleEffectSelect}
-          currentSynth={currentSynth}
-        />
+          <EffectSelectScreen
+            synths={synths}
+            onSelectEffect={handleEffectSelect}
+            currentSynth={currentSynth}
+          />
       )}
     </div>
   );

@@ -2,7 +2,7 @@
   "name": "bice-box",
   "main": "public/electron.js",
   "homepage": ".",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "dependencies": {
     "@testing-library/jest-dom": "^5.17.0",
@@ -10,7 +10,6 @@
     "@testing-library/user-event": "^13.5.0",
     "@use-gesture/react": "^10.3.1",
     "axios": "^1.6.2",
-    "electron-squirrel-startup": "^1.0.1",
     "openai": "^4.47.1",
     "osc": "^2.4.5",
     "p5": "^1.10.0",
@@ -20,14 +19,14 @@
     "web-vitals": "^2.1.4"
   },
   "scripts": {
-    "start": "concurrently \"npm run start:react\" \"wait-on http://localhost:3000 && npm run start:electron\"",
+    "start": "mkdir -p build && cp public/electron.js build/electron.js && concurrently \"npm run start:react\" \"wait-on http://localhost:3000 && npm run start:electron\"",
     "start:react": "cross-env BROWSER=none react-scripts start",
-    "start:electron": "cross-env NODE_ENV=development electron-forge start",
+    "start:electron": "cross-env NODE_ENV=development electron .",
+    "electron": "mkdir -p build && cp public/electron.js build/electron.js && cross-env electron .",
     "build": "react-scripts build && cp public/electron.js build/electron.js",
     "build:pi": "NODE_OPTIONS=--max_old_space_size=512 npm run build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
-    "electron": "electron-forge start",
     "package": "react-scripts build && electron-forge package",
     "package:pi": "NODE_OPTIONS=--max_old_space_size=512 react-scripts build && electron-forge package",
     "make": "react-scripts build && electron-forge make",
@@ -44,7 +43,8 @@
     "productName": "Bice-Box",
     "files": [
       "build/**/*",
-      "preload.js"
+      "preload.js",
+      "build/electron.js"
     ],
     "directories": {
       "buildResources": "assets",
@@ -62,7 +62,9 @@
       "defaultArch": "arm64",
       "artifactName": "${productName}-${version}-${arch}.${ext}",
       "icon": "assets/icon.png",
-      "asarUnpack": ["build/**/*"]
+      "asarUnpack": [
+        "build/**/*"
+      ]
     },
     "electronDownload": {
       "mirror": "https://github.com/electron/electron/releases/download/"
@@ -115,7 +117,6 @@
     "cross-env": "^7.0.3",
     "electron": "^33.2.0",
     "electron-builder": "^25.1.8",
-    "electron-is-dev": "^3.0.1",
     "electron-reload": "^2.0.0-alpha.1",
     "wait-on": "^8.0.0"
   },
