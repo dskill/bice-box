@@ -20,7 +20,7 @@
     "web-vitals": "^2.1.4"
   },
   "scripts": {
-    "start": "concurrently \"npm run start:react\" \"wait-on http://localhost:3000 && npm run start:electron\"",
+    "start": "cp public/electron.js build/electron.js && concurrently \"npm run start:react\" \"wait-on http://localhost:3000 && npm run start:electron\"",
     "start:react": "cross-env BROWSER=none react-scripts start",
     "start:electron": "cross-env NODE_ENV=development electron .",
     "build": "react-scripts build && cp public/electron.js build/electron.js",

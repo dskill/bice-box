@@ -153,7 +153,7 @@ function createWindow()
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      webSecurity: false,
+      //webSecurity: false,
       enableRemoteModule: true,
       worldSafeExecuteJavaScript: true,
       preload: path.join(__dirname, '../preload.js')
@@ -191,7 +191,7 @@ function createWindow()
   });
 
   // Open the DevTools in development mode
-  if (isDev)
+  if (true) //isDev)
   {
     mainWindow.webContents.openDevTools();
   }
