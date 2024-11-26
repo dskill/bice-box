@@ -193,6 +193,9 @@ function createWindow()
     mainWindow.webContents.openDevTools();
   }
 
+  mainWindow.webContents.openDevTools();
+
+
   // Initialize SuperCollider
   initializeSuperCollider();
 
