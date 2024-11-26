@@ -13,7 +13,7 @@
  ** Long ribbon cable for display
  ** Get touch working on that small display
 
- # Create a script like update-bice-box.sh
+ # Create a script like update-bice-box.shå
 #!/bin/bash
 LATEST=$(curl -s https://api.github.com/repos/dskill/bice-box/releases/latest | grep "browser_download_url.*zip" | cut -d '"' -f 4)
 wget $LATEST -O bice-box.zip
@@ -153,7 +153,9 @@ function createWindow()
       preload: path.join(__dirname, '../preload.js')
     },
     frame: false,
-    kiosk: isRaspberryPi
+    kiosk: isRaspberryPi,
+    backgroundColor: '#000000',
+    show: false
   };
 
   mainWindow = new BrowserWindow(windowOptions);
@@ -199,6 +201,10 @@ function createWindow()
 
   // Set up file watcher for hot reloading
   setupEffectsWatcher();
+
+  mainWindow.once('ready-to-show', () => {
+    mainWindow.show();
+  });
 }
 
 function initializeOSCServer()
