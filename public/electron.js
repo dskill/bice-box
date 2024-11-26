@@ -128,7 +128,7 @@ app.commandLine.appendSwitch('enable-features', 'VaapiVideoDecoder');
 app.commandLine.appendSwitch('enable-gpu-rasterization');
 app.commandLine.appendSwitch('ignore-gpu-blacklist');
 app.commandLine.appendSwitch('enable-native-gpu-memory-buffers');
-  
+
 // If you're using Wayland
 app.commandLine.appendSwitch('ozone-platform', 'wayland');
 
@@ -140,8 +140,8 @@ function createWindow()
   isRaspberryPi = false;
 
   let windowOptions = {
-    width: 800,
-    height: 480,
+    width: 700,
+    height: 380,
     fullscreen: isRaspberryPi,
     webPreferences: {
       nodeIntegration: false,
@@ -150,7 +150,7 @@ function createWindow()
       enableRemoteModule: true,
       worldSafeExecuteJavaScript: true,
       preload: path.join(__dirname, '../preload.js'),
-      devtools: true
+      devTools: true
     },
     frame: false,
     kiosk: isRaspberryPi,
