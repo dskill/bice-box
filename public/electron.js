@@ -189,10 +189,7 @@ function createWindow()
   {
     console.log('Opening DevTools');
     mainWindow.webContents.openDevTools();
-  }
-
-  mainWindow.webContents.openDevTools();
-
+  } 
 
   // Initialize SuperCollider
   initializeSuperCollider();
