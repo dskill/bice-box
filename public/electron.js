@@ -156,7 +156,7 @@ function createWindow()
       webSecurity: false,
       enableRemoteModule: true,
       worldSafeExecuteJavaScript: true,
-      preload: path.join(__dirname, 'preload.js')
+      preload: path.join(__dirname, '../preload.js')
     },
     frame: false,
     kiosk: isRaspberryPi
@@ -165,10 +165,11 @@ function createWindow()
   mainWindow = new BrowserWindow(windowOptions);
 
   // Load the index.html from a url
+
   mainWindow.loadURL(
     isDev
       ? 'http://localhost:3000'
-      : `file://${path.join(__dirname, './build/index.html')}`
+      : `file://${path.join(__dirname, '../build/index.html')}`
   );
 
   // Add after mainWindow.loadURL():
