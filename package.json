@@ -34,7 +34,9 @@
     "clean": "rm -rf out build dist",
     "electron:build": "source .venv/bin/activate && react-scripts build && electron-builder build",
     "electron:build:pi": "NODE_OPTIONS=--max_old_space_size=512 react-scripts build && electron-builder build --linux --arm64",
-    "create-release": "chmod +x ./scripts/create-release.sh && ./scripts/create-release.sh"
+    "create-release": "chmod +x ./scripts/create-release.sh && ./scripts/create-release.sh",
+    "publish": "electron-builder build --linux --arm64 --publish always",
+    "publish:draft": "electron-builder build --linux --arm64 --publish onTagOrDraft"
   },
   "build": {
     "appId": "com.bicebox.id",
@@ -72,6 +74,12 @@
       "extendInfo": {
         "NSMicrophoneUsageDescription": "This app requires microphone access for audio input."
       }
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "dskill",
+      "repo": "bice-box",
+      "releaseType": "release"
     }
   },
   "eslintConfig": {
@@ -101,6 +109,7 @@
     "@electron-forge/maker-zip": "^7.5.0",
     "@electron-forge/plugin-auto-unpack-natives": "^7.4.0",
     "@electron-forge/plugin-fuses": "^7.4.0",
+    "@electron-forge/publisher-github": "^7.5.0",
     "@electron/fuses": "^1.8.0",
     "concurrently": "^8.2.2",
     "cross-env": "^7.0.3",
