@@ -2,7 +2,7 @@
   "name": "bice-box",
   "main": "public/electron.js",
   "homepage": ".",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "dependencies": {
     "@testing-library/jest-dom": "^5.17.0",
@@ -63,7 +63,9 @@
       "defaultArch": "arm64",
       "artifactName": "${productName}-${version}-${arch}.${ext}",
       "icon": "assets/icon.png",
-      "asarUnpack": ["build/**/*"]
+      "asarUnpack": [
+        "build/**/*"
+      ]
     },
     "electronDownload": {
       "mirror": "https://github.com/electron/electron/releases/download/"
