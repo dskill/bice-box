@@ -114,6 +114,8 @@ let isDev;
   isDev = (await import('electron-is-dev')).default;
 })();
 
+isDev = true;
+
 // Enable live reload for Electron
 if (isDev)
 {
@@ -191,7 +193,7 @@ function createWindow()
   });
 
   // Open the DevTools in development mode
-  if (true) //isDev)
+  if (isDev)
   {
     mainWindow.webContents.openDevTools();
   }
