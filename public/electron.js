@@ -137,7 +137,6 @@ function createWindow()
   console.log('Creating main window...');
 
   let isRaspberryPi = process.platform === 'linux';
-  isRaspberryPi = false;
 
   let windowOptions = {
     width: 800,
