@@ -162,7 +162,8 @@ function createWindow()
   );
 
   // Hide the cursor
-  mainWindow.webContents.on('dom-ready', () => {
+  mainWindow.webContents.on('dom-ready', () =>
+  {
     mainWindow.webContents.insertCSS('* { cursor: none !important; }');
   });
 
@@ -227,7 +228,7 @@ function initializeOSCServer()
     {
       // console.log('Received OSC message:', oscMsg);
       // Handle tuner data
-      const freq = oscMsg.args[0].value; 
+      const freq = oscMsg.args[0].value;
       const hasFreq = oscMsg.args[1].value;
       const differences = oscMsg.args.slice(2, 8).map(arg => arg.value); // Differences for six strings
       const amplitudes = oscMsg.args.slice(8, 14).map(arg => arg.value); // Amplitudes for six strings
@@ -248,18 +249,22 @@ function initializeOSCServer()
   // setInterval(logOscStats, 1000);
 }
 
-function calculateMessageSize(oscMsg) {
+function calculateMessageSize(oscMsg)
+{
   // Estimate the size of the OSC message
   let size = oscMsg.address.length;
-  for (let arg of oscMsg.args) {
-    if (arg.value !== undefined) {
+  for (let arg of oscMsg.args)
+  {
+    if (arg.value !== undefined)
+    {
       size += String(arg.value).length;
     }
   }
   return size;
 }
 
-function logOscStats() {
+function logOscStats()
+{
   const now = Date.now();
   const elapsedSeconds = (now - lastOscCountResetTime) / 1000;
   const messagesPerSecond = oscMessageCount / elapsedSeconds;
@@ -303,7 +308,7 @@ function initializeSuperCollider()
 
   sclang.stdout.on('data', (data) =>
   {
-   // console.log(`SC stdout: ${data}`);
+    // console.log(`SC stdout: ${data}`);
     mainWindow.webContents.send('sclang-output', data.toString());
 
     if (data.toString().includes('Server booted successfully.'))
@@ -544,15 +549,18 @@ ipcMain.on('stop-synth', (event, synthName) =>
   console.log(`Stopped ${synthName}`);
 });
 
-ipcMain.on('reload-all-effects', (event) => {
+ipcMain.on('reload-all-effects', (event) =>
+{
   console.log('Reloading all effects...');
-  try {
+  try
+  {
     const loadedSynths = loadEffectsList();
     const validSynths = loadedSynths.filter(synth => synth && synth.name);
     //console.log('Effects data to be sent:', validSynths);
     event.reply('effects-data', validSynths);
     console.log('Effects data sent to renderer process');
-  } catch (error) {
+  } catch (error)
+  {
     console.error('Error loading or sending effects data:', error);
     event.reply('effects-error', error.message);
   }
@@ -623,13 +631,40 @@ ipcMain.on('reboot-server', (event) =>
     });
 });
 
-app.on('will-quit', () =>
+app.on('will-quit', async () =>
 {
-  logStream.end();
-  if (oscServer)
-  {
-    oscServer.close();
-  }
+  console.log('Application shutting down...');
+ 
+    // Kill SuperCollider servers
+    if (sclang)
+    {
+      try
+      {
+        console.log('Shutting down SuperCollider servers...');
+        await sendCodeToSclang('Server.killAll;');
+        console.log('SuperCollider servers killed successfully');
+
+        // Kill the sclang process
+        sclang.kill();
+        console.log('sclang process terminated');
+      } catch (error)
+      {
+        console.error('Error shutting down SuperCollider:', error);
+      }
+    }
+
+    // Close OSC server
+    if (oscServer)
+    {
+      oscServer.close();
+      console.log('OSC server closed');
+    }
+
+    logStream.end();
+    if (oscServer)
+    {
+      oscServer.close();
+    }
 });
 
 function getSclangPath()
@@ -915,14 +950,15 @@ function getIPAddress()
   return 'Unable to determine IP';
 }
 
-ipcMain.on('get-ip-address', (event) => {
+ipcMain.on('get-ip-address', (event) =>
+{
   console.log("Received get-ip-address request");
   const ipAddress = getIPAddress();
   console.log(`Sending IP Address: ${ipAddress}`);
   event.reply('ip-address-reply', ipAddress);
 });
 
-ipcMain.handle('get-openai-key', () => {
+ipcMain.handle('get-openai-key', () =>
+{
   return openaiApiKey;
 });
-
