@@ -17,22 +17,13 @@ const styles = {
 const electron = window.electron;
 
 function App() {
-  console.log('App component rendering');
-
   const [synths, setSynths] = useState([]);
   const [currentSynth, setCurrentSynth] = useState(null);
   const [error, setError] = useState(null);
   const [currentScreen, setCurrentScreen] = useState('visualization'); // 'visualization' or 'select'
 
   useEffect(() => {
-    console.log('App component mounted');
-    return () => {
-      console.log('App component unmounting');
-    };
-  }, []);
-
-  useEffect(() => {
-    console.log('Loading effects...');
+    // Load synths on component mount
     getEffectList().catch(err => {
       console.error("Failed to load effects:", err);
       setError("Failed to load effects. Check the console for more details.");
