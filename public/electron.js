@@ -542,7 +542,16 @@ function loadScFile(filePath)
     .catch(error => console.error('Error loading SC file:', error));
 }
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  // Add check for electron.js file
+  const electronJsPath = path.join(__dirname, '../build/electron.js');
+  if (!fs.existsSync(electronJsPath)) {
+    console.error(`ERROR: electron.js not found at ${electronJsPath}`);
+    console.error('This may cause startup issues. Make sure the file is being copied correctly during build.');
+  }
+  
+  createWindow();
+});
 
 app.on('window-all-closed', () =>
 {
