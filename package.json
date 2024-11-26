@@ -27,9 +27,6 @@
     "build:pi": "NODE_OPTIONS=--max_old_space_size=512 npm run build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
-    "package": "react-scripts build && electron-forge package",
-    "package:pi": "NODE_OPTIONS=--max_old_space_size=512 react-scripts build && electron-forge package",
-    "make": "react-scripts build && electron-forge make",
     "clean": "rm -rf out build dist",
     "electron:build": "source .venv/bin/activate && react-scripts build && electron-builder build",
     "electron:build:pi": "NODE_OPTIONS=--max_old_space_size=512 react-scripts build && electron-builder build --linux --arm64",
@@ -104,38 +101,12 @@
   },
   "devDependencies": {
     "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
-    "@electron-forge/cli": "^7.5.0",
-    "@electron-forge/maker-deb": "^7.5.0",
-    "@electron-forge/maker-rpm": "^7.4.0",
-    "@electron-forge/maker-squirrel": "^7.4.0",
-    "@electron-forge/maker-zip": "^7.5.0",
-    "@electron-forge/plugin-auto-unpack-natives": "^7.4.0",
-    "@electron-forge/plugin-fuses": "^7.4.0",
-    "@electron-forge/publisher-github": "^7.5.0",
-    "@electron/fuses": "^1.8.0",
     "concurrently": "^8.2.2",
     "cross-env": "^7.0.3",
     "electron": "^33.2.0",
     "electron-builder": "^25.1.8",
     "electron-reload": "^2.0.0-alpha.1",
     "wait-on": "^8.0.0"
-  },
-  "config": {
-    "forge": {
-      "makers": [
-        {
-          "name": "@electron-forge/maker-zip",
-          "platforms": [
-            "linux"
-          ],
-          "config": {
-            "arch": [
-              "armv7l"
-            ]
-          }
-        }
-      ]
-    }
   },
   "description": "Bice-Box - An Audio Visual Effects Box",
   "author": "Drew Skillman <drewskillman@gmail.com>"
