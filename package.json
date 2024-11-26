@@ -105,7 +105,7 @@
     "cross-env": "^7.0.3",
     "electron": "^33.2.0",
     "electron-builder": "^25.1.8",
-    "electron-reload": "^2.0.0-alpha.1",
+    "electron-reloader": "^1.2.3",
     "wait-on": "^8.0.0"
   },
   "description": "Bice-Box - An Audio Visual Effects Box",

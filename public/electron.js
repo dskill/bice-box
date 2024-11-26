@@ -87,6 +87,7 @@ function getFullInitFilePath()
 }
 
 console.log('Is app packaged?', app.isPackaged);
+console.log("NODE_ENV:", process.env.NODE_ENV);
 console.log('Home path:', app.getPath("home"));
 console.log('Effects path:', getEffectsPath());
 
@@ -111,13 +112,10 @@ if (isDev)
 {
   try
   {
-    require('electron-reload')(__dirname, {
-      electron: path.join(__dirname, 'node_modules', '.bin', 'electron'),
-      hardResetMethod: 'exit'
-    });
+    require('electron-reloader')(module);
   } catch (err)
   {
-    console.log('Error loading electron-reload. This is fine in production.', err);
+    console.log('Error loading electron-reloader. This is fine in production.', err);
   }
 }
 
