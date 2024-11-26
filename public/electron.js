@@ -104,8 +104,7 @@ process.on('unhandledRejection', (reason, promise) =>
 console.log('Logging initialized');
 
 // Determine if we're in development mode
-// const isDev = !app.isPackaged;
-const isDev = false;
+const isDev = !app.isPackaged;
 
 // Enable live reload for Electron
 if (isDev)
@@ -140,8 +139,8 @@ function createWindow()
   isRaspberryPi = false;
 
   let windowOptions = {
-    width: 700,
-    height: 380,
+    width: 800,
+    height: 480,
     fullscreen: isRaspberryPi,
     webPreferences: {
       nodeIntegration: false,
@@ -150,10 +149,9 @@ function createWindow()
       enableRemoteModule: true,
       worldSafeExecuteJavaScript: true,
       preload: path.join(__dirname, '../preload.js'),
-      devTools: true
     },
     frame: true,
-    //kiosk: isRaspberryPi,
+    kiosk: isRaspberryPi,
     backgroundColor: '#000000',
     show: false
   };
