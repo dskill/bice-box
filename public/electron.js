@@ -152,7 +152,7 @@ function createWindow()
       preload: path.join(__dirname, '../preload.js'),
       devTools: true
     },
-    frame: false,
+    frame: true,
     kiosk: isRaspberryPi,
     backgroundColor: '#000000',
     show: false
