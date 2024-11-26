@@ -131,11 +131,11 @@ if (isDev)
 
 // Configure for Pi's GPU
 // Not sure exactly which of these are needed. Need to test and remove the ones that aren't needed.
-app.commandLine.appendSwitch('enable-features', 'VaapiVideoDecoder');
-app.commandLine.appendSwitch('enable-gpu-rasterization');
-app.commandLine.appendSwitch('ignore-gpu-blacklist');
-app.commandLine.appendSwitch('enable-native-gpu-memory-buffers');
-app.commandLine.appendSwitch('disable-gpu-sandbox');
+//app.commandLine.appendSwitch('enable-features', 'VaapiVideoDecoder');
+//app.commandLine.appendSwitch('enable-gpu-rasterization');
+//app.commandLine.appendSwitch('ignore-gpu-blacklist');
+//app.commandLine.appendSwitch('enable-native-gpu-memory-buffers');
+//app.commandLine.appendSwitch('disable-gpu-sandbox');
 
 // If you're using Wayland
 app.commandLine.appendSwitch('ozone-platform', 'wayland');
