@@ -105,7 +105,7 @@ console.log('Logging initialized');
 
 // Determine if we're in development mode
 // const isDev = !app.isPackaged;
-const isDev = true;
+const isDev = false;
 
 // Enable live reload for Electron
 if (isDev)
