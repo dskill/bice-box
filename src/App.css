@@ -28,7 +28,6 @@
     font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
     color: #333;
     text-align: center;
-    cursor: none !important;
     user-select: none;
     -webkit-user-select: none;
     -moz-user-select: none;
@@ -287,7 +286,6 @@ main {
   
   box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.5);
   /* The shadow now appears circular */
-  cursor: grab;
   user-select: none;
   position: relative;
 }
@@ -300,7 +298,6 @@ main {
 }
 
 .knob:active {
-  cursor: grabbing;
 }
 
 .knob-indicator {
@@ -838,8 +835,4 @@ button:active {
 /* Hide the original nav buttons at the sides */
 .visualization-mode > .nav-button {
   display: none;
-}
-
-* {
-  cursor: none !important;
 }

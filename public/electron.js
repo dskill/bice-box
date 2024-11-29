@@ -133,12 +133,12 @@ function createWindow()
 {
   console.log('Creating main window...');
 
-  let isRaspberryPi = process.platform === 'linux';
+  let isLinux = process.platform === 'linux';
 
   let windowOptions = {
     width: 800,
     height: 480,
-    fullscreen: isRaspberryPi,
+    fullscreen: isLinux,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -148,7 +148,7 @@ function createWindow()
       preload: path.join(__dirname, '../preload.js'),
     },
     frame: true,
-    kiosk: isRaspberryPi,
+    kiosk: isLinux,
     backgroundColor: '#000000',
     show: false
   };
@@ -178,7 +178,9 @@ function createWindow()
   // Hide the cursor
   mainWindow.webContents.on('dom-ready', () =>
   {
-    mainWindow.webContents.insertCSS('* { cursor: none !important; }');
+    if (isLinux) {
+      mainWindow.webContents.insertCSS('* { cursor: none !important; }');
+    }
   });
 
   // Open the DevTools in development mode
