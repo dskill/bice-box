@@ -145,7 +145,8 @@ function createWindow()
       //webSecurity: false,
       enableRemoteModule: true,
       worldSafeExecuteJavaScript: true,
-      preload: path.join(__dirname, '../preload.js'),
+      preload: path.join(__dirname, 'preload.js')  // Simple and clean
+
     },
     frame: true,
     kiosk: isLinux,
@@ -542,7 +543,7 @@ function loadScFile(filePath)
 
 app.whenReady().then(() => {
   // Add check for electron.js file
-  const electronJsPath = path.join(__dirname, '../build/electron.js');
+  const electronJsPath = path.join(__dirname, '../electron/main.js');
   if (!fs.existsSync(electronJsPath)) {
     console.error(`ERROR: electron.js not found at ${electronJsPath}`);
     console.error('This may cause startup issues. Make sure the file is being copied correctly during build.');

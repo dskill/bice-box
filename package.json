@@ -1,6 +1,6 @@
 {
   "name": "bice-box",
-  "main": "public/electron.js",
+  "main": "electron/main.js",
   "homepage": ".",
   "version": "0.1.3",
   "private": true,
@@ -19,16 +19,16 @@
     "web-vitals": "^2.1.4"
   },
   "scripts": {
-    "dev": "mkdir -p build && cp public/electron.js build/electron.js && concurrently \"npm run dev:react\" \"wait-on http://localhost:3000 && npm run dev:electron\"",
+    "dev": "concurrently \"npm run dev:react\" \"wait-on http://localhost:3000 && npm run dev:electron\"",
     "dev:react": "cross-env BROWSER=none react-scripts start",
     "dev:electron": "cross-env NODE_ENV=development electron .",
-    "build:react": "react-scripts build && cp public/electron.js build/electron.js",
+    "build:react": "react-scripts build && cp -r electron build/",
     "build:react:pi": "NODE_OPTIONS=--max_old_space_size=512 npm run build:react",
-    "start:electron": "mkdir -p build && cp public/electron.js build/electron.js && cross-env electron .",
+    "start:electron": "cross-env electron .",
     "eject": "react-scripts eject",
     "clean": "rm -rf out build dist",
     "build:electron": "source .venv/bin/activate && react-scripts build && electron-builder build",
-    "build:electron:pi": "NODE_OPTIONS=--max_old_space_size=512 react-scripts build && electron-builder build --linux --arm64",
+    "build:electron:pi": "NODE_OPTIONS=--max_old_space_size=512 react-scripts build  && electron-builder build --linux --arm64",
     "release:publish": "electron-builder build --mac --linux --arm64 --publish always",
     "release:publish:draft": "electron-builder build --mac --linux --arm64 --publish onTagOrDraft"
   },
@@ -38,15 +38,14 @@
     "productName": "Bice-Box",
     "files": [
       "build/**/*",
-      "preload.js",
-      "build/electron.js"
+      "electron/**/*"
     ],
     "directories": {
       "buildResources": "assets",
       "output": "dist"
     },
     "extraMetadata": {
-      "main": "build/electron.js"
+      "main": "electron/main.js"
     },
     "linux": {
       "target": [
