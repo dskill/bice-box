@@ -51,7 +51,18 @@ class OSCManager {
                 break;
 
             case '/tuner_data':
-                // Handle tuner data if needed
+                const freq = oscMsg.args[0].value;
+                const hasFreq = oscMsg.args[1].value;
+                const differences = oscMsg.args.slice(2, 8).map(arg => arg.value); // Differences for six strings
+                const amplitudes = oscMsg.args.slice(8, 14).map(arg => arg.value); // Amplitudes for six strings
+
+                // Send the tuner data to the renderer process
+                this.mainWindow.webContents.send('tuner-data', {
+                    freq: freq,
+                    hasFreq: hasFreq,
+                    differences: differences,
+                    amplitudes: amplitudes
+                });
                 break;
 
             default:
