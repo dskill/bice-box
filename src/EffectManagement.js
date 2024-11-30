@@ -22,6 +22,7 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
     const [errorMessage, setErrorMessage] = useState('');
     const [isExpanded, setIsExpanded] = useState(false);
     const [ipAddress, setIpAddress] = useState('');
+    const [isPulling, setIsPulling] = useState(false);
 
     useEffect(() =>
     {
@@ -195,17 +196,21 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
         setIsExpanded(!isExpanded);
     };
 
-    const handlePullEffectsRepo = () =>
-    {
+    const handlePullEffectsRepo = () => {
+        setIsPulling(true);
         pullEffectsRepo()
-            .then(() =>
-            {
+            .then(() => {
                 console.log('Effects repo updated and reloaded successfully');
+                // Add a small delay before checking status again
+                setTimeout(() => {
+                    handleCheckEffectsRepo();
+                    setIsPulling(false);
+                }, 1000);
             })
-            .catch(error =>
-            {
+            .catch(error => {
                 console.error('Failed to update and reload effects:', error);
                 setErrorMessage(error?.message || 'Failed to update and reload effects');
+                setIsPulling(false);
             });
     };
 
@@ -229,6 +234,15 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
     };
 
     const renderSyncButton = () => {
+        if (isPulling) {
+            return (
+                <Button
+                    label={<><FaSync className="spin" /> Updating Effects</>}
+                    disabled={true}
+                />
+            );
+        }
+
         if (effectsRepoStatus.isChecking) {
             return (
                 <Button
