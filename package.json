@@ -19,7 +19,7 @@
     "web-vitals": "^2.1.4"
   },
   "scripts": {
-    "dev": "concurrently \"npm run dev:react\" \"wait-on http://localhost:3000 && npm run dev:electron\"",
+    "dev": "concurrently \"npm run dev:react\" \"wait-on -v http://127.0.0.1:3000 && npm run dev:electron\"",
     "dev:react": "cross-env BROWSER=none react-scripts start",
     "dev:electron": "cross-env NODE_ENV=development electron .",
     "build:react": "react-scripts build && cp -r electron build/",
@@ -29,8 +29,8 @@
     "clean": "rm -rf out build dist",
     "build:electron": "source .venv/bin/activate && react-scripts build && electron-builder build",
     "build:electron:pi": "NODE_OPTIONS=--max_old_space_size=512 react-scripts build  && electron-builder build --linux --arm64",
-    "release:publish": "electron-builder build --mac --linux --arm64 --publish always",
-    "release:publish:draft": "electron-builder build --mac --linux --arm64 --publish onTagOrDraft"
+    "release:publish": "electron-builder build --linux --arm64 --publish always",
+    "release:publish:draft": "electron-builder build --linux --arm64 --publish onTagOrDraft"
   },
   "build": {
     "appId": "com.drewskillman.bicebox",

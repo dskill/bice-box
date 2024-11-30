@@ -28,18 +28,18 @@ const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
 const util = require('util');
-const OSC = require('osc');
 const chokidar = require('chokidar');
 const { exec } = require('child_process');
 const os = require('os');
 const networkInterfaces = os.networkInterfaces();
 const openaiApiKey = process.env.OPENAI_API_KEY;
+const OSCManager = require('./oscManager');
 
 let mainWindow;
 let sclang;
 let serverBooted = false;
 let synths = [];
-let oscServer;
+let oscManager;
 let currentEffect = null;
 let oscMessageCount = 0;
 let oscDataBytes = 0;
@@ -134,6 +134,7 @@ function createWindow()
   console.log('Creating main window...');
 
   let isLinux = process.platform === 'linux';
+  console.log('Platform:', process.platform);
 
   let windowOptions = {
     width: 800,
@@ -142,11 +143,9 @@ function createWindow()
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      //webSecurity: false,
       enableRemoteModule: true,
       worldSafeExecuteJavaScript: true,
-      preload: path.join(__dirname, 'preload.js')  // Simple and clean
-
+      preload: path.join(__dirname, 'preload.js')
     },
     frame: true,
     kiosk: isLinux,
@@ -154,151 +153,58 @@ function createWindow()
     show: false
   };
 
-  mainWindow = new BrowserWindow(windowOptions);
+  console.log('Window options:', windowOptions);
+  console.log('Creating BrowserWindow...');
+  
+  try {
+    mainWindow = new BrowserWindow(windowOptions);
+    console.log('BrowserWindow created successfully');
 
-  // Load the index.html from a url
+    const loadUrl = isDev ? 'http://localhost:3000' : `file://${path.join(__dirname, '../build/index.html')}`;
+    console.log('Loading URL:', loadUrl);
 
-  mainWindow.loadURL(
-    isDev
-      ? 'http://localhost:3000'
-      : `file://${path.join(__dirname, '../build/index.html')}`
-  );
+    mainWindow.loadURL(loadUrl);
+    console.log('URL loaded');
 
-  // Add after mainWindow.loadURL():
-  mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) =>
-  {
-    console.error('Failed to load:', errorCode, errorDescription);
-  });
+    mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
+      console.error('Failed to load:', errorCode, errorDescription);
+    });
 
-  // Add this for debugging
-  mainWindow.webContents.on('dom-ready', () =>
-  {
-    console.log('DOM is ready');
-  });
+    mainWindow.webContents.on('did-finish-load', () => {
+      console.log('Content finished loading');
+    });
 
-  // Hide the cursor
-  mainWindow.webContents.on('dom-ready', () =>
-  {
-    if (isLinux) {
-      mainWindow.webContents.insertCSS('* { cursor: none !important; }');
+    mainWindow.webContents.on('dom-ready', () => {
+      console.log('DOM is ready');
+      if (isLinux) {
+        mainWindow.webContents.insertCSS('* { cursor: none !important; }');
+      }
+    });
+
+    if (isDev) {
+      console.log('Opening DevTools');
+      mainWindow.webContents.openDevTools();
     }
-  });
 
-  // Open the DevTools in development mode
-  if (isDev)
-  {
-    console.log('Opening DevTools');
-    mainWindow.webContents.openDevTools();
-  } 
+    mainWindow.once('ready-to-show', () => {
+      console.log('Window ready to show');
+      mainWindow.show();
+      console.log('Window shown');
+    });
+
+  } catch (error) {
+    console.error('Error creating window:', error);
+  }
 
   // Initialize SuperCollider
   initializeSuperCollider();
 
   // Initialize OSC Server after creating the window
-  initializeOSCServer();
+  oscManager = new OSCManager(mainWindow);
+  oscManager.initialize();
 
   // Set up file watcher for hot reloading
   setupEffectsWatcher();
-
-  mainWindow.once('ready-to-show', () => {
-    mainWindow.show();
-  });
-}
-
-function initializeOSCServer()
-{
-  oscServer = new OSC.UDPPort({
-    localAddress: '127.0.0.1',
-    localPort: 57121, // Match the port used in SuperCollider
-    metadata: true
-  });
-
-  oscServer.on('ready', () =>
-  {
-    console.log('OSC Server is ready');
-  });
-
-  oscServer.on('message', (oscMsg) =>
-  {
-    oscMessageCount++;
-    //oscDataBytes += calculateMessageSize(oscMsg);
-
-    if (oscMsg.address === '/audio_analysis')
-    {
-      // Extract the RMS input and output values
-      const rmsInput = oscMsg.args[0].value;
-      const rmsOutput = oscMsg.args[1].value;
-
-      // Send the RMS values to the renderer process
-      mainWindow.webContents.send('audio-analysis', { rmsInput, rmsOutput });
-    } else if (oscMsg.address === '/waveform0' || oscMsg.address === '/waveform1')
-    {
-      // Keep the existing waveform handling
-      const waveformData = oscMsg.args.map(arg => arg.value);
-      const eventName = oscMsg.address === '/waveform0' ? 'waveform0-data' : 'waveform1-data';
-      mainWindow.webContents.send(eventName, waveformData);
-
-    }
-    else if (oscMsg.address === '/fft_data0' || oscMsg.address === '/fft_data1')
-    {
-      // Keep the existing waveform handling
-      const fftData = oscMsg.args.map(arg => arg.value);
-      const eventName = oscMsg.address === '/fft_data0' ? 'fft0-data' : 'fft1-data';
-      mainWindow.webContents.send(eventName, fftData);
-    }
-    else if (oscMsg.address === '/tuner_data')
-    {
-      // console.log('Received OSC message:', oscMsg);
-      // Handle tuner data
-      const freq = oscMsg.args[0].value;
-      const hasFreq = oscMsg.args[1].value;
-      const differences = oscMsg.args.slice(2, 8).map(arg => arg.value); // Differences for six strings
-      const amplitudes = oscMsg.args.slice(8, 14).map(arg => arg.value); // Amplitudes for six strings
-
-      // Send the tuner data to the renderer process
-      mainWindow.webContents.send('tuner-data', {
-        freq: freq,
-        hasFreq: hasFreq,
-        differences: differences,
-        amplitudes: amplitudes
-      });
-    }
-  });
-
-  oscServer.open();
-
-  // Set up interval to log messages and data per second
-  // setInterval(logOscStats, 1000);
-}
-
-function calculateMessageSize(oscMsg)
-{
-  // Estimate the size of the OSC message
-  let size = oscMsg.address.length;
-  for (let arg of oscMsg.args)
-  {
-    if (arg.value !== undefined)
-    {
-      size += String(arg.value).length;
-    }
-  }
-  return size;
-}
-
-function logOscStats()
-{
-  const now = Date.now();
-  const elapsedSeconds = (now - lastOscCountResetTime) / 1000;
-  const messagesPerSecond = oscMessageCount / elapsedSeconds;
-  const dataRate = oscDataBytes / elapsedSeconds;
-
-  console.log(`OSC Messages/sec: ${messagesPerSecond.toFixed(2)}`);
-  console.log(`OSC Data Rate: ${dataRate.toFixed(2)} bytes/sec`);
-
-  // Reset the counters and timer
-  oscMessageCount = 0;
-  oscDataBytes = 0;
-  lastOscCountResetTime = now;
 }
 
 function initializeSuperCollider()
@@ -542,6 +448,7 @@ function loadScFile(filePath)
 }
 
 app.whenReady().then(() => {
+  console.log('App is ready');
   // Add check for electron.js file
   const electronJsPath = path.join(__dirname, '../electron/main.js');
   if (!fs.existsSync(electronJsPath)) {
@@ -552,12 +459,16 @@ app.whenReady().then(() => {
   }
   
   createWindow();
+  console.log('Window creation initiated');
+}).catch(error => {
+  console.error('Error in app.whenReady():', error);
 });
 
-app.on('window-all-closed', () =>
-{
-  if (process.platform !== 'darwin')
-  {
+app.on('window-all-closed', () => {
+  if (oscManager) {
+    oscManager.close();
+  }
+  if (process.platform !== 'darwin') {
     app.quit();
   }
 });
@@ -687,16 +598,16 @@ app.on('will-quit', async () =>
   }
 
   // Close OSC server
-  if (oscServer)
+  if (oscManager)
   {
-    oscServer.close();
+    oscManager.close();
     console.log('OSC server closed');
   }
 
   logStream.end();
-  if (oscServer)
+  if (oscManager)
   {
-    oscServer.close();
+    oscManager.close();
   }
 });
 
