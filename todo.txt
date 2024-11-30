@@ -1,0 +1,23 @@
+// Key Prioritized Tasks TODO:
+/*
+ ** Fresh SD Card build with no credentials
+ -- make sure credentials in git are wiped
+ -- hook back up the startup script. Otherwise, keep it pretty vanilla.
+ ** WIFI login from device
+ ** Just pull new effects on startup maybe?
+   - Display the Pi's IP address on-screen for easy connection.
+ **WiFi and Effects Update Buttons**
+   - Add a button for connecting the pedal to a local WiFi network.
+
+   Not Necessary:
+ ** Long ribbon cable for display
+ ** Get touch working on that small display
+
+ # Create a script like update-bice-box.shå
+#!/bin/bash
+LATEST=$(curl -s https://api.github.com/repos/dskill/bice-box/releases/latest | grep "browser_download_url.*zip" | cut -d '"' -f 4)
+wget $LATEST -O bice-box.zip
+unzip -o bice-box.zip -d /home/pi/bice-box/
+rm bice-box.zip
+
+*/
