@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Configuration
-APP_NAME="Bice-Box"
+APP_NAME="bice-box"
 GITHUB_REPO="dskill/bice-box"
 INSTALL_DIR="$HOME/$APP_NAME"
 
