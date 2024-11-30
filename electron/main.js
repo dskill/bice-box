@@ -1,28 +1,3 @@
-// Key Prioritized Tasks TODO:
-/*
- ** Fresh SD Card build with no credentials
- -- make sure credentials in git are wiped
- -- hook back up the startup script. Otherwise, keep it pretty vanilla.
- ** WIFI login from device
- ** Just pull new effects on startup maybe?
-   - Display the Pi's IP address on-screen for easy connection.
- **WiFi and Effects Update Buttons**
-   - Add a button for connecting the pedal to a local WiFi network.
-
-   Not Necessary:
- ** Long ribbon cable for display
- ** Get touch working on that small display
-
- # Create a script like update-bice-box.shå
-#!/bin/bash
-LATEST=$(curl -s https://api.github.com/repos/dskill/bice-box/releases/latest | grep "browser_download_url.*zip" | cut -d '"' -f 4)
-wget $LATEST -O bice-box.zip
-unzip -o bice-box.zip -d /home/pi/bice-box/
-rm bice-box.zip
-
-*/
-
-
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const fs = require('fs');
@@ -118,16 +93,6 @@ if (isDev)
     console.log('Error loading electron-reloader. This is fine in production.', err);
   }
 }
-
-// Configure for Pi's GPU
-// Not sure exactly which of these are needed. Need to test and remove the ones that aren't needed.
-//app.commandLine.appendSwitch('enable-features', 'VaapiVideoDecoder');
-//app.commandLine.appendSwitch('enable-gpu-rasterization');
-//app.commandLine.appendSwitch('ignore-gpu-blacklist');
-//app.commandLine.appendSwitch('enable-native-gpu-memory-buffers');
-
-// If you're using Wayland
-//app.commandLine.appendSwitch('ozone-platform', 'wayland');
 
 function createWindow()
 {
