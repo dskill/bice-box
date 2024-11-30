@@ -47,6 +47,17 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
         }
     }, []);
 
+    useEffect(() => {
+        // Wait a short moment after mount before checking effects repo
+        const timer = setTimeout(() => {
+            if (electron && electron.ipcRenderer) {
+                onCheckEffectsRepo();
+            }
+        }, 1500); // 1.5 second delay
+
+        return () => clearTimeout(timer);
+    }, []); // Only run once on mount
+
     const fetchIp = () =>
     {
         console.log("Fetching IP address...");
@@ -209,6 +220,14 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
         }
     };
 
+    const handleCheckEffectsRepo = () => {
+        if (!electron || !electron.ipcRenderer) {
+            console.warn('Electron IPC not ready yet');
+            return;
+        }
+        onCheckEffectsRepo();
+    };
+
     const renderSyncButton = () => {
         if (effectsRepoStatus.isChecking) {
             return (
@@ -223,10 +242,7 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
             return (
                 <Button
                     label={<><FaExclamationTriangle /> Check Failed - Retry</>}
-                    onClick={() => {
-                        // Clear error state and retry
-                        onCheckEffectsRepo();
-                    }}
+                    onClick={handleCheckEffectsRepo}
                     className="error-button"
                 />
             );
@@ -245,7 +261,7 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
         return (
             <Button
                 label={<><FaCheck /> Effects Up to Date</>}
-                onClick={onCheckEffectsRepo}
+                onClick={handleCheckEffectsRepo}
                 className="up-to-date"
             />
         );
