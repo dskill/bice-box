@@ -2,16 +2,14 @@ import React, { useState, useEffect } from 'react';
 import Button from './Button';
 import ToggleButton from './ToggleButton'; // Import ToggleButton
 import './App.css';
-//import { FaSync, FaCheck, FaExclamationTriangle } from 'react-icons/fa';
-// Removed unused import
-// import {globalState} from './globalState';
-const TempIcons = {
+import { FaSync, FaCheck, FaExclamationTriangle } from 'react-icons/fa';
+/*const TempIcons = {
     FaSync: () => '↻',
     FaCheck: () => '✓',
     FaExclamationTriangle: () => '⚠'
 };
 const { FaSync, FaCheck, FaExclamationTriangle } = TempIcons;
-
+*/
 
 const electron = window.electron;
 
