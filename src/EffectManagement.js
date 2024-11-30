@@ -15,7 +15,7 @@ const { FaSync, FaCheck, FaExclamationTriangle } = TempIcons;
 
 const electron = window.electron;
 
-function SuperColliderBootManagement({ reloadEffectList, pullEffectsRepo, currentSynth, switchSynth, effectsRepoStatus, onCheckEffectsRepo })
+function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, switchSynth, effectsRepoStatus, onCheckEffectsRepo })
 {
     const [inputAudioDevices, setInputAudioDevices] = useState([]);
     const [outputAudioDevices, setOutputAudioDevices] = useState([]);
@@ -309,4 +309,4 @@ function SuperColliderBootManagement({ reloadEffectList, pullEffectsRepo, curren
     );
 }
 
-export default SuperColliderBootManagement;
+export default EffectManagement;

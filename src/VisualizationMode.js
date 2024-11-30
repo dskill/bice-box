@@ -1,5 +1,5 @@
 import React from 'react';
-import SuperColliderBootManagement from './SuperColliderBootManagement';
+import EffectManagement from './EffectManagement';
 import ParamFader from './ParamFader';
 import VisualizationCanvas from './VisualizationCanvas';
 import ToggleButton from './ToggleButton';
@@ -15,7 +15,7 @@ function VisualizationMode({ synths, currentSynth, switchSynth, nextSynth, previ
     <div className="visualization-mode" style={{ touchAction: 'none' }}>
       {window.electron && (
         <div className="supercollider-management-wrapper">
-          <SuperColliderBootManagement 
+          <EffectManagement 
             reloadEffectList={reloadEffectList} 
             pullEffectsRepo={pullEffectsRepo}
             currentSynth={currentSynth}
