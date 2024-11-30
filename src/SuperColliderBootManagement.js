@@ -2,11 +2,20 @@ import React, { useState, useEffect } from 'react';
 import Button from './Button';
 import ToggleButton from './ToggleButton'; // Import ToggleButton
 import './App.css';
+//import { FaSync, FaCheck, FaExclamationTriangle } from 'react-icons/fa';
 // Removed unused import
 // import {globalState} from './globalState';
+const TempIcons = {
+    FaSync: () => '↻',
+    FaCheck: () => '✓',
+    FaExclamationTriangle: () => '⚠'
+};
+const { FaSync, FaCheck, FaExclamationTriangle } = TempIcons;
+
+
 const electron = window.electron;
 
-function SuperColliderBootManagement({ reloadEffectList, pullEffectsRepo, currentSynth, switchSynth })
+function SuperColliderBootManagement({ reloadEffectList, pullEffectsRepo, currentSynth, switchSynth, effectsRepoStatus, onCheckEffectsRepo })
 {
     const [inputAudioDevices, setInputAudioDevices] = useState([]);
     const [outputAudioDevices, setOutputAudioDevices] = useState([]);
@@ -122,7 +131,7 @@ function SuperColliderBootManagement({ reloadEffectList, pullEffectsRepo, curren
             console.error("Error fetching audio devices:", error);
             setInputAudioDevices([]);
             setOutputAudioDevices([]);
-            setErrorMessage(`Error fetching audio devices: ${error.message}`);
+            setErrorMessage(error?.message || 'Error fetching audio devices');
         }
     };
 
@@ -133,7 +142,7 @@ function SuperColliderBootManagement({ reloadEffectList, pullEffectsRepo, curren
             fetchAudioDevices().catch(error =>
             {
                 console.error("Error fetching audio devices:", error);
-                setErrorMessage(`Error fetching audio devices: ${error.message}`);
+                setErrorMessage(error?.message || 'Error fetching audio devices');
             });
         }
     }, []);
@@ -183,12 +192,11 @@ function SuperColliderBootManagement({ reloadEffectList, pullEffectsRepo, curren
             .then(() =>
             {
                 console.log('Effects repo updated and reloaded successfully');
-                // You can add any additional actions here if needed
             })
             .catch(error =>
             {
                 console.error('Failed to update and reload effects:', error);
-                setErrorMessage(`Failed to update and reload effects: ${error.message}`);
+                setErrorMessage(error?.message || 'Failed to update and reload effects');
             });
     };
 
@@ -201,6 +209,48 @@ function SuperColliderBootManagement({ reloadEffectList, pullEffectsRepo, curren
         {
             setErrorMessage('No current effect selected to reload');
         }
+    };
+
+    const renderSyncButton = () => {
+        if (effectsRepoStatus.isChecking) {
+            return (
+                <Button
+                    label={<><FaSync className="spin" /> Checking for Updates</>}
+                    disabled={true}
+                />
+            );
+        }
+
+        if (effectsRepoStatus.error) {
+            return (
+                <Button
+                    label={<><FaExclamationTriangle /> Check Failed - Retry</>}
+                    onClick={() => {
+                        // Clear error state and retry
+                        onCheckEffectsRepo();
+                    }}
+                    className="error-button"
+                />
+            );
+        }
+
+        if (effectsRepoStatus.hasUpdates) {
+            return (
+                <Button
+                    label={<>↓ Sync Latest Effects</>}
+                    onClick={handlePullEffectsRepo}
+                    className="update-available"
+                />
+            );
+        }
+
+        return (
+            <Button
+                label={<><FaCheck /> Effects Up to Date</>}
+                onClick={onCheckEffectsRepo}
+                className="up-to-date"
+            />
+        );
     };
 
     return (
@@ -223,6 +273,7 @@ function SuperColliderBootManagement({ reloadEffectList, pullEffectsRepo, curren
                         <Button label={"Git Pull Effects"} onClick={handlePullEffectsRepo} />
                         <Button label={"Refresh Devices"} onClick={refreshDevices} />
                         <Button label={"Reboot Server"} onClick={rebootServer} />
+                        {renderSyncButton()}
                     </div>
 
                    

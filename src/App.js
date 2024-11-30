@@ -21,13 +21,29 @@ function App() {
   const [currentSynth, setCurrentSynth] = useState(null);
   const [error, setError] = useState(null);
   const [currentScreen, setCurrentScreen] = useState('visualization'); // 'visualization' or 'select'
+  const [effectsRepoStatus, setEffectsRepoStatus] = useState({
+    hasUpdates: false,
+    lastChecked: null,
+    isChecking: false,
+    error: null
+  });
 
   useEffect(() => {
-    // Load synths on component mount
-    getEffectList().catch(err => {
-      console.error("Failed to load effects:", err);
-      setError("Failed to load effects. Check the console for more details.");
+    // Initial effects load and repo check
+    Promise.all([
+      getEffectList(),
+      checkEffectsRepoStatus()
+    ]).catch(err => {
+      console.error("Failed to initialize:", err);
+      setError("Failed to initialize. Check the console for more details.");
     });
+
+    // Set up periodic check (every 30 minutes)
+    const checkInterval = setInterval(() => {
+      checkEffectsRepoStatus();
+    }, 30 * 60 * 1000);
+
+    return () => clearInterval(checkInterval);
   }, []);
 
   useEffect(() => {
@@ -244,6 +260,52 @@ function App() {
     setCurrentScreen('select');
   };
 
+  const checkEffectsRepoStatus = async () => {
+    if (!electron) return;
+    
+    setEffectsRepoStatus(prev => ({ 
+      ...prev, 
+      isChecking: true,
+      error: null
+    }));
+    
+    try {
+      const response = await new Promise((resolve, reject) => {
+        electron.ipcRenderer.send('check-effects-repo');
+        
+        const timeout = setTimeout(() => {
+          reject(new Error('Request timed out'));
+        }, 10000);
+
+        electron.ipcRenderer.once('effects-repo-status', (response) => {
+          clearTimeout(timeout);
+          console.log('Received repo status:', response);
+          resolve(response.status || response);
+        });
+        
+        electron.ipcRenderer.once('effects-repo-error', (error) => {
+          clearTimeout(timeout);
+          reject(error);
+        });
+      });
+
+      console.log('Setting effects repo status with:', response);
+      setEffectsRepoStatus({
+        hasUpdates: Boolean(response.hasUpdates),
+        lastChecked: response.lastChecked || new Date(),
+        isChecking: false,
+        error: null
+      });
+    } catch (error) {
+      console.error('Error checking effects repo:', error);
+      setEffectsRepoStatus(prev => ({
+        ...prev,
+        isChecking: false,
+        error: error.message || 'Failed to check for updates'
+      }));
+    }
+  };
+
   if (error) {
     return <div className="error-message">{error}</div>;
   }
@@ -259,6 +321,8 @@ function App() {
         reloadEffectList={getEffectList}
         pullEffectsRepo={pullEffectsRepo}
         onOpenEffectSelect={openEffectSelect}
+        effectsRepoStatus={effectsRepoStatus}
+        onCheckEffectsRepo={checkEffectsRepoStatus}
       />
       {currentScreen === 'select' && (
           <EffectSelectScreen

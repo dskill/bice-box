@@ -941,31 +941,74 @@ ipcMain.on('update-effect-params', (event, { effectName, params }) =>
   }
 });
 
-ipcMain.on('pull-effects-repo', (event) =>
-{
-  console.log('Received pull-effects-repo request');
+
+// Also fix the pull-effects-repo handler similarly:
+ipcMain.on('pull-effects-repo', async (event) => {
   const effectsPath = getEffectsPath();
-  console.log('Effects path:', effectsPath);
-
-  exec('git pull', { cwd: effectsPath }, (error, stdout, stderr) =>
-  {
-    if (error)
-    {
-      console.error(`Error pulling effects repo: ${error}`);
-      console.error(`stderr: ${stderr}`);
-      event.reply('pull-effects-repo-result', { success: false, message: error.message });
-      return;
-    }
-    console.log(`Git pull output: ${stdout}`);
-    event.reply('pull-effects-repo-result', { success: true, message: stdout });
-
-    // Reload all effects
+  
+  try {
+    const { stdout: pullOutput } = await exec('git pull', { cwd: effectsPath });
+    console.log('Git pull output:', pullOutput);
+    
+    // After successful pull, reload effects and update status
     loadEffectsList();
-
-    console.log('All effects reloaded after Git pull');
-  });
+    
+    // Check status again after pull
+    const { stdout: statusOutput } = await exec('git status -uno', { cwd: effectsPath });
+    const statusText = statusOutput ? statusOutput.toString() : '';
+    const hasUpdates = statusText.includes('behind');
+    
+    event.reply('effects-repo-status', { hasUpdates });
+    event.reply('pull-effects-repo-success', pullOutput.toString());
+  } catch (error) {
+    console.error('Error pulling effects repo:', error);
+    event.reply('pull-effects-repo-error', error.message || 'Unknown error pulling repo');
+  }
 });
 
+ipcMain.on('check-effects-repo', async (event) => {
+  const effectsPath = getEffectsPath();
+  console.log('Checking effects repo at:', effectsPath);
+
+  try {
+    // Use the shell option to execute git commands through the system shell
+    const execOptions = { 
+      cwd: effectsPath,
+      shell: true  // This is the key change
+    };
+
+    // Fetch latest
+    await execPromise('git fetch origin', execOptions);
+    
+    // Compare local and remote commits
+    const localHead = (await execPromise('git rev-parse HEAD', execOptions)).stdout.trim();
+    const remoteHead = (await execPromise('git rev-parse origin/main', execOptions)).stdout.trim();
+    
+    const hasUpdates = localHead !== remoteHead;
+
+    console.log('Git status check complete:', { localHead, remoteHead, hasUpdates });
+    event.reply('effects-repo-status', { hasUpdates });
+
+  } catch (error) {
+    console.error('Error checking effects repo:', error);
+    event.reply('effects-repo-error', {
+      error: error.message,
+      needsAttention: true
+    });
+  }
+});
+
+function execPromise(command, options) {
+  return new Promise((resolve, reject) => {
+    exec(command, options, (error, stdout, stderr) => {
+      if (error) {
+        reject(error);
+      } else {
+        resolve({ stdout, stderr });
+      }
+    });
+  });
+}
 function getIPAddress()
 {
   for (const interfaceName in networkInterfaces)

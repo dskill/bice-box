@@ -4,7 +4,7 @@ import ParamFader from './ParamFader';
 import VisualizationCanvas from './VisualizationCanvas';
 import ToggleButton from './ToggleButton';
 
-function VisualizationMode({ synths, currentSynth, switchSynth, nextSynth, previousSynth,  reloadEffectList, pullEffectsRepo, onOpenEffectSelect }) {
+function VisualizationMode({ synths, currentSynth, switchSynth, nextSynth, previousSynth,  reloadEffectList, pullEffectsRepo, onOpenEffectSelect, effectsRepoStatus, onCheckEffectsRepo }) {
   const prettifySynthName = (name) => {
     if (!name) return '';
     name = name.replace(/_/g, " ");
@@ -19,7 +19,9 @@ function VisualizationMode({ synths, currentSynth, switchSynth, nextSynth, previ
             reloadEffectList={reloadEffectList} 
             pullEffectsRepo={pullEffectsRepo}
             currentSynth={currentSynth}
-            switchSynth={switchSynth}            
+            switchSynth={switchSynth}   
+            effectsRepoStatus={effectsRepoStatus}
+            onCheckEffectsRepo={onCheckEffectsRepo}
           />
         </div>
       )}
