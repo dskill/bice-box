@@ -20,6 +20,12 @@ let oscMessageCount = 0;
 let oscDataBytes = 0;
 let lastOscCountResetTime = Date.now();
 
+if (process.argv.includes('--version')) {
+  const packageJson = require('../package.json');
+  console.log(`v${packageJson.version}`);
+  process.exit(0);
+}
+
 console.log('Electron main process starting...');
 
 app.commandLine.appendSwitch('enable-logging');
@@ -92,14 +98,6 @@ if (isDev)
   {
     console.log('Error loading electron-reloader. This is fine in production.', err);
   }
-}
-
-// Add near the top of the file, after the requires
-if (process.argv.includes('--version')) {
-  // Read version from package.json
-  const packageJson = require('../package.json');
-  console.log(`v${packageJson.version}`);
-  app.exit(0);
 }
 
 function createWindow()

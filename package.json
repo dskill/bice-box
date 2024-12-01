@@ -50,8 +50,7 @@
     },
     "linux": {
       "target": [
-        "zip",
-        "AppImage"
+        "zip"
       ],
       "category": "Audio",
       "defaultArch": "arm64",
