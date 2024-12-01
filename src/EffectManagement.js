@@ -280,6 +280,12 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
         electron.ipcRenderer.send('update-app');
     };
 
+    const handleQuit = () => {
+        if (electron && electron.ipcRenderer) {
+            electron.ipcRenderer.send('quit-app');
+        }
+    };
+
     const renderSyncButton = () => {
         if (isPulling) {
             return (
@@ -380,6 +386,7 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
                         <Button label={"Reboot Server"} onClick={rebootServer} />
                         {renderSyncButton()}
                         {renderAppUpdateButton()}
+                        <Button label={"Quit"} onClick={handleQuit} className="quit-button" />
                     </div>
 
                    
