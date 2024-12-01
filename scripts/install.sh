@@ -82,9 +82,21 @@ if [ ! -z "$CURRENT_VERSION" ]; then
     COMPARE_RESULT=$(version_compare "${CURRENT_VERSION#v}" "${LATEST_VERSION#v}")
     if [ "$COMPARE_RESULT" = "equal" ]; then
         echo ">> You already have the latest version installed!"
+        if [ "$RUN_AFTER_INSTALL" = true ]; then
+            echo "[INFO] Starting $APP_NAME..."
+            "$INSTALL_DIR/$APP_NAME"
+        else
+            echo "[INFO] To run the application, use: $INSTALL_DIR/$APP_NAME"
+        fi
         exit 0
     elif [ "$COMPARE_RESULT" = "greater" ]; then
         echo "!! Your installed version is newer than the latest release"
+        if [ "$RUN_AFTER_INSTALL" = true ]; then
+            echo "[INFO] Starting $APP_NAME..."
+            "$INSTALL_DIR/$APP_NAME"
+        else
+            echo "[INFO] To run the application, use: $INSTALL_DIR/$APP_NAME"
+        fi
         exit 0
     fi
     echo ">> Updating to newer version..."
