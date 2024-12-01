@@ -94,6 +94,14 @@ if (isDev)
   }
 }
 
+// Add near the top of the file, after the requires
+if (process.argv.includes('--version')) {
+  // Read version from package.json
+  const packageJson = require('../package.json');
+  console.log(`v${packageJson.version}`);
+  app.exit(0);
+}
+
 function createWindow()
 {
   console.log('Creating main window...');
