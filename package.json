@@ -10,6 +10,8 @@
     "@testing-library/user-event": "^13.5.0",
     "@use-gesture/react": "^10.3.1",
     "axios": "^1.6.2",
+    "electron-log": "^5.2.3",
+    "electron-updater": "^6.3.9",
     "openai": "^4.47.1",
     "osc": "^2.4.5",
     "p5": "^1.10.0",
@@ -50,15 +52,26 @@
     },
     "linux": {
       "target": [
-        "zip",
         "AppImage"
       ],
       "category": "Audio",
       "defaultArch": "arm64",
+      "executableName": "bice-box",
       "artifactName": "${productName}-${version}-${arch}.${ext}",
       "icon": "assets/icon.png",
       "asarUnpack": [
         "build/**/*"
+      ],
+      "desktop": {
+        "Name": "Bice-Box",
+        "Type": "Application",
+        "Categories": "Audio;AudioVideo"
+      },
+      "extraFiles": [
+        {
+          "from": "/usr/lib/aarch64-linux-gnu/libz.so.1",
+          "to": "usr/lib/libz.so"
+        }
       ]
     },
     "electronDownload": {

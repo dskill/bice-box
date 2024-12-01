@@ -23,6 +23,12 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
     const [isExpanded, setIsExpanded] = useState(false);
     const [ipAddress, setIpAddress] = useState('');
     const [isPulling, setIsPulling] = useState(false);
+    const [appUpdateStatus, setAppUpdateStatus] = useState({
+        status: 'idle',
+        version: null,
+        error: null,
+        percent: 0
+    });
 
     useEffect(() =>
     {
@@ -48,16 +54,36 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
         }
     }, []);
 
-    useEffect(() => {
+    useEffect(() =>
+    {
         // Wait a short moment after mount before checking effects repo
-        const timer = setTimeout(() => {
-            if (electron && electron.ipcRenderer) {
+        const timer = setTimeout(() =>
+        {
+            if (electron && electron.ipcRenderer)
+            {
                 onCheckEffectsRepo();
             }
         }, 1500); // 1.5 second delay
 
         return () => clearTimeout(timer);
     }, []); // Only run once on mount
+
+    useEffect(() =>
+    {
+        if (electron && electron.ipcRenderer)
+        {
+            const handleAppUpdateStatus = (status) =>
+            {
+                setAppUpdateStatus(status);
+            };
+
+            electron.ipcRenderer.on('app-update-status', handleAppUpdateStatus);
+            return () =>
+            {
+                electron.ipcRenderer.removeListener('app-update-status', handleAppUpdateStatus);
+            };
+        }
+    }, []);
 
     const fetchIp = () =>
     {
@@ -196,18 +222,22 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
         setIsExpanded(!isExpanded);
     };
 
-    const handlePullEffectsRepo = () => {
+    const handlePullEffectsRepo = () =>
+    {
         setIsPulling(true);
         pullEffectsRepo()
-            .then(() => {
+            .then(() =>
+            {
                 console.log('Effects repo updated and reloaded successfully');
                 // Add a small delay before checking status again
-                setTimeout(() => {
+                setTimeout(() =>
+                {
                     handleCheckEffectsRepo();
                     setIsPulling(false);
                 }, 1000);
             })
-            .catch(error => {
+            .catch(error =>
+            {
                 console.error('Failed to update and reload effects:', error);
                 setErrorMessage(error?.message || 'Failed to update and reload effects');
                 setIsPulling(false);
@@ -225,16 +255,36 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
         }
     };
 
-    const handleCheckEffectsRepo = () => {
-        if (!electron || !electron.ipcRenderer) {
+    const handleCheckEffectsRepo = () =>
+    {
+        if (!electron || !electron.ipcRenderer)
+        {
             console.warn('Electron IPC not ready yet');
             return;
         }
         onCheckEffectsRepo();
     };
 
-    const renderSyncButton = () => {
-        if (isPulling) {
+    const checkForUpdates = () =>
+    {
+        if (electron && electron.ipcRenderer)
+        {
+            electron.ipcRenderer.send('check-for-updates');
+        }
+    };
+
+    const installUpdate = () =>
+    {
+        if (electron && electron.ipcRenderer)
+        {
+            electron.ipcRenderer.send('quit-and-install');
+        }
+    };
+
+    const renderSyncButton = () =>
+    {
+        if (isPulling)
+        {
             return (
                 <Button
                     label={<><FaSync className="spin" /> Updating Effects</>}
@@ -243,7 +293,8 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
             );
         }
 
-        if (effectsRepoStatus.isChecking) {
+        if (effectsRepoStatus.isChecking)
+        {
             return (
                 <Button
                     label={<><FaSync className="spin" /> Checking for Updates</>}
@@ -252,7 +303,8 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
             );
         }
 
-        if (effectsRepoStatus.error) {
+        if (effectsRepoStatus.error)
+        {
             return (
                 <Button
                     label={<><FaExclamationTriangle /> Check Failed - Retry</>}
@@ -262,7 +314,8 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
             );
         }
 
-        if (effectsRepoStatus.hasUpdates) {
+        if (effectsRepoStatus.hasUpdates)
+        {
             return (
                 <Button
                     label={<>↓ Sync Latest Effects</>}
@@ -279,6 +332,60 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
                 className="up-to-date"
             />
         );
+    }
+
+
+    const renderAppUpdateButton = () =>
+    {
+        switch (appUpdateStatus.status)
+        {
+            case 'checking':
+                return (
+                    <Button
+                        label={<><FaSync className="spin" /> Checking for Updates</>}
+                        disabled={true}
+                    />
+                );
+            case 'downloading':
+                return (
+                    <Button
+                        label={<><FaSync className="spin" /> Downloading ({Math.round(appUpdateStatus.percent)}%)</>}
+                        disabled={true}
+                    />
+                );
+            case 'downloaded':
+                return (
+                    <Button
+                        label={<>↻ Install and Restart</>}
+                        onClick={installUpdate}
+                        className="update-available"
+                    />
+                );
+            case 'available':
+                return (
+                    <Button
+                        label={<>↓ Download Update {appUpdateStatus.version}</>}
+                        onClick={checkForUpdates}
+                        className="update-available"
+                    />
+                );
+            case 'error':
+                return (
+                    <Button
+                        label={<><FaExclamationTriangle /> Update Failed - Retry</>}
+                        onClick={checkForUpdates}
+                        className="error-button"
+                    />
+                );
+            default:
+                return (
+                    <Button
+                        label={<><FaCheck /> App Up to Date</>}
+                        onClick={checkForUpdates}
+                        className="up-to-date"
+                    />
+                );
+        }
     };
 
     return (
@@ -292,19 +399,21 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
 
             {isExpanded && (
                 <div className="management-content">
-                     <div className="ip-address">
+                    <div className="ip-address">
                         <p>Device IP: {ipAddress}</p>
                     </div>
                     <div className="button-column">
+                        {renderAppUpdateButton()}
+                        {renderSyncButton()}
                         <Button label={"Reload All Effects"} onClick={reloadEffectList} />
                         <Button label={"Reload Current Effect"} onClick={handleReloadCurrentEffect} />
                         <Button label={"Git Pull Effects"} onClick={handlePullEffectsRepo} />
                         <Button label={"Refresh Devices"} onClick={refreshDevices} />
                         <Button label={"Reboot Server"} onClick={rebootServer} />
-                        {renderSyncButton()}
+
                     </div>
 
-                   
+
 
                     <div className="device-selectors">
                         <div>
