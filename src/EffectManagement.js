@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Button from './Button';
 import ToggleButton from './ToggleButton'; // Import ToggleButton
 import './App.css';
-import { FaSync, FaCheck, FaExclamationTriangle } from 'react-icons/fa';
+import { FaSync, FaCheck, FaExclamationTriangle, FaDownload } from 'react-icons/fa';
 /*const TempIcons = {
     FaSync: () => '↻',
     FaCheck: () => '✓',
@@ -138,7 +138,7 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
             electron.ipcRenderer.send('get-version');
         }
     };
-
+    
     const fetchAudioDevices = async () =>
     {
         try
@@ -186,18 +186,36 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
             setErrorMessage(error?.message || 'Error fetching audio devices');
         }
     };
+    
+    /*
+    useEffect(() => {
+        let retryCount = 0;
+        const maxRetries = 3;
+        const retryDelay = 2000; // 2 seconds
 
-    useEffect(() =>
-    {
-        if (electron)
-        {
-            fetchAudioDevices().catch(error =>
-            {
-                console.error("Error fetching audio devices:", error);
-                setErrorMessage(error?.message || 'Error fetching audio devices');
-            });
-        }
+        const tryFetchDevices = () => {
+            if (electron) {
+                fetchAudioDevices()
+                    .catch(error => {
+                        console.error(`Error fetching audio devices (attempt ${retryCount + 1}/${maxRetries}):`, error);
+                        if (retryCount < maxRetries) {
+                            retryCount++;
+                            setTimeout(tryFetchDevices, retryDelay);
+                        } else {
+                            setErrorMessage(error?.message || 'Failed to fetch audio devices after multiple attempts');
+                        }
+                    });
+            }
+        };
+
+        tryFetchDevices();
+
+        // Cleanup timeout on unmount
+        return () => {
+            retryCount = maxRetries; // Prevent any pending retries
+        };
     }, []);
+    */
 
     const rebootServer = () =>
     {
@@ -318,7 +336,7 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
         if (effectsRepoStatus.hasUpdates) {
             return (
                 <Button
-                    label={<>↓ Sync Latest Effects</>}
+                    label={<><FaDownload /> Sync Latest Effects</>}
                     onClick={handlePullEffectsRepo}
                     className="update-available"
                 />
@@ -347,7 +365,7 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
         if (appUpdateStatus.hasUpdate) {
             return (
                 <Button
-                    label={<>↑ Update App to {appUpdateStatus.latestVersion}</>}
+                    label={<><FaDownload /> Update App to {appUpdateStatus.latestVersion}</>}
                     onClick={handleUpdateApp}
                     className="update-available"
                 />
@@ -395,12 +413,12 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
                         <p>Version: {version}</p>
                     </div>
                     <div className="button-column">
+                        {renderAppUpdateButton()}
+                        {renderSyncButton()}
                         <Button label={"Reload All Effects"} onClick={reloadEffectList} />
                         <Button label={"Reload Current Effect"} onClick={handleReloadCurrentEffect} />
                         {/*<Button label={"Refresh Devices"} onClick={refreshDevices} />*/}
                         <Button label={"Reboot Server"} onClick={rebootServer} />
-                        {renderSyncButton()}
-                        {renderAppUpdateButton()}
                         <Button label={"Quit"} onClick={handleQuit} className="quit-button" />
                     </div>
 
