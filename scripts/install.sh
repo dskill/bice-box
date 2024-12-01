@@ -5,6 +5,14 @@ APP_NAME="bice-box"
 GITHUB_REPO="dskill/bice-box"
 INSTALL_DIR="$HOME/$APP_NAME"
 
+# Add command line argument parsing
+RUN_AFTER_INSTALL=false
+while getopts "r" flag; do
+    case "${flag}" in
+        r) RUN_AFTER_INSTALL=true ;;
+    esac
+done
+
 echo "🎵 Installing $APP_NAME..."
 
 # Detect OS and Architecture
@@ -38,6 +46,26 @@ case "$OS" in
         ;;
 esac
 
+# Function to compare version strings
+version_compare() {
+    if [[ $1 == $2 ]]; then
+        echo "equal"
+    else
+        if [[ $1 = "$(echo -e "$1\n$2" | sort -V | head -n1)" ]]; then
+            echo "smaller"
+        else
+            echo "greater"
+        fi
+    fi
+}
+
+# Check if app is already installed and get current version
+CURRENT_VERSION=""
+if [ -f "$INSTALL_DIR/$APP_NAME" ]; then
+    CURRENT_VERSION=$("$INSTALL_DIR/$APP_NAME" --version 2>/dev/null || echo "")
+    echo "📱 Current version: ${CURRENT_VERSION:-unknown}"
+fi
+
 # Get the latest release version
 echo "🔍 Checking for latest version..."
 LATEST_VERSION=$(curl -s https://api.github.com/repos/$GITHUB_REPO/releases/latest | grep "tag_name" | cut -d '"' -f 4)
@@ -45,6 +73,23 @@ LATEST_VERSION=$(curl -s https://api.github.com/repos/$GITHUB_REPO/releases/late
 if [ -z "$LATEST_VERSION" ]; then
     echo "❌ Error: Could not fetch latest version"
     exit 1
+fi
+
+echo "📦 Latest version: $LATEST_VERSION"
+
+# Compare versions and decide whether to update
+if [ ! -z "$CURRENT_VERSION" ]; then
+    COMPARE_RESULT=$(version_compare "${CURRENT_VERSION#v}" "${LATEST_VERSION#v}")
+    if [ "$COMPARE_RESULT" = "equal" ]; then
+        echo "✅ You already have the latest version installed!"
+        exit 0
+    elif [ "$COMPARE_RESULT" = "greater" ]; then
+        echo "⚠️  Your installed version is newer than the latest release"
+        exit 0
+    fi
+    echo "🔄 Updating to newer version..."
+else
+    echo "💫 Installing new version..."
 fi
 
 echo "📦 Downloading version $LATEST_VERSION..."
@@ -72,5 +117,10 @@ unzip -o "$TMP_FILE" -d "$INSTALL_DIR"
 echo "🧹 Cleaning up..."
 rm "$TMP_FILE"
 
-echo "✅ Installation complete! You can find $APP_NAME in $INSTALL_DIR"
-echo "🚀 To run the application, use: $INSTALL_DIR/$APP_NAME" 
+echo "[INFO] Installation complete! You can find $APP_NAME in $INSTALL_DIR"
+if [ "$RUN_AFTER_INSTALL" = true ]; then
+    echo "[INFO] Starting $APP_NAME..."
+    "$INSTALL_DIR/$APP_NAME"
+else
+    echo "[INFO] To run the application, use: $INSTALL_DIR/$APP_NAME"
+fi 
