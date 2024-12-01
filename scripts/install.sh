@@ -69,9 +69,15 @@ fi
 # Get the latest release version
 echo ">> Checking for latest version..."
 if command -v jq >/dev/null 2>&1; then
-    LATEST_VERSION=$(curl -s https://api.github.com/repos/$GITHUB_REPO/releases/latest | jq -r .tag_name)
+    RESPONSE=$(curl -sL https://api.github.com/repos/$GITHUB_REPO/releases/latest)
+    if [[ $RESPONSE == *"API rate limit exceeded"* ]]; then
+        echo "!! GitHub API rate limit exceeded. Using alternative method..."
+        LATEST_VERSION=$(curl -sL https://github.com/$GITHUB_REPO/releases/latest | grep -o 'tag/[v.0-9]*' | head -1 | cut -d/ -f2)
+    else
+        LATEST_VERSION=$(echo "$RESPONSE" | jq -r .tag_name)
+    fi
 else
-    LATEST_VERSION=$(curl -s https://api.github.com/repos/$GITHUB_REPO/releases/latest | grep "tag_name" | sed -E 's/.*"tag_name": *"([^"]*).*/\1/')
+    LATEST_VERSION=$(curl -sL https://github.com/$GITHUB_REPO/releases/latest | grep -o 'tag/[v.0-9]*' | head -1 | cut -d/ -f2)
 fi
 
 if [ -z "$LATEST_VERSION" ]; then
