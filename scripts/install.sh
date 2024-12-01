@@ -68,7 +68,11 @@ fi
 
 # Get the latest release version
 echo ">> Checking for latest version..."
-LATEST_VERSION=$(curl -s https://api.github.com/repos/$GITHUB_REPO/releases/latest | grep "tag_name" | cut -d '"' -f 4)
+if command -v jq >/dev/null 2>&1; then
+    LATEST_VERSION=$(curl -s https://api.github.com/repos/$GITHUB_REPO/releases/latest | jq -r .tag_name)
+else
+    LATEST_VERSION=$(curl -s https://api.github.com/repos/$GITHUB_REPO/releases/latest | grep "tag_name" | sed -E 's/.*"tag_name": *"([^"]*).*/\1/')
+fi
 
 if [ -z "$LATEST_VERSION" ]; then
     echo "!! Error: Could not fetch latest version"
