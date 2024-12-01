@@ -9,7 +9,6 @@ const os = require('os');
 const networkInterfaces = os.networkInterfaces();
 const openaiApiKey = process.env.OPENAI_API_KEY;
 const OSCManager = require('./oscManager');
-const { autoUpdater } = require('electron-updater');
 
 let mainWindow;
 let sclang;
@@ -94,10 +93,6 @@ if (isDev)
     console.log('Error loading electron-reloader. This is fine in production.', err);
   }
 }
-
-// Add this near the start of the file
-autoUpdater.logger = require('electron-log');
-autoUpdater.logger.transports.file.level = 'info';
 
 function createWindow()
 {
@@ -918,53 +913,4 @@ ipcMain.on('get-ip-address', (event) =>
 ipcMain.handle('get-openai-key', () =>
 {
   return openaiApiKey;
-});
-
-// Add these event handlers after app.whenReady()
-autoUpdater.on('checking-for-update', () => {
-  mainWindow.webContents.send('app-update-status', { 
-    status: 'checking' 
-  });
-});
-
-autoUpdater.on('update-available', (info) => {
-  mainWindow.webContents.send('app-update-status', { 
-    status: 'available',
-    version: info.version
-  });
-});
-
-autoUpdater.on('update-not-available', () => {
-  mainWindow.webContents.send('app-update-status', { 
-    status: 'not-available' 
-  });
-});
-
-autoUpdater.on('error', (err) => {
-  mainWindow.webContents.send('app-update-status', { 
-    status: 'error',
-    error: err.message
-  });
-});
-
-autoUpdater.on('download-progress', (progressObj) => {
-  mainWindow.webContents.send('app-update-status', { 
-    status: 'downloading',
-    percent: progressObj.percent
-  });
-});
-
-autoUpdater.on('update-downloaded', () => {
-  mainWindow.webContents.send('app-update-status', { 
-    status: 'downloaded'
-  });
-});
-
-// Add these IPC handlers
-ipcMain.on('check-for-updates', () => {
-  autoUpdater.checkForUpdates();
-});
-
-ipcMain.on('quit-and-install', () => {
-  autoUpdater.quitAndInstall();
 });
