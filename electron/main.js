@@ -985,7 +985,7 @@ ipcMain.on('update-app', async (event) => {
       event.reply('app-update-error', error.message);
     } else {
       console.log('App update initiated:', stdout);
-      app.quit();
     }
+    app.quit();
   });
 });
