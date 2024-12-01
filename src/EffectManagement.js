@@ -397,8 +397,7 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
                     <div className="button-column">
                         <Button label={"Reload All Effects"} onClick={reloadEffectList} />
                         <Button label={"Reload Current Effect"} onClick={handleReloadCurrentEffect} />
-                        <Button label={"Git Pull Effects"} onClick={handlePullEffectsRepo} />
-                        <Button label={"Refresh Devices"} onClick={refreshDevices} />
+                        {/*<Button label={"Refresh Devices"} onClick={refreshDevices} />*/}
                         <Button label={"Reboot Server"} onClick={rebootServer} />
                         {renderSyncButton()}
                         {renderAppUpdateButton()}
@@ -408,6 +407,7 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
                    
 
                     <div className="device-selectors">
+                        {/* Input Device Selector
                         <div>
                             <label>Input Device: </label>
                             <select className="custom-select" onChange={handleInputDeviceChange} value={selectedInputDevice}>
@@ -417,6 +417,8 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
                                 ))}
                             </select>
                         </div>
+                        */}
+                        {/* Output Device Selector
                         <div>
                             <label>Output Device: </label>
                             <select className="custom-select" onChange={handleOutputDeviceChange} value={selectedOutputDevice}>
@@ -426,6 +428,7 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
                                 ))}
                             </select>
                         </div>
+                        */}
                     </div>
 
                     <div className="button-column">
