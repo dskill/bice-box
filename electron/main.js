@@ -11,6 +11,7 @@ const openaiApiKey = process.env.OPENAI_API_KEY;
 const OSCManager = require('./oscManager');
 const packageJson = require('../package.json');
 const appVersion = packageJson.version;
+const axios = require('axios');
 
 let mainWindow;
 let sclang;
@@ -21,6 +22,7 @@ let currentEffect = null;
 let oscMessageCount = 0;
 let oscDataBytes = 0;
 let lastOscCountResetTime = Date.now();
+let updateAvailable = false;
 
 if (process.argv.includes('--version')) {
   console.log(`v${packageJson.version}`);
@@ -177,6 +179,10 @@ function createWindow()
 
   // Set up file watcher for hot reloading
   setupEffectsWatcher();
+
+  // Check for updates periodically
+  checkForAppUpdate();
+  setInterval(checkForAppUpdate, 1800000); // Check every 30 minutes
 }
 
 function initializeSuperCollider()
@@ -925,4 +931,61 @@ ipcMain.handle('get-openai-key', () =>
 ipcMain.on('get-version', (event) => {
     console.log("Sending version:", appVersion);
     event.reply('version-reply', appVersion);
+});
+
+async function checkForAppUpdate() {
+  try {
+    const response = await axios.get(`https://api.github.com/repos/dskill/bice-box/releases/latest`);
+    const latestVersion = response.data.tag_name.replace('v', '');
+    const currentVersion = packageJson.version;
+    
+    console.log(`Checking app version: current=${currentVersion}, latest=${latestVersion}`);
+    updateAvailable = compareVersions(currentVersion, latestVersion) === 'smaller';
+    
+    if (mainWindow && mainWindow.webContents) {
+      mainWindow.webContents.send('app-update-status', { 
+        hasUpdate: updateAvailable,
+        currentVersion,
+        latestVersion 
+      });
+    }
+    
+    return updateAvailable;
+  } catch (error) {
+    console.error('Error checking for app update:', error);
+    return false;
+  }
+}
+
+function compareVersions(current, latest) {
+  if (current === latest) return 'equal';
+  const currentParts = current.split('.').map(Number);
+  const latestParts = latest.split('.').map(Number);
+  
+  for (let i = 0; i < 3; i++) {
+    if (currentParts[i] < latestParts[i]) return 'smaller';
+    if (currentParts[i] > latestParts[i]) return 'greater';
+  }
+  return 'equal';
+}
+
+// Add these IPC handlers
+ipcMain.on('check-app-update', async (event) => {
+  await checkForAppUpdate();
+});
+
+ipcMain.on('update-app', async (event) => {
+  const command = process.platform === 'darwin' ? 
+    'curl -L https://raw.githubusercontent.com/dskill/bice-box/main/scripts/install.sh | bash -s -- -r' :
+    'curl -L https://raw.githubusercontent.com/dskill/bice-box/main/scripts/install.sh | bash -s -- -r';
+    
+  exec(command, (error, stdout, stderr) => {
+    if (error) {
+      console.error('Error updating app:', error);
+      event.reply('app-update-error', error.message);
+    } else {
+      console.log('App update initiated:', stdout);
+      app.quit();
+    }
+  });
 });

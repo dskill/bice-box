@@ -24,6 +24,8 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
     const [ipAddress, setIpAddress] = useState('');
     const [version, setVersion] = useState('');
     const [isPulling, setIsPulling] = useState(false);
+    const [appUpdateStatus, setAppUpdateStatus] = useState({ hasUpdate: false, currentVersion: '', latestVersion: '' });
+    const [isUpdatingApp, setIsUpdatingApp] = useState(false);
 
     useEffect(() =>
     {
@@ -68,6 +70,28 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
 
         return () => clearTimeout(timer);
     }, []); // Only run once on mount
+
+    useEffect(() => {
+        if (electron && electron.ipcRenderer) {
+            const handleAppUpdateStatus = (status) => {
+                setAppUpdateStatus(status);
+            };
+
+            electron.ipcRenderer.on('app-update-status', handleAppUpdateStatus);
+            electron.ipcRenderer.on('app-update-error', (error) => {
+                setErrorMessage(`App update failed: ${error}`);
+                setIsUpdatingApp(false);
+            });
+
+            // Initial check
+            electron.ipcRenderer.send('check-app-update');
+
+            return () => {
+                electron.ipcRenderer.removeListener('app-update-status', handleAppUpdateStatus);
+                electron.ipcRenderer.removeListener('app-update-error', () => {});
+            };
+        }
+    }, []);
 
     const fetchIp = () =>
     {
@@ -251,6 +275,11 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
         onCheckEffectsRepo();
     };
 
+    const handleUpdateApp = () => {
+        setIsUpdatingApp(true);
+        electron.ipcRenderer.send('update-app');
+    };
+
     const renderSyncButton = () => {
         if (isPulling) {
             return (
@@ -299,6 +328,35 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
         );
     };
 
+    const renderAppUpdateButton = () => {
+        if (isUpdatingApp) {
+            return (
+                <Button
+                    label={<><FaSync className="spin" /> Updating App...</>}
+                    disabled={true}
+                />
+            );
+        }
+
+        if (appUpdateStatus.hasUpdate) {
+            return (
+                <Button
+                    label={<>↑ Update App to {appUpdateStatus.latestVersion}</>}
+                    onClick={handleUpdateApp}
+                    className="update-available"
+                />
+            );
+        }
+
+        return (
+            <Button
+                label={<><FaCheck /> App Up to Date</>}
+                onClick={() => electron.ipcRenderer.send('check-app-update')}
+                className="up-to-date"
+            />
+        );
+    };
+
     return (
         <div className="supercollider-boot-management">
             <ToggleButton
@@ -321,6 +379,7 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
                         <Button label={"Refresh Devices"} onClick={refreshDevices} />
                         <Button label={"Reboot Server"} onClick={rebootServer} />
                         {renderSyncButton()}
+                        {renderAppUpdateButton()}
                     </div>
 
                    
