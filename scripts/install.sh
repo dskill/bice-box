@@ -73,12 +73,12 @@ if command -v jq >/dev/null 2>&1; then
     echo "$RESPONSE"
     if [[ $RESPONSE == *"API rate limit exceeded"* ]]; then
         echo "!! GitHub API rate limit exceeded. Using alternative method..."
-        LATEST_VERSION=$(curl -sI https://github.com/$GITHUB_REPO/releases/latest | grep -i "^location:" | awk -F/ '{print $NF}')
+        LATEST_VERSION=$(curl -sL -o /dev/null -w '%{url_effective}' "https://github.com/$GITHUB_REPO/releases/latest" | grep -o '[^/]*$')
     else
         LATEST_VERSION=$(echo "$RESPONSE" | jq -r .tag_name)
     fi
 else
-    LATEST_VERSION=$(curl -sI https://github.com/$GITHUB_REPO/releases/latest | grep -i "^location:" | awk -F/ '{print $NF}')
+    LATEST_VERSION=$(curl -sL -o /dev/null -w '%{url_effective}' "https://github.com/$GITHUB_REPO/releases/latest" | grep -o '[^/]*$')
 fi
 
 if [ -z "$LATEST_VERSION" ]; then
@@ -87,6 +87,8 @@ if [ -z "$LATEST_VERSION" ]; then
 fi
 
 echo ">> Latest version: $LATEST_VERSION"
+echo ">> Debug: Version without 'v' prefix: ${LATEST_VERSION#v}"
+echo ">> Debug: Build suffix: $BUILD_SUFFIX"
 
 # Compare versions and decide whether to update
 if [ ! -z "$CURRENT_VERSION" ]; then
@@ -119,6 +121,7 @@ echo ">> Downloading version $LATEST_VERSION..."
 
 # Download the appropriate file
 DOWNLOAD_URL="https://github.com/$GITHUB_REPO/releases/download/$LATEST_VERSION/$APP_NAME-${LATEST_VERSION#v}$BUILD_SUFFIX"
+echo ">> Debug: Download URL: $DOWNLOAD_URL"
 TMP_FILE="/tmp/$APP_NAME$BUILD_SUFFIX"
 
 curl -L $DOWNLOAD_URL -o "$TMP_FILE"
