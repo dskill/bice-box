@@ -979,6 +979,7 @@ ipcMain.on('update-app', async (event) => {
     'curl -L https://raw.githubusercontent.com/dskill/bice-box/main/scripts/install.sh | bash -s -- -r' :
     'curl -L https://raw.githubusercontent.com/dskill/bice-box/main/scripts/install.sh | bash -s -- -r';
     
+  // TODO: actually figure out if an error occurred and report it
   exec(command, (error, stdout, stderr) => {
     if (error) {
       console.error('Error updating app:', error);
@@ -986,6 +987,8 @@ ipcMain.on('update-app', async (event) => {
     } else {
       console.log('App update initiated:', stdout);
     }
-    app.quit();
   });
+
+  app.exit(0);
+
 });
