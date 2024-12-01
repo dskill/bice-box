@@ -9,6 +9,8 @@ const os = require('os');
 const networkInterfaces = os.networkInterfaces();
 const openaiApiKey = process.env.OPENAI_API_KEY;
 const OSCManager = require('./oscManager');
+const packageJson = require('../package.json');
+const appVersion = packageJson.version;
 
 let mainWindow;
 let sclang;
@@ -21,7 +23,6 @@ let oscDataBytes = 0;
 let lastOscCountResetTime = Date.now();
 
 if (process.argv.includes('--version')) {
-  const packageJson = require('../package.json');
   console.log(`v${packageJson.version}`);
   process.exit(0);
 }
@@ -919,4 +920,9 @@ ipcMain.on('get-ip-address', (event) =>
 ipcMain.handle('get-openai-key', () =>
 {
   return openaiApiKey;
+});
+
+ipcMain.on('get-version', (event) => {
+    console.log("Sending version:", appVersion);
+    event.reply('version-reply', appVersion);
 });

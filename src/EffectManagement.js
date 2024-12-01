@@ -22,6 +22,7 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
     const [errorMessage, setErrorMessage] = useState('');
     const [isExpanded, setIsExpanded] = useState(false);
     const [ipAddress, setIpAddress] = useState('');
+    const [version, setVersion] = useState('');
     const [isPulling, setIsPulling] = useState(false);
 
     useEffect(() =>
@@ -35,12 +36,21 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
                 setIpAddress(address);
             };
 
+            const handleVersionReply = (ver) =>
+            {
+                console.log("Version received:", ver);
+                setVersion(ver);
+            };
+
             electron.ipcRenderer.on('ip-address-reply', handleIpAddressReply);
+            electron.ipcRenderer.on('version-reply', handleVersionReply);
             fetchIp();
+            fetchVersion();
 
             return () =>
             {
                 electron.ipcRenderer.removeListener('ip-address-reply', handleIpAddressReply);
+                electron.ipcRenderer.removeListener('version-reply', handleVersionReply);
             };
         } else
         {
@@ -95,6 +105,14 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
                 }
             });
         });
+    };
+
+    const fetchVersion = () =>
+    {
+        if (electron && electron.ipcRenderer)
+        {
+            electron.ipcRenderer.send('get-version');
+        }
     };
 
     const fetchAudioDevices = async () =>
@@ -294,6 +312,7 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
                 <div className="management-content">
                      <div className="ip-address">
                         <p>Device IP: {ipAddress}</p>
+                        <p>Version: {version}</p>
                     </div>
                     <div className="button-column">
                         <Button label={"Reload All Effects"} onClick={reloadEffectList} />
