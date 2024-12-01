@@ -363,6 +363,22 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
         );
     };
 
+    // Add this effect to perform all checks when menu opens
+    useEffect(() => {
+        if (isExpanded) {
+            // Check IP
+            fetchIp();
+            
+            // Check app updates
+            if (electron && electron.ipcRenderer) {
+                electron.ipcRenderer.send('check-app-update');
+            }
+            
+            // Check effects repo
+            handleCheckEffectsRepo();
+        }
+    }, [isExpanded]); // Only re-run when isExpanded changes
+
     return (
         <div className="supercollider-boot-management">
             <ToggleButton
