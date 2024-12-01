@@ -3,7 +3,7 @@
     margin: 5px;
 }
 
-.toggle-text {
+.toggle-button {
     font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
     font-size: 14px;
     background: rgba(0, 0, 0, 0.0);
@@ -16,28 +16,56 @@
     color: rgb(198, 202, 224);
 }
 
-.toggle-text.on {
+.toggle-button.on {
     background: rgba(198, 202, 224, .8);
     color: white;
     opacity: 0.8;
 }
 
-.toggle-text.off {
+.toggle-button.off {
     opacity: 0.8;
 }
 
-.toggle-text:hover {
+.toggle-button:hover {
     background: rgba(198, 202, 224, 0.0);
     color: white;
 }
 
-.toggle-text:focus {
+.toggle-button:focus {
     outline: none;
 }
 
 .toggle-button-container {
     position: fixed;
     bottom: 10px;
-    left: 10px;
     z-index: 1000;
+}
+
+.toggle-button-container.left {
+    left: 10px;
+}
+
+.toggle-button-container.right {
+    right: 10px;
+}
+
+.toggle-button-container.center {
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.toggle-button .update-indicator {
+    color: #ff9800;
+    margin-left: 5px;
+    font-size: 1.2em;
+    vertical-align: middle;
+}
+
+.toggle-button.has-updates {
+    position: relative;
+}
+
+.update-indicator {
+    margin-right: 8px;
+    color: #ff8c00; /* Orange color */
 }

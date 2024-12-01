@@ -1,17 +1,16 @@
 import React from 'react';
+import { FaDownload } from 'react-icons/fa';
 import './ToggleButton.css';
 
-function ToggleButton({ isOn, setIsOn, onText, offText }) {
-    const onClick = () => {
-        setIsOn(prev => !prev);
-    }
-
+function ToggleButton({ isOn, setIsOn, onText, offText, hasUpdates }) {
     return (
-        <div className="toggle-button">
-            <button className={`toggle-text ${isOn ? 'on' : 'off'}`} onClick={onClick}>
-                {isOn ? onText : offText}
-            </button>
-        </div>
+        <button 
+            className={`toggle-button ${isOn ? 'on' : 'off'} ${hasUpdates ? 'has-updates' : ''}`} 
+            onClick={() => setIsOn(!isOn)}
+        >
+            {hasUpdates && !isOn && <FaDownload className="update-indicator" />}
+            {isOn ? onText : offText}
+        </button>
     );
 }
 

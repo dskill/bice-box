@@ -26,6 +26,7 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
     const [isPulling, setIsPulling] = useState(false);
     const [appUpdateStatus, setAppUpdateStatus] = useState({ hasUpdate: false, currentVersion: '', latestVersion: '' });
     const [isUpdatingApp, setIsUpdatingApp] = useState(false);
+    const [hasUpdates, setHasUpdates] = useState(false);
 
     useEffect(() =>
     {
@@ -60,10 +61,13 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
         }
     }, []);
 
-    useEffect(() => {
+    useEffect(() =>
+    {
         // Wait a short moment after mount before checking effects repo
-        const timer = setTimeout(() => {
-            if (electron && electron.ipcRenderer) {
+        const timer = setTimeout(() =>
+        {
+            if (electron && electron.ipcRenderer)
+            {
                 onCheckEffectsRepo();
             }
         }, 1500); // 1.5 second delay
@@ -71,14 +75,18 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
         return () => clearTimeout(timer);
     }, []); // Only run once on mount
 
-    useEffect(() => {
-        if (electron && electron.ipcRenderer) {
-            const handleAppUpdateStatus = (status) => {
+    useEffect(() =>
+    {
+        if (electron && electron.ipcRenderer)
+        {
+            const handleAppUpdateStatus = (status) =>
+            {
                 setAppUpdateStatus(status);
             };
 
             electron.ipcRenderer.on('app-update-status', handleAppUpdateStatus);
-            electron.ipcRenderer.on('app-update-error', (error) => {
+            electron.ipcRenderer.on('app-update-error', (error) =>
+            {
                 setErrorMessage(`App update failed: ${error}`);
                 setIsUpdatingApp(false);
             });
@@ -86,9 +94,10 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
             // Initial check
             electron.ipcRenderer.send('check-app-update');
 
-            return () => {
+            return () =>
+            {
                 electron.ipcRenderer.removeListener('app-update-status', handleAppUpdateStatus);
-                electron.ipcRenderer.removeListener('app-update-error', () => {});
+                electron.ipcRenderer.removeListener('app-update-error', () => { });
             };
         }
     }, []);
@@ -138,7 +147,7 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
             electron.ipcRenderer.send('get-version');
         }
     };
-    
+
     const fetchAudioDevices = async () =>
     {
         try
@@ -186,7 +195,7 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
             setErrorMessage(error?.message || 'Error fetching audio devices');
         }
     };
-    
+
     /*
     useEffect(() => {
         let retryCount = 0;
@@ -256,18 +265,22 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
         setIsExpanded(!isExpanded);
     };
 
-    const handlePullEffectsRepo = () => {
+    const handlePullEffectsRepo = () =>
+    {
         setIsPulling(true);
         pullEffectsRepo()
-            .then(() => {
+            .then(() =>
+            {
                 console.log('Effects repo updated and reloaded successfully');
                 // Add a small delay before checking status again
-                setTimeout(() => {
+                setTimeout(() =>
+                {
                     handleCheckEffectsRepo();
                     setIsPulling(false);
                 }, 1000);
             })
-            .catch(error => {
+            .catch(error =>
+            {
                 console.error('Failed to update and reload effects:', error);
                 setErrorMessage(error?.message || 'Failed to update and reload effects');
                 setIsPulling(false);
@@ -285,27 +298,34 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
         }
     };
 
-    const handleCheckEffectsRepo = () => {
-        if (!electron || !electron.ipcRenderer) {
+    const handleCheckEffectsRepo = () =>
+    {
+        if (!electron || !electron.ipcRenderer)
+        {
             console.warn('Electron IPC not ready yet');
             return;
         }
         onCheckEffectsRepo();
     };
 
-    const handleUpdateApp = () => {
+    const handleUpdateApp = () =>
+    {
         setIsUpdatingApp(true);
         electron.ipcRenderer.send('update-app');
     };
 
-    const handleQuit = () => {
-        if (electron && electron.ipcRenderer) {
+    const handleQuit = () =>
+    {
+        if (electron && electron.ipcRenderer)
+        {
             electron.ipcRenderer.send('quit-app');
         }
     };
 
-    const renderSyncButton = () => {
-        if (isPulling) {
+    const renderSyncButton = () =>
+    {
+        if (isPulling)
+        {
             return (
                 <Button
                     label={<><FaSync className="spin" /> Updating Effects</>}
@@ -314,7 +334,8 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
             );
         }
 
-        if (effectsRepoStatus.isChecking) {
+        if (effectsRepoStatus.isChecking)
+        {
             return (
                 <Button
                     label={<><FaSync className="spin" /> Checking for Updates</>}
@@ -323,7 +344,8 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
             );
         }
 
-        if (effectsRepoStatus.error) {
+        if (effectsRepoStatus.error)
+        {
             return (
                 <Button
                     label={<><FaExclamationTriangle /> Check Failed - Retry</>}
@@ -333,10 +355,11 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
             );
         }
 
-        if (effectsRepoStatus.hasUpdates) {
+        if (effectsRepoStatus.hasUpdates)
+        {
             return (
                 <Button
-                    label={<><FaDownload /> Sync Latest Effects</>}
+                    label={<><FaDownload style={{ color: '#ff8c00' }} /> Sync Latest Effects</>}
                     onClick={handlePullEffectsRepo}
                     className="update-available"
                 />
@@ -352,8 +375,10 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
         );
     };
 
-    const renderAppUpdateButton = () => {
-        if (isUpdatingApp) {
+    const renderAppUpdateButton = () =>
+    {
+        if (isUpdatingApp)
+        {
             return (
                 <Button
                     label={<><FaSync className="spin" /> Updating App...</>}
@@ -362,7 +387,8 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
             );
         }
 
-        if (appUpdateStatus.hasUpdate) {
+        if (appUpdateStatus.hasUpdate)
+        {
             return (
                 <Button
                     label={<><FaDownload /> Update App to {appUpdateStatus.latestVersion}</>}
@@ -381,21 +407,39 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
         );
     };
 
-    // Add this effect to perform all checks when menu opens
-    useEffect(() => {
-        if (isExpanded) {
+    // Run checks on mount and when menu expands
+    useEffect(() =>
+    {
+        const runChecks = () =>
+        {
             // Check IP
             fetchIp();
-            
+
             // Check app updates
-            if (electron && electron.ipcRenderer) {
+            if (electron && electron.ipcRenderer)
+            {
                 electron.ipcRenderer.send('check-app-update');
             }
-            
+
             // Check effects repo
-            handleCheckEffectsRepo();
+            onCheckEffectsRepo();
+        };
+
+        // Run on mount
+        runChecks();
+
+        // Also run when menu is expanded
+        if (isExpanded)
+        {
+            runChecks();
         }
-    }, [isExpanded]); // Only re-run when isExpanded changes
+    }, [isExpanded]); // Run on mount and when isExpanded changes
+
+    // Keep update status in sync
+    useEffect(() =>
+    {
+        setHasUpdates(effectsRepoStatus.hasUpdates || appUpdateStatus.hasUpdate);
+    }, [effectsRepoStatus.hasUpdates, appUpdateStatus.hasUpdate]);
 
     return (
         <div className="supercollider-boot-management">
@@ -404,11 +448,12 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
                 setIsOn={setIsExpanded}
                 onText="Hide Tools"
                 offText="Tools"
+                hasUpdates={hasUpdates}
             />
 
             {isExpanded && (
                 <div className="management-content">
-                     <div className="ip-address">
+                    <div className="ip-address">
                         <p>Device IP: {ipAddress}</p>
                         <p>Version: {version}</p>
                     </div>
@@ -422,7 +467,7 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
                         <Button label={"Quit"} onClick={handleQuit} className="quit-button" />
                     </div>
 
-                   
+
 
                     <div className="device-selectors">
                         {/* Input Device Selector
