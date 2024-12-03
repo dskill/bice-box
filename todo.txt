@@ -1,13 +1,9 @@
 // Key Prioritized Tasks TODO:
  ** Fresh SD Card build with no credentials
- -- make sure credentials in git are wiped
- -- hook back up the startup script. Otherwise, keep it pretty vanilla.
  ** WIFI login from device
- ** Just pull new effects on startup maybe?
-   - Display the Pi's IP address on-screen for easy connection.
- **WiFi and Effects Update Buttons**
-   - Add a button for connecting the pedal to a local WiFi network.
 
-rename install.sh -> launch.sh
-make the install script into its own repo that we pull every time at startup
-so we can fix things when they get bricked!
+DOCUMENTATION of 3 repos and how they all work together
+capture cad drawing
+
+make cool effects and test as much as possible
+curated FX
