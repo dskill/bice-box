@@ -9,8 +9,8 @@ class OSCManager
         this.isClosing = false;
         this.oscMessageCount = 0;
         this.lastLogTime = Date.now();
+        this.shouldLogMessageRate = false;
         this.messageRateInterval = setInterval(() => this.logMessageRate(), 1000);
-        this.logMessageRate = false;
     }
 
     initialize()
@@ -112,7 +112,7 @@ class OSCManager
             }
             this.oscServer = null;
         }
-        if (this.logMessageRate) {
+        if (this.shouldLogMessageRate) {
             if (this.messageRateInterval)
             {
                 clearInterval(this.messageRateInterval);

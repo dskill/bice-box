@@ -443,12 +443,13 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
 
     return (
         <div className="supercollider-boot-management">
-            <ToggleButton
+            <ToggleButton 
                 isOn={isExpanded}
                 setIsOn={setIsExpanded}
                 onText="Hide Tools"
                 offText="Tools"
                 hasUpdates={hasUpdates}
+                className="EffectManagement"
             />
 
             {isExpanded && (

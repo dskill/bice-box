@@ -1,14 +1,14 @@
 .toggle-button {
     display: inline-block;
-    margin: 5px;
+    margin: 0px;
 }
 
 .toggle-button {
     font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
-    font-size: 14px;
+    font-size: 21px;
     background: rgba(0, 0, 0, 0.0);
     border: none;
-    padding: 15px 30px;
+    padding: 3px 3px;
     cursor: pointer;
     transition: all 0.3s ease;
     text-transform: none;
@@ -38,26 +38,14 @@
 .toggle-button-container {
     position: fixed;
     bottom: 10px;
-    z-index: 1000;
-}
-
-.toggle-button-container.left {
     left: 10px;
-}
-
-.toggle-button-container.right {
-    right: 10px;
-}
-
-.toggle-button-container.center {
-    left: 50%;
-    transform: translateX(-50%);
+    z-index: 1000;
 }
 
 .toggle-button .update-indicator {
     color: #ff9800;
-    margin-left: 5px;
-    font-size: 1.2em;
+    margin-left: 7.5px;
+    font-size: 1.8em;
     vertical-align: middle;
 }
 
@@ -66,6 +54,6 @@
 }
 
 .update-indicator {
-    margin-right: 8px;
-    color: #ff8c00; /* Orange color */
+    margin-right: 12px;
+    color: #ff8c00;
 }
