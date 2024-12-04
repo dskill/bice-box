@@ -7,3 +7,6 @@ capture cad drawing
 
 make cool effects and test as much as possible
 curated FX
+
+BUGS
+fix electron reloader

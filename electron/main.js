@@ -125,7 +125,6 @@ function createWindow()
     show: false
   };
 
-  console.log('Window options:', windowOptions);
   console.log('Creating BrowserWindow...');
   
   try {

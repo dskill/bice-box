@@ -10,7 +10,10 @@ class OSCManager
         this.oscMessageCount = 0;
         this.lastLogTime = Date.now();
         this.shouldLogMessageRate = false;
-        this.messageRateInterval = setInterval(() => this.logMessageRate(), 1000);
+        this.messageRateInterval = null;
+        if (this.shouldLogMessageRate) {
+            this.startMessageRateLogging();
+        }
     }
 
     initialize()
@@ -98,6 +101,19 @@ class OSCManager
         this.lastLogTime = now;
     }
 
+    startMessageRateLogging() {
+        if (!this.messageRateInterval) {
+            this.messageRateInterval = setInterval(() => this.logMessageRate(), 1000);
+        }
+    }
+
+    stopMessageRateLogging() {
+        if (this.messageRateInterval) {
+            clearInterval(this.messageRateInterval);
+            this.messageRateInterval = null;
+        }
+    }
+
     close()
     {
         this.isClosing = true;
@@ -112,13 +128,7 @@ class OSCManager
             }
             this.oscServer = null;
         }
-        if (this.shouldLogMessageRate) {
-            if (this.messageRateInterval)
-            {
-                clearInterval(this.messageRateInterval);
-                this.messageRateInterval = null;
-            }
-        }
+        this.stopMessageRateLogging();
     }
 }
 
