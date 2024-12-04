@@ -1,22 +1,27 @@
 const OSC = require('osc');
 
-class OSCManager {
-    constructor(mainWindow) {
+class OSCManager
+{
+    constructor(mainWindow)
+    {
         this.mainWindow = mainWindow;
         this.oscServer = null;
+        this.isClosing = false;
         this.oscMessageCount = 0;
         this.oscDataBytes = 0;
         this.lastOscCountResetTime = Date.now();
     }
 
-    initialize() {
+    initialize()
+    {
         this.oscServer = new OSC.UDPPort({
             localAddress: '127.0.0.1',
             localPort: 57121,
             metadata: true
         });
 
-        this.oscServer.on('ready', () => {
+        this.oscServer.on('ready', () =>
+        {
             console.log('OSC Server is ready');
         });
 
@@ -26,54 +31,74 @@ class OSCManager {
         return this.oscServer;
     }
 
-    handleOSCMessage(oscMsg) {
-        this.oscMessageCount++;
+    handleOSCMessage(oscMsg)
+    {
+        if (this.isClosing) return;
 
-        switch (oscMsg.address) {
-            case '/audio_analysis':
-                const rmsInput = oscMsg.args[0].value;
-                const rmsOutput = oscMsg.args[1].value;
-                this.mainWindow.webContents.send('audio-analysis', { rmsInput, rmsOutput });
-                break;
+        try
+        {
+            this.oscMessageCount++;
 
-            case '/waveform0':
-            case '/waveform1':
-                const waveformData = oscMsg.args.map(arg => arg.value);
-                const waveformEventName = oscMsg.address === '/waveform0' ? 'waveform0-data' : 'waveform1-data';
-                this.mainWindow.webContents.send(waveformEventName, waveformData);
-                break;
+            switch (oscMsg.address)
+            {
+                case '/audio_analysis':
+                    const rmsInput = oscMsg.args[0].value;
+                    const rmsOutput = oscMsg.args[1].value;
+                    this.mainWindow.webContents.send('audio-analysis', { rmsInput, rmsOutput });
+                    break;
 
-            case '/fft_data0':
-            case '/fft_data1':
-                const fftData = oscMsg.args.map(arg => arg.value);
-                const fftEventName = oscMsg.address === '/fft_data0' ? 'fft0-data' : 'fft1-data';
-                this.mainWindow.webContents.send(fftEventName, fftData);
-                break;
+                case '/waveform0':
+                case '/waveform1':
+                    const waveformData = oscMsg.args.map(arg => arg.value);
+                    const waveformEventName = oscMsg.address === '/waveform0' ? 'waveform0-data' : 'waveform1-data';
+                    this.mainWindow.webContents.send(waveformEventName, waveformData);
+                    break;
 
-            case '/tuner_data':
-                const freq = oscMsg.args[0].value;
-                const hasFreq = oscMsg.args[1].value;
-                const differences = oscMsg.args.slice(2, 8).map(arg => arg.value); // Differences for six strings
-                const amplitudes = oscMsg.args.slice(8, 14).map(arg => arg.value); // Amplitudes for six strings
+                case '/fft_data0':
+                case '/fft_data1':
+                    const fftData = oscMsg.args.map(arg => arg.value);
+                    const fftEventName = oscMsg.address === '/fft_data0' ? 'fft0-data' : 'fft1-data';
+                    this.mainWindow.webContents.send(fftEventName, fftData);
+                    break;
 
-                // Send the tuner data to the renderer process
-                this.mainWindow.webContents.send('tuner-data', {
-                    freq: freq,
-                    hasFreq: hasFreq,
-                    differences: differences,
-                    amplitudes: amplitudes
-                });
-                break;
+                case '/tuner_data':
+                    const freq = oscMsg.args[0].value;
+                    const hasFreq = oscMsg.args[1].value;
+                    const differences = oscMsg.args.slice(2, 8).map(arg => arg.value); // Differences for six strings
+                    const amplitudes = oscMsg.args.slice(8, 14).map(arg => arg.value); // Amplitudes for six strings
 
-            default:
-                console.log('Unhandled OSC message:', oscMsg.address);
-                break;
+                    // Send the tuner data to the renderer process
+                    this.mainWindow.webContents.send('tuner-data', {
+                        freq: freq,
+                        hasFreq: hasFreq,
+                        differences: differences,
+                        amplitudes: amplitudes
+                    });
+                    break;
+
+                default:
+                    console.log('Unhandled OSC message:', oscMsg.address);
+                    break;
+            }
+        } catch (error)
+        {
+            console.error('Error handling OSC message:', error);
         }
     }
 
-    close() {
-        if (this.oscServer) {
-            this.oscServer.close();
+    close()
+    {
+        this.isClosing = true;
+        if (this.oscServer)
+        {
+            try
+            {
+                this.oscServer.close();
+            } catch (error)
+            {
+                console.error('Error closing OSC server:', error);
+            }
+            this.oscServer = null;
         }
     }
 }
