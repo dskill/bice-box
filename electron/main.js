@@ -21,7 +21,6 @@ const {
   loadEffectsList,
   loadP5SketchSync,
   loadScFile,
-  loadEffectFromFile
 } = require('./superColliderManager');
 
 let mainWindow;
@@ -70,11 +69,6 @@ console.error = function ()
 function getEffectsPath()
 {
   return app.getPath("home") + '/bice-box-effects';
-}
-
-function getFullInitFilePath()
-{
-  return getEffectsPath() + '/utilities/init.sc';
 }
 
 console.log('Is app packaged?', app.isPackaged);
@@ -271,28 +265,6 @@ app.on('will-quit', async () => {
 
     logStream.end();
 });
-
-function getSclangPath()
-{
-  const possiblePaths = [
-    // Linux (including Raspberry Pi) paths
-    '/usr/bin/sclang',
-    '/usr/local/bin/sclang',
-    '/opt/SuperCollider/bin/sclang',
-    // macOS path
-    '/Applications/SuperCollider.app/Contents/MacOS/sclang'
-  ];
-
-  for (const path of possiblePaths)
-  {
-    if (fs.existsSync(path))
-    {
-      return path;
-    }
-  }
-
-  throw new Error('sclang not found in any of the expected paths');
-}
 
 const debounce = (func, delay) =>
 {

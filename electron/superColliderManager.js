@@ -226,6 +226,5 @@ module.exports = {
     killSuperCollider,
     loadEffectsList,
     loadP5SketchSync,
-    loadScFile,
-    loadEffectFromFile
+    loadScFile
 }; 
