@@ -25,9 +25,6 @@ const {
 
 let mainWindow;
 let oscManager;
-let oscMessageCount = 0;
-let oscDataBytes = 0;
-let lastOscCountResetTime = Date.now();
 let updateAvailable = false;
 
 if (process.argv.includes('--version')) {

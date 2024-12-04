@@ -8,8 +8,9 @@ class OSCManager
         this.oscServer = null;
         this.isClosing = false;
         this.oscMessageCount = 0;
-        this.oscDataBytes = 0;
-        this.lastOscCountResetTime = Date.now();
+        this.lastLogTime = Date.now();
+        this.messageRateInterval = setInterval(() => this.logMessageRate(), 1000);
+        this.logMessageRate = false;
     }
 
     initialize()
@@ -26,7 +27,7 @@ class OSCManager
         });
 
         this.oscServer.on('message', (oscMsg) => this.handleOSCMessage(oscMsg));
-
+        
         this.oscServer.open();
         return this.oscServer;
     }
@@ -86,6 +87,17 @@ class OSCManager
         }
     }
 
+    logMessageRate() {
+        const now = Date.now();
+        const elapsed = (now - this.lastLogTime) / 1000; // Convert to seconds
+        const rate = this.oscMessageCount / elapsed;
+        console.log(`OSC Messages per second: ${rate.toFixed(2)}`);
+        
+        // Reset counter and timer
+        this.oscMessageCount = 0;
+        this.lastLogTime = now;
+    }
+
     close()
     {
         this.isClosing = true;
@@ -99,6 +111,13 @@ class OSCManager
                 console.error('Error closing OSC server:', error);
             }
             this.oscServer = null;
+        }
+        if (this.logMessageRate) {
+            if (this.messageRateInterval)
+            {
+                clearInterval(this.messageRateInterval);
+                this.messageRateInterval = null;
+            }
         }
     }
 }
