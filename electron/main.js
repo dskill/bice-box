@@ -1,7 +1,6 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const fs = require('fs');
-const { spawn } = require('child_process');
 const util = require('util');
 const chokidar = require('chokidar');
 const { exec } = require('child_process');
@@ -12,13 +11,21 @@ const OSCManager = require('./oscManager');
 const packageJson = require('../package.json');
 const appVersion = packageJson.version;
 const axios = require('axios');
+const { 
+  synths, 
+  getCurrentEffect, 
+  setCurrentEffect,
+  initializeSuperCollider,
+  sendCodeToSclang,
+  killSuperCollider,
+  loadEffectsList,
+  loadP5SketchSync,
+  loadScFile,
+  loadEffectFromFile
+} = require('./superColliderManager');
 
 let mainWindow;
-let sclang;
-let serverBooted = false;
-let synths = [];
 let oscManager;
-let currentEffect = null;
 let oscMessageCount = 0;
 let oscDataBytes = 0;
 let lastOscCountResetTime = Date.now();
@@ -92,15 +99,15 @@ console.log('Logging initialized');
 const isDev = process.env.NODE_ENV === 'development';
 
 // Enable live reload for Electron
-if (isDev)
-{
-  try
-  {
-    require('electron-reloader')(module);
-  } catch (err)
-  {
-    console.log('Error loading electron-reloader. This is fine in production.', err);
-  }
+if (isDev) {
+    try {
+        require('electron-reloader')(module, {
+            debug: true,
+            watchRenderer: true
+        });
+    } catch (err) {
+        console.log('Error loading electron-reloader:', err);
+    }
 }
 
 function createWindow()
@@ -166,263 +173,24 @@ function createWindow()
       console.log('Window shown');
     });
 
+    // Initialize SuperCollider with the necessary callbacks
+    const loadEffectsCallback = () => loadEffectsList(mainWindow, getEffectsPath);
+    initializeSuperCollider(mainWindow, getEffectsPath, loadEffectsCallback);
+
+    // Initialize OSC Server after creating the window
+    oscManager = new OSCManager(mainWindow);
+    oscManager.initialize();
+
+    // Set up file watcher for hot reloading
+    setupEffectsWatcher();
+
+    // Check for updates periodically
+    checkForAppUpdate();
+    setInterval(checkForAppUpdate, 1800000); // Check every 30 minutes
+
   } catch (error) {
     console.error('Error creating window:', error);
   }
-
-  // Initialize SuperCollider
-  initializeSuperCollider();
-
-  // Initialize OSC Server after creating the window
-  oscManager = new OSCManager(mainWindow);
-  oscManager.initialize();
-
-  // Set up file watcher for hot reloading
-  setupEffectsWatcher();
-
-  // Check for updates periodically
-  checkForAppUpdate();
-  setInterval(checkForAppUpdate, 1800000); // Check every 30 minutes
-}
-
-function initializeSuperCollider()
-{
-  console.log('Initializing SuperCollider...');
-
-  let sclangPath;
-  try
-  {
-    sclangPath = getSclangPath();
-  } catch (error)
-  {
-    console.error('Failed to get sclang path:', error);
-    mainWindow.webContents.send('sc-error', 'SuperCollider (sclang) not found in resources');
-    return;
-  }
-
-  console.log(`Using sclang from: ${sclangPath}`);
-
-  try
-  {
-    sclang = spawn(sclangPath);
-  } catch (error)
-  {
-    console.error('Failed to start SuperCollider:', error);
-    mainWindow.webContents.send('sc-error', 'Failed to start SuperCollider.');
-    return;
-  }
-
-  sclang.stdout.on('data', (data) =>
-  {
-    // console.log(`SC stdout: ${data}`);
-    mainWindow.webContents.send('sclang-output', data.toString());
-
-    if (data.toString().includes('Server booted successfully.'))
-    {
-      console.log('SuperCollider server is running');
-      if (!serverBooted)
-      {
-        console.log('SuperCollider server is running');
-        mainWindow.webContents.send('sc-ready');
-        loadEffectsList();
-      }
-    }
-  });
-
-  sclang.stderr.on('data', (data) =>
-  {
-    console.error(`SC stderr: ${data}`);
-    mainWindow.webContents.send('sclang-error', data.toString());
-  });
-
-  sclang.on('close', (code) =>
-  {
-    console.log(`sclang process exited with code ${code}`);
-    serverBooted = false;
-  });
-
-  bootSuperColliderServer();
-}
-
-async function bootSuperColliderServer()
-{
-  const startupFilePath = getFullInitFilePath();
-  console.log(`Loading startup file from: ${startupFilePath}`);
-
-  const scCommand = `("${startupFilePath}").load;`;
-
-  sendCodeToSclang(scCommand)
-    .then(result => console.log('Startup file loaded successfully:', result))
-    .catch(error => console.error('Error loading startup file:', error));
-}
-
-function sendCodeToSclang(code)
-{
-  return new Promise((resolve, reject) =>
-  {
-    if (!sclang)
-    {
-      console.error('SuperCollider is not initialized');
-      reject('SuperCollider is not initialized');
-      return;
-    }
-    if (!code || code === "")
-    {
-      console.log('Received empty or null code. Skipping SuperCollider execution.');
-      resolve('No code to execute');
-      return;
-    }
-
-    let sclangFriendlyFormatting = code.trim();
-    sclangFriendlyFormatting += '\n';
-    // SuperCollider:\n${sclangFriendlyFormatting}`);
-    sclang.stdin.write(sclangFriendlyFormatting);
-
-    //console.log(`to sclang:\n${sclangFriendlyFormatting}`);
-    sclang.stdin.write(sclangFriendlyFormatting);
-
-    // Set up a one-time listener for the sclang output
-    sclang.stdout.once('data', (data) =>
-    {
-      const output = data.toString();
-      //console.log('from sclang:', output);
-      resolve(output);
-    });
-
-    // Set up error handling
-    sclang.stderr.once('data', (data) =>
-    {
-      console.error(`sclang stderr: ${data}`);
-      reject(data.toString());
-    });
-  });
-}
-
-// Helper function to parse sclang output
-function parseDevicesFromSclang(output)
-{
-  console.log('Parsing SuperCollider output:', output);
-
-  if (typeof output !== 'string')
-  {
-    console.error('Unexpected output type:', typeof output);
-    return [];
-  }
-
-  const match = output.match(/\[(.*?)\]/);
-  if (match)
-  {
-    const devices = match[1].split(',').map(device => device.trim().replace(/^"|"$/g, ''));
-    console.log('Parsed devices:', devices);
-    return devices;
-  }
-
-  console.log('No devices found in output');
-  return [];
-}
-
-function loadEffectsList()
-{
-  console.log('Loading effects list...');
-  const effectsPath = getEffectsPath();
-  const effectFiles = fs.readdirSync(effectsPath).filter(file => file.endsWith('.json'));
-
-  synths = effectFiles.map(file =>
-  {
-    const filePath = path.join(effectsPath, file);
-    const effect = loadEffectFromFile(filePath);
-
-    /*
-    // Reload SuperCollider file
-    if (effect.scFilePath) {
-      console.log(`Loading SC file for ${effect.name}: ${effect.scFilePath}`);
-      loadScFile(effect.scFilePath);
-    }
-    */
-
-    // Reload p5.js sketch
-    if (effect.p5SketchPath)
-    {
-      console.log(`Reloading p5.js sketch for ${effect.name}: ${effect.p5SketchPath}`);
-      effect.p5SketchContent = loadP5SketchSync(effect.p5SketchPath);
-    }
-
-    return effect;
-  });
-
-  //console.log('Effects list loaded and reloaded:', synths);
-
-  // Notify renderer about updated effects
-  if (mainWindow && mainWindow.webContents)
-  {
-    mainWindow.webContents.send('effects-updated', synths);
-  }
-
-  return synths;
-}
-
-// Update the loadEffectFromFile function to include full paths
-function loadEffectFromFile(filePath)
-{
-  const synthData = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-  return {
-    name: synthData.name,
-    scFilePath: synthData.audio,
-    p5SketchPath: synthData.visual,
-    p5SketchContent: loadP5SketchSync(synthData.visual),
-    params: synthData.params
-  };
-}
-
-// Add this synchronous function to load the p5.js sketch
-function loadP5SketchSync(sketchPath)
-{
-  try
-  {
-    const effectsPath = getEffectsPath();
-    const fullPath = path.join(effectsPath, sketchPath);
-    //console.log(`Attempting to load p5 sketch from: ${fullPath}`);
-
-    if (!fs.existsSync(fullPath))
-    {
-      console.error(`Sketch file not found: ${fullPath}`);
-      return null;
-    }
-
-    const content = fs.readFileSync(fullPath, 'utf-8');
-    //console.log(`Successfully loaded p5 sketch: ${sketchPath}`);
-    return content;
-  } catch (error)
-  {
-    console.error(`Error loading p5 sketch: ${error}`);
-    return null;
-  }
-}
-
-// Add this IPC handler for loading p5 sketches
-ipcMain.handle('load-p5-sketch', async (event, sketchPath) =>
-{
-  return loadP5SketchSync(sketchPath);
-});
-
-ipcMain.on('load-sc-file', (event, filePath) =>
-{
-  loadScFile(filePath);
-});
-
-function loadScFile(filePath)
-{
-  // Ensure filePath is relative to the effects directory
-  const scFilePath = path.join(getEffectsPath(), filePath);
-  //const relativePath = path.relative(effectsPath, filePath);
-
-  console.log(`Loading SC file: ${scFilePath}`);
-
-  const scCommand = `("${scFilePath}").load;`;
-
-  sendCodeToSclang(scCommand)
-    .then(result => console.log('SC file load result:', result))
-    .catch(error => console.error('Error loading SC file:', error));
 }
 
 app.whenReady().then(() => {
@@ -460,133 +228,48 @@ app.on('activate', () =>
 });
 
 // IPC listeners for renderer process communication
-ipcMain.on('send-to-supercollider', (event, code) =>
-{
-  sendCodeToSclang(code);
+ipcMain.on('send-to-supercollider', (event, code) => {
+    sendCodeToSclang(code);
 });
 
-ipcMain.on('stop-synth', (event, synthName) =>
-{
-  sendCodeToSclang(`~${synthName}.free;`);
-  console.log(`Stopped ${synthName}`);
+ipcMain.on('stop-synth', (event, synthName) => {
+    sendCodeToSclang(`~${synthName}.free;`);
+    console.log(`Stopped ${synthName}`);
 });
 
-ipcMain.on('reload-all-effects', (event) =>
-{
-  console.log('Reloading all effects...');
-  try
-  {
-    const loadedSynths = loadEffectsList();
-    const validSynths = loadedSynths.filter(synth => synth && synth.name);
-    //console.log('Effects data to be sent:', validSynths);
-    event.reply('effects-data', validSynths);
-    console.log('Effects data sent to renderer process');
-  } catch (error)
-  {
-    console.error('Error loading or sending effects data:', error);
-    event.reply('effects-error', error.message);
-  }
+ipcMain.on('reboot-server', (event) => {
+    console.log('Rebooting SuperCollider server...');
+    // Send killall command
+    sendCodeToSclang('Server.killAll;')
+        .then(() => {
+            setTimeout(() => {
+                const loadEffectsCallback = () => loadEffectsList(mainWindow, getEffectsPath);
+                initializeSuperCollider(mainWindow, getEffectsPath, loadEffectsCallback);
+            }, 1000); // Wait for 1 second before rebooting
+        })
+        .catch((error) => {
+            console.error('Error sending Server.killAll command:', error);
+            // Still attempt to reboot even if the kill command fails
+            setTimeout(() => {
+                const loadEffectsCallback = () => loadEffectsList(mainWindow, getEffectsPath);
+                initializeSuperCollider(mainWindow, getEffectsPath, loadEffectsCallback);
+            }, 1000);
+        });
 });
 
-ipcMain.on('get-audio-devices', async (event) =>
-{
-  console.log('Fetching audio devices...');
-  try
-  {
-    let rawDevices = await sendCodeToSclang('ServerOptions.devices;');
-    let devices = parseDevicesFromSclang(rawDevices);
+app.on('will-quit', async () => {
+    console.log('Application shutting down...');
 
-    console.log('Raw devices from SuperCollider:', devices);
-    // remove duplicate devices
-    devices = [...new Set(devices.filter(device => device.trim() !== ''))];
+    // Kill SuperCollider servers
+    await killSuperCollider();
 
-    console.log('Parsed devices:', devices);
-    event.reply('audio-devices-reply', devices);
-  } catch (error)
-  {
-    console.error('Error fetching audio devices:', error);
-    event.reply('audio-devices-reply', []); // Send an empty array instead of undefined
-  }
-});
-
-ipcMain.on('set-audio-devices', async (event, { inputDevice, outputDevice }) =>
-{
-  try
-  {
-    if (inputDevice)
-    {
-      await sendCodeToSclang(`Server.default.options.inDevice_("${inputDevice}");`);
+    // Close OSC server
+    if (oscManager) {
+        oscManager.close();
+        console.log('OSC server closed');
     }
-    if (outputDevice)
-    {
-      await sendCodeToSclang(`Server.default.options.outDevice_("${outputDevice}");`);
-    }
-    await sendCodeToSclang('Server.default.reboot;'); // Reboot the server to apply changes
-    event.reply('audio-devices-set', 'Audio devices set successfully');
-  } catch (error)
-  {
-    console.error('Error setting audio devices:', error);
-    event.reply('sc-error', 'Failed to set audio devices');
-  }
-});
 
-ipcMain.on('reboot-server', (event) =>
-{
-  console.log('Rebooting SuperCollider server...');
-  // Send killall command
-  sendCodeToSclang('Server.killAll;')
-    .then(() =>
-    {
-      setTimeout(() =>
-      {
-        bootSuperColliderServer();
-      }, 1000); // Wait for 1 second before rebooting
-    })
-    .catch((error) =>
-    {
-      console.error('Error sending Server.killAll command:', error);
-      // Still attempt to reboot even if the kill command fails
-      setTimeout(() =>
-      {
-        bootSuperColliderServer();
-      }, 1000);
-    });
-});
-
-app.on('will-quit', async () =>
-{
-  console.log('Application shutting down...');
-
-  // Kill SuperCollider servers
-  if (sclang)
-  {
-    try
-    {
-      console.log('Shutting down SuperCollider servers...');
-      await sendCodeToSclang('Server.killAll;');
-      console.log('SuperCollider servers killed successfully');
-
-      // Kill the sclang process
-      sclang.kill();
-      console.log('sclang process terminated');
-    } catch (error)
-    {
-      console.error('Error shutting down SuperCollider:', error);
-    }
-  }
-
-  // Close OSC server
-  if (oscManager)
-  {
-    oscManager.close();
-    console.log('OSC server closed');
-  }
-
-  logStream.end();
-  if (oscManager)
-  {
-    oscManager.close();
-  }
+    logStream.end();
 });
 
 function getSclangPath()
@@ -679,17 +362,15 @@ function reloadFullEffect(jsonPath)
     {
       console.log(`Reading JSON file: ${jsonPath}`);
       const fileContent = fs.readFileSync(jsonPath, 'utf8');
-      //console.log(`File content: ${fileContent}`);
 
       const newEffectData = JSON.parse(fileContent);
-      //console.log(`Parsed effect data:`, newEffectData);
 
       // Update the effect in the synths array
       const updatedEffect = {
         name: newEffectData.name || effectName,
         scFilePath: newEffectData.audio,
         p5SketchPath: newEffectData.visual,
-        p5SketchContent: loadP5SketchSync(newEffectData.visual),
+        p5SketchContent: loadP5SketchSync(newEffectData.visual, getEffectsPath),
         params: newEffectData.params || []
       };
       console.log(`Updated effect object:`, updatedEffect);
@@ -700,7 +381,7 @@ function reloadFullEffect(jsonPath)
       if (updatedEffect.scFilePath)
       {
         console.log(`Loading SC file: ${updatedEffect.scFilePath}`);
-        loadScFile(updatedEffect.scFilePath);
+        loadScFile(updatedEffect.scFilePath, getEffectsPath);
       } else
       {
         console.warn(`No SC file path provided for effect ${effectName}`);
@@ -744,7 +425,7 @@ function reloadAudioEffect(scFilePath)
   if (affectedEffect)
   {
     console.log(`Reloading audio for effect: ${affectedEffect.name}`);
-    loadScFile(scFilePath);
+    loadScFile(scFilePath, getEffectsPath);
   } else
   {
     console.log(`No effect found using SC file: ${scFilePath}`);
@@ -768,7 +449,7 @@ function reloadVisualEffect(jsFilePath)
     if (currentSketchPath === changedFilePath)
     {
       console.log(`Reloading visual for current effect: ${currentEffect.name}`);
-      const updatedSketchContent = loadP5SketchSync(jsFilePath);
+      const updatedSketchContent = loadP5SketchSync(jsFilePath, getEffectsPath);
 
       if (updatedSketchContent)
       {
@@ -798,11 +479,6 @@ function reloadVisualEffect(jsFilePath)
   }
 }
 
-function getCurrentEffect()
-{
-  return currentEffect;
-}
-
 ipcMain.on('set-current-effect', (event, effectName) =>
 {
   const effect = synths.find(synth => synth.name === effectName);
@@ -814,12 +490,6 @@ ipcMain.on('set-current-effect', (event, effectName) =>
     console.error(`Effect not found: ${effectName}`);
   }
 });
-
-function setCurrentEffect(effect)
-{
-  currentEffect = effect;
-  console.log('Current effect set to:', effect ? effect.name : 'None');
-}
 
 // Add this IPC handler for updating effect parameters
 ipcMain.on('update-effect-params', (event, { effectName, params }) =>
@@ -996,4 +666,32 @@ ipcMain.on('update-app', async (event) => {
 
 ipcMain.on('quit-app', () => {
     app.quit();
+});
+
+ipcMain.on('reload-all-effects', (event) => {
+    console.log('Reloading all effects...');
+    try {
+        const loadedSynths = loadEffectsList(mainWindow, getEffectsPath);
+        const validSynths = loadedSynths.filter(synth => synth && synth.name);
+        event.reply('effects-data', validSynths);
+        console.log('Effects data sent to renderer process');
+    } catch (error) {
+        console.error('Error loading or sending effects data:', error);
+        event.reply('effects-error', error.message);
+    }
+});
+
+// Add this IPC handler for loading p5 sketches
+ipcMain.handle('load-p5-sketch', async (event, sketchPath) => {
+    try {
+        return loadP5SketchSync(sketchPath, getEffectsPath);
+    } catch (error) {
+        console.error('Error loading p5 sketch:', error);
+        throw error;
+    }
+});
+
+// Add handler for loading SC files
+ipcMain.on('load-sc-file', (event, filePath) => {
+    loadScFile(filePath, getEffectsPath);
 });
