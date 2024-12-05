@@ -17,7 +17,6 @@
 }
 
 .toggle-button.on {
-    background: rgba(198, 202, 224, .8);
     color: white;
     opacity: 0.8;
 }

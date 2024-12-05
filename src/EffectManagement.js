@@ -454,10 +454,8 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
 
             {isExpanded && (
                 <div className="management-content">
-                    <div className="ip-address">
-                        <p>Device IP: {ipAddress}</p>
-                        <p>Version: {version}</p>
-                    </div>
+                    <p>──────</p>
+
                     <div className="button-column">
                         {renderAppUpdateButton()}
                         {renderSyncButton()}
@@ -465,11 +463,21 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
                         <Button label={"Reload Current Effect"} onClick={handleReloadCurrentEffect} />
                         {/*<Button label={"Refresh Devices"} onClick={refreshDevices} />*/}
                         <Button label={"Reboot Server"} onClick={rebootServer} />
-                        <Button label={"Quit"} onClick={handleQuit} className="quit-button" />
+                        {/*<Button label={"Quit"} onClick={handleQuit} className="quit-button" />*/}
                     </div>
-
-
-
+                    <div className="ip-address">
+                        <br />
+                        <br />
+                        <br />
+                        <br />
+                        <br />
+                        <br />
+                        <br />
+                        <br />
+                        <br />
+                        <p>Device IP: {ipAddress}</p>
+                        <p>Version: {version}</p>
+                    </div>
                     <div className="device-selectors">
                         {/* Input Device Selector
                         <div>

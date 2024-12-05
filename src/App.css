@@ -528,29 +528,20 @@ button:active {
 .management-content {
   background-color: rgba(0, 0, 0, 0.3);
   color: rgb(198, 202, 224);
-  padding: 12px 30px;
-  margin-top: 5px;
+  padding: 0px 30px;
+  margin-top: 0px;
   transition: all 0.3s ease;
   max-height: 500px;
   overflow: hidden;
   text-align: right;
   min-width: 200px;
+  opacity: 0.8;
+
 }
 
-
-/* Update button styles within management content */
 .management-content button {
   color: rgb(198, 202, 224);
-  font-size: 18px;
   transition: all 0.3s ease;
-}
-
-/* Update labels and text within management content */
-.management-content label,
-.ip-address,
-.management-content .custom-select {
-  font-size: 18px;
-  color: rgb(198, 202, 224);
 }
 
 .management-content.collapsed {
@@ -564,19 +555,19 @@ button:active {
   background-color: rgba(0, 0, 0, 0.5);
   color: rgb(198, 202, 224);
   border: 1px solid rgba(198, 202, 224, 0.3);
-  font-size: 14px;
+  font-size: 20px;
 }
 
 /* Style for labels within the management content */
 .management-content label {
   color: rgb(198, 202, 224);
-  font-size: 14px;
+  font-size: 20px;
 }
 
 /* Style for buttons within the management content */
 .management-content button {
   color: rgb(198, 202, 224);
-  font-size: 14px;
+  font-size: 20px;
 }
 
 .visualization-mode {
@@ -649,7 +640,8 @@ button:active {
   margin-bottom: 10px;
   padding-right: 5px;
   color: rgb(198, 202, 224);
-  font-size: 14px;
+  font-size: 10px;
+  font-style: italic;
 }
 
 .nav-button {
