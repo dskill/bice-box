@@ -428,10 +428,6 @@ button {
   text-transform: none;
 }
 
-button:hover {
-  color: white;
-}
-
 button:active {
   color: rgb(150, 155, 180);
 }
@@ -467,10 +463,6 @@ button:active {
   font-size: 14px;
 }
 
-.close-button:hover {
-  color: rgb(255, 100, 100);
-}
-
 /* SnapshotPreview.css */
 .snapshot-preview {
   position: fixed;
@@ -492,22 +484,45 @@ button:active {
 .supercollider-boot-management {
   position: fixed;
   top: 5px;
-  right: 15px;
+  right: 5px;
   z-index: 2000;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
   user-select: none;
   min-width: 150px;
+  width: auto;
 }
 
-.management-toggle-button {
-  opacity: 0.75;
-  transition: opacity 0.3s ease;
+.toggle-button {
+  display: inline-block;
+  margin: 5px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+  font-size: 21px;
+  background: rgba(0, 0, 0, 0.0);
+  border: none;
+  padding: 3px 3px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-transform: none;
+  min-width: 200px;
+  color: rgb(198, 202, 224);
 }
 
-.management-toggle-button:hover {
-  opacity: 0.8;
+/* Specific styles for the tools toggle button */
+.supercollider-boot-management .toggle-button {
+  text-align: right;
+  width: 20px;
+  justify-content: flex-end;
+  display: flex;
+  margin-right: 30px;
+}
+
+/* Keep the effect toggle button centered */
+.effect-select-container .toggle-button {
+  text-align: center;
+  justify-content: center;
+  display: flex;
 }
 
 .management-content {
@@ -522,9 +537,6 @@ button:active {
   min-width: 200px;
 }
 
-.management-content:hover {
-  background: rgba(198, 202, 224, 0.1);
-}
 
 /* Update button styles within management content */
 .management-content button {
@@ -565,10 +577,6 @@ button:active {
 .management-content button {
   color: rgb(198, 202, 224);
   font-size: 14px;
-}
-
-.management-content button:hover {
-  color: white;
 }
 
 .visualization-mode {
@@ -657,10 +665,6 @@ button:active {
   font-size: 24px;
   color: rgb(198, 202, 224);
   transition: all 0.3s ease;
-}
-
-.nav-button:hover {
-  color: white;
 }
 
 .prev-button {
