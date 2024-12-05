@@ -466,15 +466,6 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
                         {/*<Button label={"Quit"} onClick={handleQuit} className="quit-button" />*/}
                     </div>
                     <div className="ip-address">
-                        <br />
-                        <br />
-                        <br />
-                        <br />
-                        <br />
-                        <br />
-                        <br />
-                        <br />
-                        <br />
                         <p>Device IP: {ipAddress}</p>
                         <p>Version: {version}</p>
                     </div>
