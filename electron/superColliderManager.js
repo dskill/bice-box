@@ -30,12 +30,15 @@ function loadEffectsList(mainWindow, getEffectsPath) {
         const filePath = path.join(effectsPath, file);
         const effect = loadEffectFromFile(filePath, getEffectsPath);
 
-        if (effect.p5SketchPath) {
-            console.log(`Reloading p5.js sketch for ${effect.name}: ${effect.p5SketchPath}`);
-            effect.p5SketchContent = loadP5SketchSync(effect.p5SketchPath, getEffectsPath);
-        }
+        // Only add curated effects
+        if (effect.curated) {
+            if (effect.p5SketchPath) {
+                console.log(`Reloading p5.js sketch for ${effect.name}: ${effect.p5SketchPath}`);
+                effect.p5SketchContent = loadP5SketchSync(effect.p5SketchPath, getEffectsPath);
+            }
 
-        synths.push(effect);
+            synths.push(effect);
+        }
     });
 
     // Notify renderer about updated effects
@@ -53,7 +56,8 @@ function loadEffectFromFile(filePath, getEffectsPath) {
         scFilePath: synthData.audio,
         p5SketchPath: synthData.visual,
         p5SketchContent: loadP5SketchSync(synthData.visual, getEffectsPath),
-        params: synthData.params
+        params: synthData.params,
+        curated: synthData.curated || false
     };
 }
 
