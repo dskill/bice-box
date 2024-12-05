@@ -492,12 +492,13 @@ button:active {
 .supercollider-boot-management {
   position: fixed;
   top: 5px;
-  right: 5px;
+  right: 15px;
   z-index: 2000;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
   user-select: none;
+  min-width: 150px;
 }
 
 .management-toggle-button {
@@ -518,6 +519,7 @@ button:active {
   max-height: 500px;
   overflow: hidden;
   text-align: right;
+  min-width: 200px;
 }
 
 .management-content:hover {
@@ -597,7 +599,9 @@ button:active {
   z-index: 2000;
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 15px;
+  min-width: 300px;
+  justify-content: center;
 }
 
 .visualization-controls {
@@ -818,7 +822,7 @@ button:active {
   transform: none;
   padding: 5px 20px;
   background: rgba(0, 0, 0, 0.3);
-  margin: 0 -50px;
+  margin: 0;
   z-index: 2001;
   height: 30px;
   display: flex;
