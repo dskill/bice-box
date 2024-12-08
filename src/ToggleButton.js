@@ -1,6 +1,6 @@
 import React from 'react';
 import { FaDownload } from 'react-icons/fa';
-import './ToggleButton.css';
+import './App.css';
 
 function ToggleButton({ isOn, setIsOn, onText, offText, hasUpdates }) {
     return (

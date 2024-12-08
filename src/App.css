@@ -938,3 +938,60 @@ button:active {
   border-color: #E3CECE;
   box-shadow: 0 0 5px rgba(227, 206, 206, 0.5);
 }
+
+/* Update the existing toggle-button styles to include all properties */
+.toggle-button {
+    display: inline-block;
+    margin: 5px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+    font-size: 21px;
+    background: rgba(0, 0, 0, 0.0);
+    border: none;
+    padding: 3px 3px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: none;
+    min-width: 200px;
+    color: rgb(198, 202, 224);
+}
+
+/* Add these additional toggle button styles */
+.toggle-button.on {
+    color: white;
+    opacity: 0.8;
+}
+
+.toggle-button.off {
+    opacity: 0.8;
+}
+
+.toggle-button:hover {
+    color: white;
+}
+
+.toggle-button:focus {
+    outline: none;
+}
+
+.toggle-button-container {
+    position: fixed;
+    bottom: 10px;
+    left: 10px;
+    z-index: 1000;
+}
+
+.toggle-button .update-indicator {
+    color: #ff9800;
+    margin-left: 7.5px;
+    font-size: 1.8em;
+    vertical-align: middle;
+}
+
+.toggle-button.has-updates {
+    position: relative;
+}
+
+.update-indicator {
+    margin-right: 12px;
+    color: #ff8c00;
+}

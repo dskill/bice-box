@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import './ToggleButton.css'; // Make sure this path matches the location of your CSS file
+import './App.css'; // Make sure this path matches the location of your CSS file
 
 function Button({ label, onClick }) {
 
