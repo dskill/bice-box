@@ -456,7 +456,7 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
             />
 
             <div className={`effect-management__content ${isExpanded ? 'effect-management__content--expanded' : ''}`}>
-                <p>──────</p>
+                <p></p>
 
                 <div className="effect-management__buttons">
                     {renderAppUpdateButton()}

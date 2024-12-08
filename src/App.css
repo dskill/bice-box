@@ -637,7 +637,8 @@ button:active {
 .effect-management__info {
   text-align: right;
   margin-top: auto;
-  padding: 20px 5px;
+  margin-bottom: 10px;
+  padding: 30px 20px;
   color: rgb(198, 202, 224);
   font-size: 10px;
   font-style: italic;
@@ -943,9 +944,9 @@ button:active {
 }
 
 .toggle-button .update-indicator {
-    color: #ff9800;
+    color: #ffffff;
     margin-left: 7.5px;
-    font-size: 1.8em;
+    font-size: 1em;
     vertical-align: middle;
 }
 
