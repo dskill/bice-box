@@ -983,3 +983,19 @@ button:active {
     background-color: rgba(0, 0, 0, 0.5);
     z-index: 999; /* Ensure it's below the modal but above other content */
 }
+
+.wifi-settings-modal ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.wifi-settings-modal li {
+    padding: 10px;
+    cursor: pointer;
+    border-bottom: 1px solid #eee;
+}
+
+.wifi-settings-modal li:hover {
+    background-color: #f5f5f5;
+}
