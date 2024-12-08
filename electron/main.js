@@ -22,6 +22,7 @@ const {
   loadP5SketchSync,
   loadScFile,
 } = require('./superColliderManager');
+const wifi = require('node-wifi');
 
 let mainWindow;
 let oscManager;
@@ -685,4 +686,28 @@ ipcMain.handle('load-p5-sketch', async (event, sketchPath) => {
 // Add handler for loading SC files
 ipcMain.on('load-sc-file', (event, filePath) => {
     loadScFile(filePath, getEffectsPath);
+});
+
+wifi.init({
+    iface: null // network interface, choose a random wifi interface if set to null
+});
+
+ipcMain.on('scan-wifi', (event) => {
+    wifi.scan((error, networks) => {
+        if (error) {
+            console.error(error);
+        } else {
+            event.sender.send('wifi-networks', networks);
+        }
+    });
+});
+
+ipcMain.on('connect-wifi', (event, { ssid, password }) => {
+    wifi.connect({ ssid, password }, (error) => {
+        if (error) {
+            console.error(error);
+        } else {
+            console.log('Connected to WiFi');
+        }
+    });
 });

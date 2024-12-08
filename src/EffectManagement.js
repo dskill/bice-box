@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Button from './Button';
 import ToggleButton from './ToggleButton'; // Import ToggleButton
+import WifiSettings from './WifiSettings'; // Import WifiSettings
 import './App.css';
 import { FaSync, FaCheck, FaExclamationTriangle, FaDownload } from 'react-icons/fa';
 
@@ -20,6 +21,7 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
     const [appUpdateStatus, setAppUpdateStatus] = useState({ hasUpdate: false, currentVersion: '', latestVersion: '' });
     const [isUpdatingApp, setIsUpdatingApp] = useState(false);
     const [hasUpdates, setHasUpdates] = useState(false);
+    const [showWifiSettings, setShowWifiSettings] = useState(false);
 
     useEffect(() =>
     {
@@ -444,6 +446,10 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
         setHasUpdates(effectsRepoStatus.hasUpdates || appUpdateStatus.hasUpdate);
     }, [effectsRepoStatus.hasUpdates, appUpdateStatus.hasUpdate]);
 
+    const handleWifiButtonClick = () => {
+        setShowWifiSettings(true);
+    };
+
     return (
         <div className="effect-management">
             <ToggleButton 
@@ -464,6 +470,7 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
                     <Button label={"Reload All Effects"} onClick={reloadEffectList} />
                     <Button label={"Reload Current Effect"} onClick={handleReloadCurrentEffect} />
                     <Button label={"Reboot Server"} onClick={rebootServer} />
+                    <Button label={"WiFi Settings"} onClick={handleWifiButtonClick} />
                 </div>
                 {errorMessage && <div className="effect-management__error">{errorMessage}</div>}
                 <div className="effect-management__info">
@@ -496,6 +503,7 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
               
 
             </div>
+            {showWifiSettings && <WifiSettings onClose={() => setShowWifiSettings(false)} />}
         </div>
     );
 }
