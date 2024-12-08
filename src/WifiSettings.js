@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import './App.css';
 
 function WifiSettings({ onClose }) {
     const [networks, setNetworks] = useState([]);
@@ -26,29 +27,32 @@ function WifiSettings({ onClose }) {
     };
 
     return (
-        <div className="wifi-settings">
-            <h2>Available Networks</h2>
-            <ul>
-                {networks.map(network => (
-                    <li key={network.ssid} onClick={() => handleNetworkSelect(network)}>
-                        {network.ssid}
-                    </li>
-                ))}
-            </ul>
-            {selectedNetwork && (
-                <div>
-                    <h3>Connect to {selectedNetwork.ssid}</h3>
-                    <input
-                        type="password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        placeholder="Enter password"
-                    />
-                    <button onClick={handleConnect}>Connect</button>
-                </div>
-            )}
-            <button onClick={onClose}>Close</button>
-        </div>
+        <>
+            <div className="wifi-settings-overlay" onClick={onClose}></div>
+            <div className="wifi-settings-modal">
+                <h2>Available Networks</h2>
+                <ul>
+                    {networks.map(network => (
+                        <li key={network.ssid} onClick={() => handleNetworkSelect(network)}>
+                            {network.ssid}
+                        </li>
+                    ))}
+                </ul>
+                {selectedNetwork && (
+                    <div>
+                        <h3>Connect to {selectedNetwork.ssid}</h3>
+                        <input
+                            type="password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            placeholder="Enter password"
+                        />
+                        <button onClick={handleConnect}>Connect</button>
+                    </div>
+                )}
+                <button onClick={onClose}>Close</button>
+            </div>
+        </>
     );
 }
 

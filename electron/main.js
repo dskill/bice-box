@@ -693,10 +693,17 @@ wifi.init({
 });
 
 ipcMain.on('scan-wifi', (event) => {
+  console.log('Scanning WiFi networks...');
     wifi.scan((error, networks) => {
         if (error) {
             console.error(error);
         } else {
+          console.log('Scanning WiFi networks:', networks);
+            networks.push({
+                ssid: 'Test Network',
+                signal_level: -50,
+                security: 'WPA2'
+            });
             event.sender.send('wifi-networks', networks);
         }
     });
