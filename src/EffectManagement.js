@@ -3,13 +3,6 @@ import Button from './Button';
 import ToggleButton from './ToggleButton'; // Import ToggleButton
 import './App.css';
 import { FaSync, FaCheck, FaExclamationTriangle, FaDownload } from 'react-icons/fa';
-/*const TempIcons = {
-    FaSync: () => '↻',
-    FaCheck: () => '✓',
-    FaExclamationTriangle: () => '⚠'
-};
-const { FaSync, FaCheck, FaExclamationTriangle } = TempIcons;
-*/
 
 const electron = window.electron;
 
@@ -449,7 +442,7 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
                 onText="Hide Tools"
                 offText="Tools"
                 hasUpdates={hasUpdates}
-                className="effect-management__toggle"
+                className="effect-management__toggle tools-toggle"
             />
 
             <div className={`effect-management__content ${isExpanded ? 'effect-management__content--expanded' : ''}`}>

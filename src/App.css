@@ -500,30 +500,6 @@ button:active {
   pointer-events: auto;
 }
 
-.toggle-button {
-  display: inline-block;
-  margin: 5px;
-  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
-  font-size: 21px;
-  background: rgba(0, 0, 0, 0.0);
-  border: none;
-  padding: 3px 3px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  text-transform: none;
-  min-width: 200px;
-  color: rgb(198, 202, 224);
-}
-
-/* Specific styles for the tools toggle button */
-.effect-management .toggle-button {
-  text-align: right;
-  width: 20px;
-  justify-content: flex-end;
-  display: flex;
-  margin-right: 30px;
-}
-
 /* Keep the effect toggle button centered */
 .effect-select-container .toggle-button {
   text-align: center;
@@ -532,7 +508,7 @@ button:active {
 }
 
 .effect-management__content {
-  background-color: rgba(0, 0, 0, 0.3);
+  background-color: rgba(0, 0, 0, .7);
   color: rgb(198, 202, 224);
   padding: 0px 30px;
   margin-top: 0px;
@@ -547,6 +523,7 @@ button:active {
   height: calc(100% - 40px);
   transform: translateX(100%);
   visibility: hidden;
+  border-radius: 10px;
 }
 
 .effect-management__content button {
@@ -668,7 +645,7 @@ button:active {
 
 .nav-button {
   position: fixed;
-  top: 50%;
+  top: 20%;
   transform: translateY(-50%);
   z-index: 1000;
   padding: 20px;
@@ -947,7 +924,7 @@ button:active {
     font-size: 21px;
     background: rgba(0, 0, 0, 0.0);
     border: none;
-    padding: 3px 3px;
+    padding: 23px 13px;
     cursor: pointer;
     transition: all 0.3s ease;
     text-transform: none;
@@ -955,6 +932,15 @@ button:active {
     color: rgb(198, 202, 224);
 }
 
+/* Specific styles for the tools toggle button */
+.effect-management .toggle-button {
+  text-align: right;
+  width: 20px;
+  justify-content: flex-end;
+  display: flex;
+  max-width: 200px;
+  margin-right: 30px;
+}
 /* Add these additional toggle button styles */
 .toggle-button.on {
     color: white;
