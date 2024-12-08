@@ -536,20 +536,29 @@ button:active {
   color: rgb(198, 202, 224);
   padding: 0px 30px;
   margin-top: 0px;
-  transition: all 0.3s ease;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
   text-align: right;
   min-width: 200px;
-  opacity: 0.8;
+  opacity: 0;
   display: flex;
   flex-direction: column;
   flex: 1;
   height: calc(100% - 40px);
+  transform: translateX(100%);
+  visibility: hidden;
 }
 
 .effect-management__content button {
   color: rgb(198, 202, 224);
   transition: all 0.3s ease;
+}
+
+.effect-management__content--expanded {
+  opacity: 0.95;
+  transform: translateX(0);
+  visibility: visible;
+  pointer-events: auto;
 }
 
 .effect-management__content--collapsed {
@@ -559,7 +568,9 @@ button:active {
   margin: 0;
   pointer-events: none;
   position: absolute;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   visibility: hidden;
+  transform: translateX(100%);
 }
 
 /* Style for the custom select dropdowns within the management content */

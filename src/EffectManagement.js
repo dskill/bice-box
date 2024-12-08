@@ -452,7 +452,7 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
                 className="effect-management__toggle"
             />
 
-            <div className={`effect-management__content ${!isExpanded ? 'effect-management__content--collapsed' : ''}`}>
+            <div className={`effect-management__content ${isExpanded ? 'effect-management__content--expanded' : ''}`}>
                 <p>──────</p>
 
                 <div className="effect-management__buttons">
