@@ -483,7 +483,7 @@ button:active {
   position: fixed;
   top: 5px;
   right: 5px;
-  z-index: 1000;
+  z-index: 5;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
@@ -491,6 +491,13 @@ button:active {
   min-width: 150px;
   width: auto;
   height: calc(100vh - 10px);  /* Subtract padding */
+  pointer-events: none; /* Make the container transparent to clicks by default */
+}
+
+/* Only enable pointer events for the toggle button and content when needed */
+.supercollider-boot-management .toggle-button,
+.supercollider-boot-management .management-content:not(.collapsed) {
+  pointer-events: auto;
 }
 
 .toggle-button {
@@ -537,7 +544,7 @@ button:active {
   display: flex;
   flex-direction: column;
   flex: 1;
-  height: calc(100% - 40px);  /* Leave space for the toggle button */
+  height: calc(100% - 40px);
 }
 
 .management-content button {
@@ -549,6 +556,10 @@ button:active {
   max-height: 0;
   opacity: 0;
   padding: 0;
+  margin: 0;
+  pointer-events: none;
+  position: absolute;
+  visibility: hidden;
 }
 
 /* Style for the custom select dropdowns within the management content */
@@ -616,7 +627,6 @@ button:active {
   align-items: stretch;
   padding: 10px;
   box-sizing: border-box;
-  z-index: 3;
   pointer-events: none;
 }
 

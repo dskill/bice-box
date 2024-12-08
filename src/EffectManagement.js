@@ -452,54 +452,52 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
                 className="EffectManagement"
             />
 
-            {isExpanded && (
-                <div className="management-content">
-                    <p>──────</p>
+            <div className={`management-content ${!isExpanded ? 'collapsed' : ''}`}>
+                <p>──────</p>
 
-                    <div className="button-column">
-                        {renderAppUpdateButton()}
-                        {renderSyncButton()}
-                        <Button label={"Reload All Effects"} onClick={reloadEffectList} />
-                        <Button label={"Reload Current Effect"} onClick={handleReloadCurrentEffect} />
-                        {/*<Button label={"Refresh Devices"} onClick={refreshDevices} />*/}
-                        <Button label={"Reboot Server"} onClick={rebootServer} />
-                        {/*<Button label={"Quit"} onClick={handleQuit} className="quit-button" />*/}
-                    </div>
-                    <div className="ip-address">
-                        <p>Device IP: {ipAddress}</p>
-                        <p>Version: {version}</p>
-                    </div>
-                    <div className="device-selectors">
-                        {/* Input Device Selector
-                        <div>
-                            <label>Input Device: </label>
-                            <select className="custom-select" onChange={handleInputDeviceChange} value={selectedInputDevice}>
-                                {inputAudioDevices.length === 0 && <option value="">No Devices Found</option>}
-                                {inputAudioDevices.map(device => (
-                                    <option key={device} value={device}>{device}</option>
-                                ))}
-                            </select>
-                        </div>
-                        */}
-                        {/* Output Device Selector
-                        <div>
-                            <label>Output Device: </label>
-                            <select className="custom-select" onChange={handleOutputDeviceChange} value={selectedOutputDevice}>
-                                {outputAudioDevices.length === 0 && <option value="">No Devices Found</option>}
-                                {outputAudioDevices.map(device => (
-                                    <option key={device} value={device}>{device}</option>
-                                ))}
-                            </select>
-                        </div>
-                        */}
-                    </div>
-
-                    <div className="button-column">
-                    </div>
-
-                    {errorMessage && <div className="error-message">{errorMessage}</div>}
+                <div className="button-column">
+                    {renderAppUpdateButton()}
+                    {renderSyncButton()}
+                    <Button label={"Reload All Effects"} onClick={reloadEffectList} />
+                    <Button label={"Reload Current Effect"} onClick={handleReloadCurrentEffect} />
+                    {/*<Button label={"Refresh Devices"} onClick={refreshDevices} />*/}
+                    <Button label={"Reboot Server"} onClick={rebootServer} />
+                    {/*<Button label={"Quit"} onClick={handleQuit} className="quit-button" />*/}
                 </div>
-            )}
+                <div className="ip-address">
+                    <p>Device IP: {ipAddress}</p>
+                    <p>Version: {version}</p>
+                </div>
+                <div className="device-selectors">
+                    {/* Input Device Selector
+                    <div>
+                        <label>Input Device: </label>
+                        <select className="custom-select" onChange={handleInputDeviceChange} value={selectedInputDevice}>
+                            {inputAudioDevices.length === 0 && <option value="">No Devices Found</option>}
+                            {inputAudioDevices.map(device => (
+                                <option key={device} value={device}>{device}</option>
+                            ))}
+                        </select>
+                    </div>
+                    */}
+                    {/* Output Device Selector
+                    <div>
+                        <label>Output Device: </label>
+                        <select className="custom-select" onChange={handleOutputDeviceChange} value={selectedOutputDevice}>
+                            {outputAudioDevices.length === 0 && <option value="">No Devices Found</option>}
+                            {outputAudioDevices.map(device => (
+                                <option key={device} value={device}>{device}</option>
+                            ))}
+                        </select>
+                    </div>
+                    */}
+                </div>
+
+                <div className="button-column">
+                </div>
+
+                {errorMessage && <div className="error-message">{errorMessage}</div>}
+            </div>
         </div>
     );
 }
