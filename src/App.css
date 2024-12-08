@@ -967,11 +967,11 @@ button:active {
     background-color: white;
     padding: 20px;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-    z-index: 4000; /* Ensure it's on top of other elements */
+    z-index: 4000 !important;
     border-radius: 8px;
     width: 80%;
     max-width: 400px;
-    pointer-events: auto !important; /* Force pointer events */
+    pointer-events: auto !important;
 }
 
 .wifi-settings-overlay {
