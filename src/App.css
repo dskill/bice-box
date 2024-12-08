@@ -479,7 +479,7 @@ button:active {
   max-height: 150px;
 }
 
-.supercollider-boot-management {
+.effect-management {
   position: fixed;
   top: 5px;
   right: 5px;
@@ -490,13 +490,13 @@ button:active {
   user-select: none;
   min-width: 150px;
   width: auto;
-  height: calc(100vh - 10px);  /* Subtract padding */
-  pointer-events: none; /* Make the container transparent to clicks by default */
+  height: calc(100vh - 10px);
+  pointer-events: none;
 }
 
 /* Only enable pointer events for the toggle button and content when needed */
-.supercollider-boot-management .toggle-button,
-.supercollider-boot-management .management-content:not(.collapsed) {
+.effect-management .toggle-button,
+.effect-management .effect-management__content:not(.effect-management__content--collapsed) {
   pointer-events: auto;
 }
 
@@ -516,7 +516,7 @@ button:active {
 }
 
 /* Specific styles for the tools toggle button */
-.supercollider-boot-management .toggle-button {
+.effect-management .toggle-button {
   text-align: right;
   width: 20px;
   justify-content: flex-end;
@@ -531,7 +531,7 @@ button:active {
   display: flex;
 }
 
-.management-content {
+.effect-management__content {
   background-color: rgba(0, 0, 0, 0.3);
   color: rgb(198, 202, 224);
   padding: 0px 30px;
@@ -547,12 +547,12 @@ button:active {
   height: calc(100% - 40px);
 }
 
-.management-content button {
+.effect-management__content button {
   color: rgb(198, 202, 224);
   transition: all 0.3s ease;
 }
 
-.management-content.collapsed {
+.effect-management__content--collapsed {
   max-height: 0;
   opacity: 0;
   padding: 0;
@@ -563,7 +563,7 @@ button:active {
 }
 
 /* Style for the custom select dropdowns within the management content */
-.management-content .custom-select {
+.effect-management__content .custom-select {
   background-color: rgba(0, 0, 0, 0.5);
   color: rgb(198, 202, 224);
   border: 1px solid rgba(198, 202, 224, 0.3);
@@ -571,13 +571,13 @@ button:active {
 }
 
 /* Style for labels within the management content */
-.management-content label {
+.effect-management__content label {
   color: rgb(198, 202, 224);
   font-size: 20px;
 }
 
 /* Style for buttons within the management content */
-.management-content button {
+.effect-management__content button {
   color: rgb(198, 202, 224);
   font-size: 20px;
 }
@@ -646,7 +646,7 @@ button:active {
   pointer-events: auto;
 }
 
-.ip-address {
+.effect-management__info {
   text-align: right;
   margin-top: auto;
   padding: 20px 5px;
@@ -871,4 +871,13 @@ button:active {
 .error-button {
   background-color: #f44336;
   color: white;
+}
+
+.effect-management__buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  align-items: flex-end;
+  width: 100%;
+  padding-right: 5px;
 }

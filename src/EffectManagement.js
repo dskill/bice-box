@@ -442,29 +442,27 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
     }, [effectsRepoStatus.hasUpdates, appUpdateStatus.hasUpdate]);
 
     return (
-        <div className="supercollider-boot-management">
+        <div className="effect-management">
             <ToggleButton 
                 isOn={isExpanded}
                 setIsOn={setIsExpanded}
                 onText="Hide Tools"
                 offText="Tools"
                 hasUpdates={hasUpdates}
-                className="EffectManagement"
+                className="effect-management__toggle"
             />
 
-            <div className={`management-content ${!isExpanded ? 'collapsed' : ''}`}>
+            <div className={`effect-management__content ${!isExpanded ? 'effect-management__content--collapsed' : ''}`}>
                 <p>──────</p>
 
-                <div className="button-column">
+                <div className="effect-management__buttons">
                     {renderAppUpdateButton()}
                     {renderSyncButton()}
                     <Button label={"Reload All Effects"} onClick={reloadEffectList} />
                     <Button label={"Reload Current Effect"} onClick={handleReloadCurrentEffect} />
-                    {/*<Button label={"Refresh Devices"} onClick={refreshDevices} />*/}
                     <Button label={"Reboot Server"} onClick={rebootServer} />
-                    {/*<Button label={"Quit"} onClick={handleQuit} className="quit-button" />*/}
                 </div>
-                <div className="ip-address">
+                <div className="effect-management__info">
                     <p>Device IP: {ipAddress}</p>
                     <p>Version: {version}</p>
                 </div>
@@ -491,9 +489,6 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
                         </select>
                     </div>
                     */}
-                </div>
-
-                <div className="button-column">
                 </div>
 
                 {errorMessage && <div className="error-message">{errorMessage}</div>}
