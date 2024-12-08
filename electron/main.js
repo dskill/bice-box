@@ -572,27 +572,50 @@ ipcMain.on('get-version', (event) => {
 });
 
 async function checkForAppUpdate() {
+  let latestVersion;
   try {
+    // First try GitHub API
     const response = await axios.get(`https://api.github.com/repos/dskill/bice-box/releases/latest`);
-    const latestVersion = response.data.tag_name.replace('v', '');
+    latestVersion = response.data.tag_name.replace('v', '');
     const currentVersion = packageJson.version;
     
     console.log(`Checking app version: current=${currentVersion}, latest=${latestVersion}`);
     updateAvailable = compareVersions(currentVersion, latestVersion) === 'smaller';
-    
-    if (mainWindow && mainWindow.webContents) {
-      mainWindow.webContents.send('app-update-status', { 
-        hasUpdate: updateAvailable,
-        currentVersion,
-        latestVersion 
-      });
-    }
-    
-    return updateAvailable;
   } catch (error) {
-    console.error('Error checking for app update:', error);
-    return false;
+    console.log('GitHub API failed or rate limited, trying alternative method...');
+    try {
+      // Fallback to getting redirect URL of latest release
+      const response = await axios.get('https://github.com/dskill/bice-box/releases/latest', {
+        maxRedirects: 0,
+        validateStatus: status => status >= 200 && status < 400
+      });
+
+      // Extract version from the redirect URL
+      const redirectUrl = response.request.res.responseUrl || response.headers.location;
+      latestVersion = redirectUrl.split('/').pop().replace('v', '');
+      const currentVersion = packageJson.version;
+
+      if (!latestVersion) {
+        throw new Error('Could not extract version from redirect URL');
+      }
+
+      console.log(`Checking app version (fallback method): current=${currentVersion}, latest=${latestVersion}`);
+      updateAvailable = compareVersions(currentVersion, latestVersion) === 'smaller';
+    } catch (fallbackError) {
+      console.error('Error checking for app update (both methods failed):', fallbackError);
+      return false;
+    }
   }
+
+  if (mainWindow && mainWindow.webContents) {
+    mainWindow.webContents.send('app-update-status', { 
+      hasUpdate: updateAvailable,
+      currentVersion: packageJson.version,
+      latestVersion 
+    });
+  }
+  
+  return updateAvailable;
 }
 
 function compareVersions(current, latest) {

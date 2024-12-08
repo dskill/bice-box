@@ -1,6 +1,7 @@
 //high pri
 - WIFI login from device
 - make cool effects and test as much as possible
+- bigger easier to press buttons
 
 //lower pri
 - DOCUMENTATION of 3 repos and how they all work together

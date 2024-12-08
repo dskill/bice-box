@@ -75,6 +75,7 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
             const handleAppUpdateStatus = (status) =>
             {
                 setAppUpdateStatus(status);
+                setIsUpdatingApp(false);
             };
 
             electron.ipcRenderer.on('app-update-status', handleAppUpdateStatus);
@@ -315,6 +316,15 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
         }
     };
 
+    const handleCheckUpdate = () => {
+        setIsUpdatingApp(true);
+        electron.ipcRenderer.send('check-app-update');
+        
+        setTimeout(() => {
+            setIsUpdatingApp(false);
+        }, 5000);
+    };
+
     const renderSyncButton = () =>
     {
         if (isPulling)
@@ -394,7 +404,7 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
         return (
             <Button
                 label={<><FaCheck /> App Up to Date</>}
-                onClick={() => electron.ipcRenderer.send('check-app-update')}
+                onClick={handleCheckUpdate}
                 className="up-to-date"
             />
         );
