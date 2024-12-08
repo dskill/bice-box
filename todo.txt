@@ -10,4 +10,3 @@
 
 BUGS
 fix electron reloader
-fix app reload button not receiving messages and updating
