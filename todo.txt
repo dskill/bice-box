@@ -1,12 +1,12 @@
-// Key Prioritized Tasks TODO:
- ** Fresh SD Card build with no credentials
- ** WIFI login from device
+//high pri
+- WIFI login from device
+- make cool effects and test as much as possible
 
-DOCUMENTATION of 3 repos and how they all work together
-capture cad drawing
-
-make cool effects and test as much as possible
-curated FX
+//lower pri
+- DOCUMENTATION of 3 repos and how they all work together
+- Document how to image SD cards
+- capture cad drawing
 
 BUGS
 fix electron reloader
+fix app reload button not receiving messages and updating
