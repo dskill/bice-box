@@ -687,8 +687,8 @@ button:active {
 
 .effect-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
-  gap: 25px;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 15px;
   padding: 20px;
   max-width: 1200px;
   width: 90%;
@@ -696,70 +696,46 @@ button:active {
 
 .effect-tile-wrapper {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
 }
 
 .effect-tile {
-  width: 80px;
+  width: 120px;
   height: 80px;
   border: 2px solid rgba(255, 255, 255, 0.3);
-  border-radius: 50%;
-  padding: 15px;
+  border-radius: 8px;
   cursor: pointer;
   transition: all 0.3s ease;
   position: relative;
-  overflow: hidden;
   background: rgba(40, 40, 40, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
 }
 
-/* Waveform fill in bottom half */
+/* Remove the ::before pseudo-element since we don't need the waveform effect anymore */
 .effect-tile::before {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 100%;
-  background: linear-gradient(180deg,
-    rgba(255, 255, 255, 0.01) 0%,
-    rgba(255, 255, 255, 0.15) 100%
-  );
-  clip-path: polygon(
-    0% 50%,
-    100% 50%,
-    100% 100%,
-    0% 100%
-  );
-  transition: all 1.3s ease;
+  display: none;
 }
 
-/* Active state - make the waveform more prominent */
-.effect-tile.active::before {
-  background: linear-gradient(180deg,
-    rgba(255, 255, 255, 0.1) 0%,
-    rgba(255, 255, 255, 0.5) 50%,
-    rgba(255, 255, 255, 0.3) 100%
-  );
-  clip-path: polygon(
-    0% 50%,
-    100% 50%,
-    100% 100%,
-    0% 100%
-  );
+.effect-tile.active {
+  border-color: rgba(255, 255, 255, 1);
+  background: rgba(60, 60, 60, 1);
 }
 
 .effect-name {
   color: rgba(255, 255, 255, 0.7);
   font-family: 'Aldrich', 'Inconsolata', monospace;
-  font-size: 13px;
+  font-size: 14px;
   text-align: center;
-  white-space: nowrap;
   transition: color 0.3s ease;
+  line-height: 1.2;
+  word-wrap: break-word;
 }
 
-.effect-tile-wrapper .effect-tile.active + .effect-name {
+.effect-tile-wrapper .effect-tile.active .effect-name {
   color: rgba(255, 255, 255, 1);
   text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
 }

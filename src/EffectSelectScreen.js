@@ -16,12 +16,9 @@ function EffectSelectScreen({ synths, onSelectEffect, currentSynth }) {
             <button
               className={`effect-tile ${currentSynth?.name === synth.name ? 'active' : ''}`}
               onClick={() => onSelectEffect(synth.name)}
-              style={currentSynth?.name === synth.name ? {
-                borderColor: 'rgba(255, 255, 255, 1)',
-                '--active-color': colors['brightBlue']
-              } : {}}
-            />
-            <div className="effect-name">{prettifySynthName(synth.name)}</div>
+            >
+              <div className="effect-name">{prettifySynthName(synth.name)}</div>
+            </button>
           </div>
         ))}
       </div>
