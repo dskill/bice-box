@@ -462,36 +462,36 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
                     <Button label={"Reload Current Effect"} onClick={handleReloadCurrentEffect} />
                     <Button label={"Reboot Server"} onClick={rebootServer} />
                 </div>
+                {errorMessage && <div className="effect-management__error">{errorMessage}</div>}
                 <div className="effect-management__info">
                     <p>Device IP: {ipAddress}</p>
                     <p>Version: {version}</p>
                 </div>
-                <div className="device-selectors">
-                    {/* Input Device Selector
+                
+                {/* Device selectors temporarily disabled
+                <div className="effect-management__device-selectors">
                     <div>
                         <label>Input Device: </label>
-                        <select className="custom-select" onChange={handleInputDeviceChange} value={selectedInputDevice}>
+                        <select className="effect-management__select" onChange={handleInputDeviceChange} value={selectedInputDevice}>
                             {inputAudioDevices.length === 0 && <option value="">No Devices Found</option>}
                             {inputAudioDevices.map(device => (
                                 <option key={device} value={device}>{device}</option>
                             ))}
                         </select>
                     </div>
-                    */}
-                    {/* Output Device Selector
                     <div>
                         <label>Output Device: </label>
-                        <select className="custom-select" onChange={handleOutputDeviceChange} value={selectedOutputDevice}>
+                        <select className="effect-management__select" onChange={handleOutputDeviceChange} value={selectedOutputDevice}>
                             {outputAudioDevices.length === 0 && <option value="">No Devices Found</option>}
                             {outputAudioDevices.map(device => (
                                 <option key={device} value={device}>{device}</option>
                             ))}
                         </select>
                     </div>
-                    */}
                 </div>
+                */}
+              
 
-                {errorMessage && <div className="error-message">{errorMessage}</div>}
             </div>
         </div>
     );

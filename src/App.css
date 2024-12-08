@@ -881,3 +881,49 @@ button:active {
   width: 100%;
   padding-right: 5px;
 }
+
+.effect-management__device-selectors {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+  align-items: flex-end;
+  padding-right: 5px;
+}
+
+.effect-management__device-selectors > div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.effect-management__error {
+  color: #ff6b6b;
+  margin-top: 10px;
+}
+
+.effect-management__select {
+  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+  font-size: 16px;
+  color: rgb(127, 127, 127);
+  width: 100px;
+  background-color: #333;
+  border: 1px solid #555;
+  border-radius: 2px;
+  padding: 5px 10px;
+  outline: none;
+  -moz-appearance: none;
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+}
+
+.effect-management__select::-ms-expand {
+  display: none;
+}
+
+.effect-management__select:focus {
+  border-color: #E3CECE;
+  box-shadow: 0 0 5px rgba(227, 206, 206, 0.5);
+}
