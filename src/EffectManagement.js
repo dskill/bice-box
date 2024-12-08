@@ -348,7 +348,7 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
         {
             return (
                 <Button
-                    label={<><FaExclamationTriangle /> Check Failed - Retry</>}
+                    label={<><FaExclamationTriangle /> Check Failed - Please Retry</>}
                     onClick={handleCheckEffectsRepo}
                     className="error-button"
                 />
@@ -391,8 +391,8 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
         {
             return (
                 <Button
-                    label={<><FaDownload /> Update App to {appUpdateStatus.latestVersion}</>}
-                    onClick={handleUpdateApp}
+                    //onClick={handleUpdateApp}
+                    label={<><FaDownload /> Reboot for Update</>}
                     className="update-available"
                 />
             );
