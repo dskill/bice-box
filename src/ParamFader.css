@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Aldrich&family=Inconsolata:wght@200..900&display=swap');
+
 .param-fader {
   position: relative;
   width: 120px; /* Increased to three times the original width */
@@ -45,7 +47,7 @@
 }
 
 .fader-label {
-  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+  font-family: 'Aldrich', 'Inconsolata', monospace;
   font-size: 14px;
   color: rgba(255, 255, 255, 0.7);
   text-align: center;

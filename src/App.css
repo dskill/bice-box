@@ -10,30 +10,30 @@
 }
 
 @import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
-  @import url('https://fonts.googleapis.com/css2?family=Carter+One&family=Press+Start+2P&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Carter+One&family=Press+Start+2P&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
 
-  html {
-    height: 100%;
-    margin: 0;
-    padding: 0;
-    background: linear-gradient(180deg, rgb(114, 124, 133) 0%, rgb(46, 50, 55) 77.33%, rgb(43, 47, 52) 100%);
-    font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
-  }
-  
+html {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  background: linear-gradient(180deg, rgb(114, 124, 133) 0%, rgb(46, 50, 55) 77.33%, rgb(43, 47, 52) 100%);
+  font-family: 'Aldrich', 'Inconsolata', monospace;
+}
 
-  body {
-    min-height: 100%; /* Ensure body fills the entire height of html */
-    margin: 0;
-    padding: 0;
-    font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
-    color: #333;
-    text-align: center;
-    user-select: none;
-    -webkit-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-    overflow: hidden;
-  }
+body { 
+  min-height: 100%;
+  margin: 0;
+  padding: 0;
+  font-family: 'Aldrich', 'Inconsolata', monospace;
+  color: #333;
+  text-align: center;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  overflow: hidden;
+}
 
 .App {
   width: 100%;
@@ -46,13 +46,13 @@
   padding: 0;
   scrollbar-width: none;
   -ms-overflow-style: none;
-  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+  font-family: 'Aldrich', 'Inconsolata', monospace;
 }
 
 .App-header {
   align-items: center;
   color: rgb(198, 202, 224);
-  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+  font-family: 'Aldrich', 'Inconsolata', monospace;
   font-size: 25px;
   margin: 0px;
   padding: 0px;
@@ -415,7 +415,7 @@ main {
 
 /* New button styles */
 button {
-  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+  font-family: 'Aldrich', 'Inconsolata', monospace;
   font-size: 27px;
   color: rgb(198, 202, 224);
   background: none;
@@ -752,7 +752,7 @@ button:active {
 
 .effect-name {
   color: rgba(255, 255, 255, 0.7);
-  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+  font-family: 'Aldrich', 'Inconsolata', monospace;
   font-size: 13px;
   text-align: center;
   white-space: nowrap;
@@ -920,7 +920,7 @@ button:active {
 .toggle-button {
     display: inline-block;
     margin: 5px;
-    font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+    font-family: 'Aldrich', 'Inconsolata', monospace;
     font-size: 21px;
     background: rgba(0, 0, 0, 0.0);
     border: none;
