@@ -694,19 +694,58 @@ wifi.init({
 
 ipcMain.on('scan-wifi', (event) => {
   console.log('Scanning WiFi networks...');
-    wifi.scan((error, networks) => {
-        if (error) {
-            console.error(error);
-        } else {
-          console.log('Scanning WiFi networks:', networks);
-            networks.push({
-                ssid: 'Test Network',
-                signal_level: -50,
-                security: 'WPA2'
-            });
-            event.sender.send('wifi-networks', networks);
-        }
+  wifi.scan((error, networks) => {
+    if (error) {
+      console.error(error);
+    } else {
+      console.log('Raw WiFi networks:', networks);
+
+      // for testing
+      networks.push({
+        ssid: 'Test Network 1',
+        signal_level: -50,
+        security: 'WPA2'
     });
+
+    networks.push({
+      ssid: 'Test Network 2',
+      signal_level: -90,
+      security: 'WPA2'
+    });
+
+    networks.push({
+      ssid: 'Test Network 3',
+      signal_level: -30,
+      security: 'WPA2'
+    });
+      
+    networks.push({
+      ssid: 'Test Network 1',
+      signal_level: -30,
+      security: 'WPA2'
+    });
+      
+      // Filter and deduplicate networks
+      const filteredNetworks = networks
+        // Remove duplicates by keeping the strongest signal for each SSID
+        .reduce((unique, network) => {
+          const existingNetwork = unique.find(n => n.ssid === network.ssid);
+          if (!existingNetwork || existingNetwork.signal_level < network.signal_level) {
+            // Remove existing weaker network if present
+            const filtered = unique.filter(n => n.ssid !== network.ssid);
+            return [...filtered, network];
+          }
+          return unique;
+        }, [])
+        // Filter out networks with weak signals (e.g., below -80 dBm)
+        .filter(network => network.signal_level > -80)
+        // Sort by signal strength (strongest first)
+        .sort((a, b) => b.signal_level - a.signal_level);
+
+      console.log('Filtered WiFi networks:', filteredNetworks);
+      event.sender.send('wifi-networks', filteredNetworks);
+    }
+  });
 });
 
 ipcMain.on('connect-wifi', (event, { ssid, password }) => {
