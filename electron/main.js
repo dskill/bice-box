@@ -757,6 +757,17 @@ wifi.init({
 ipcMain.on('scan-wifi', (event) =>
 {
   console.log('Scanning WiFi networks...');
+
+  // First check current connection status
+  wifi.getCurrentConnections((connectionError, currentConnections) => {
+    const currentConnection = currentConnections?.[0];
+    event.sender.send('wifi-connection-status', {
+      success: !!currentConnection,
+      ssid: currentConnection?.ssid || null
+    });
+  });
+
+
   wifi.scan((error, networks) =>
   {
     if (error)

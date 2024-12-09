@@ -18,37 +18,50 @@ function WifiSettings({ onClose }) {
         console.log('WifiSettings mounted');
         if (window.electron && window.electron.ipcRenderer) {
             window.electron.ipcRenderer.send('scan-wifi');
-            window.electron.ipcRenderer.on('wifi-networks', (networks) => {
+            
+            // Store listener references
+            const networksListener = (networks) => {
                 console.log('Received networks:', networks);
                 setNetworks(networks);
-            });
-
-            window.electron.ipcRenderer.send('check-wifi-status');
-            window.electron.ipcRenderer.on('wifi-status', (status) => {
+            };
+            
+            const statusListener = (status) => {
                 setIsConnected(status.connected);
                 setCurrentNetwork(status.ssid);
-            });
-
-            window.electron.ipcRenderer.on('wifi-connection-status', (status) => {
-                setIsConnecting(false);
-                if (status.success) {
-                    setIsConnected(true);
-                    setCurrentNetwork(status.ssid);
-                    setSelectedNetwork(null);
-                    setPassword('');
-                    setShowKeyboard(false);
+            };
+            
+            const connectionStatusListener = (status) => {
+                console.log('Connection status:', status);
+                if (status.status === 'waiting') {
+                    setIsConnecting(true);
                 } else {
-                    setConnectionError(status.error);
+                    setIsConnecting(false);
+                    if (status.success) {
+                        setIsConnected(true);
+                        setCurrentNetwork(status.ssid);
+                        setSelectedNetwork(null);
+                        setPassword('');
+                        setShowKeyboard(false);
+                    } else {
+                        setConnectionError(status.error);
+                    }
                 }
-            });
-        }
+            };
 
-        return () => {
-            if (window.electron && window.electron.ipcRenderer) {
-                window.electron.ipcRenderer.removeAllListeners('wifi-status');
-                window.electron.ipcRenderer.removeAllListeners('wifi-connection-status');
-            }
-        };
+            window.electron.ipcRenderer.on('wifi-networks', networksListener);
+            window.electron.ipcRenderer.on('wifi-status', statusListener);
+            window.electron.ipcRenderer.on('wifi-connection-status', connectionStatusListener);
+
+            window.electron.ipcRenderer.send('check-wifi-status');
+
+            return () => {
+                if (window.electron && window.electron.ipcRenderer) {
+                    window.electron.ipcRenderer.removeListener('wifi-networks', networksListener);
+                    window.electron.ipcRenderer.removeListener('wifi-status', statusListener);
+                    window.electron.ipcRenderer.removeListener('wifi-connection-status', connectionStatusListener);
+                }
+            };
+        }
     }, []);
 
     const handleKeyboardInput = (input) => {
