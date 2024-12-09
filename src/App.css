@@ -954,7 +954,7 @@ button:active {
     z-index: 4000 !important;
     border-radius: 8px;
     width: 80%;
-    max-width: 500px;
+    max-width: 700px;
     pointer-events: auto !important;
 }
 
@@ -989,7 +989,7 @@ button:active {
 
 .wifi-status {
   padding: 10px;
-  margin-bottom: 15px;
+  margin-bottom: 0px;
   border-radius: 4px;
 }
 
@@ -1086,9 +1086,9 @@ button:active {
 }
 
 .wifi-settings-button-container {
-    margin-top: 5px;
+    gap: 15px;
+    margin-top: 20px;
     display: flex;
-    gap: 5px;
     justify-content: flex-end;
 }
 
