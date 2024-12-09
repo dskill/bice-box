@@ -17,7 +17,7 @@ html {
   height: 100%;
   margin: 0;
   padding: 0;
-  background: linear-gradient(180deg, rgb(114, 124, 133) 0%, rgb(46, 50, 55) 77.33%, rgb(43, 47, 52) 100%);
+  background: #000;
   font-family: 'Aldrich', 'Inconsolata', monospace;
 }
 
