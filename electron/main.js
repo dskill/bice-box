@@ -699,7 +699,7 @@ ipcMain.on('scan-wifi', (event) => {
       console.error(error);
     } else {
       console.log('Raw WiFi networks:', networks);
-/*
+
       // for testing
       networks.push({
         ssid: 'Test Network 1',
@@ -724,7 +724,7 @@ ipcMain.on('scan-wifi', (event) => {
       signal_level: -30,
       security: 'WPA2'
     });
-    */
+    
       
       // Filter and deduplicate networks
       const filteredNetworks = networks

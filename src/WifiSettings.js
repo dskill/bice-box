@@ -49,18 +49,25 @@ function WifiSettings({ onClose }) {
         }
     };
 
+    const handleCancel = () => {
+        setSelectedNetwork(null);
+        setPassword('');
+        setShowKeyboard(false);
+    };
+
     return (
         <>
             <div className="wifi-settings-overlay" onClick={onClose}></div>
             <div className="wifi-settings-modal">
-                <ul>
-                    {networks.map(network => (
-                        <li key={network.ssid} onClick={() => handleNetworkSelect(network)}>
-                            {network.ssid}
-                        </li>
-                    ))}
-                </ul>
-                {selectedNetwork && (
+                {!selectedNetwork ? (
+                    <ul>
+                        {networks.map(network => (
+                            <li key={network.ssid} onClick={() => handleNetworkSelect(network)}>
+                                {network.ssid}
+                            </li>
+                        ))}
+                    </ul>
+                ) : (
                     <div>
                         <h3>Connect to {selectedNetwork.ssid}</h3>
                         <input
@@ -70,7 +77,10 @@ function WifiSettings({ onClose }) {
                             onFocus={() => setShowKeyboard(true)}
                             placeholder="Enter password"
                         />
-                        <button onClick={handleConnect}>Connect</button>
+                        <div className="button-container">
+                            <button onClick={handleConnect}>Connect</button>
+                            <button onClick={handleCancel}>Cancel</button>
+                        </div>
                         {showKeyboard && (
                             <div className="keyboard-container">
                                 <Keyboard
@@ -93,7 +103,7 @@ function WifiSettings({ onClose }) {
                                             "Q W E R T Y U I O P",
                                             "A S D F G H J K L",
                                             "{shift} Z X C V B N M {bksp}",
-                                            ".com @ {space}"
+                                            "{space}"
                                         ]
                                     }}
                                     display={{
