@@ -499,12 +499,12 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
                 <p></p>
 
                 <div className="effect-management__buttons">
+                    {renderWifiButton()}
                     {renderAppUpdateButton()}
                     {renderSyncButton()}
                     <Button label={"Reload All Effects"} onClick={reloadEffectList} />
                     <Button label={"Reload Current Effect"} onClick={handleReloadCurrentEffect} />
                     <Button label={"Reboot Server"} onClick={rebootServer} />
-                    {renderWifiButton()}
                 </div>
                 {errorMessage && <div className="effect-management__error">{errorMessage}</div>}
                 <div className="effect-management__info">
