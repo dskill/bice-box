@@ -749,12 +749,47 @@ ipcMain.on('scan-wifi', (event) => {
   });
 });
 
+
 ipcMain.on('connect-wifi', (event, { ssid, password }) => {
-    wifi.connect({ ssid, password }, (error) => {
+  console.log(`Attempting to connect to WiFi network: ${ssid}`);
+  const WIFI_CONNECT_TIMEOUT = 20000;
+  const connectOptions = {
+      ssid,
+      password,
+      timeout: WIFI_CONNECT_TIMEOUT
+  };
+
+  wifi.connect(connectOptions, (error) => {
+      if (error) {
+          console.error('WiFi connection error:', error);
+          event.sender.send('wifi-connection-status', {
+              success: false,
+              error: error.message || 'Failed to connect to WiFi'
+          });
+      } else {
+          console.log(`Successfully connected to ${ssid}`);
+          event.sender.send('wifi-connection-status', {
+              success: true,
+              ssid: ssid
+          });
+      }
+  });
+});
+
+ipcMain.on('check-wifi-status', (event) => {
+    wifi.getCurrentConnections((error, currentConnections) => {
         if (error) {
-            console.error(error);
+            console.error('Error checking WiFi status:', error);
+            event.sender.send('wifi-status', {
+                connected: false,
+                error: error.message
+            });
         } else {
-            console.log('Connected to WiFi');
+            const currentConnection = currentConnections[0];
+            event.sender.send('wifi-status', {
+                connected: !!currentConnection,
+                ssid: currentConnection ? currentConnection.ssid : null
+            });
         }
     });
 });

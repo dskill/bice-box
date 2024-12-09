@@ -11,6 +11,8 @@ function WifiSettings({ onClose }) {
     const [layoutName, setLayoutName] = useState("default");
     const [isConnected, setIsConnected] = useState(false);
     const [currentNetwork, setCurrentNetwork] = useState(null);
+    const [isConnecting, setIsConnecting] = useState(false);
+    const [connectionError, setConnectionError] = useState('');
 
     useEffect(() => {
         console.log('WifiSettings mounted');
@@ -26,11 +28,25 @@ function WifiSettings({ onClose }) {
                 setIsConnected(status.connected);
                 setCurrentNetwork(status.ssid);
             });
+
+            window.electron.ipcRenderer.on('wifi-connection-status', (status) => {
+                setIsConnecting(false);
+                if (status.success) {
+                    setIsConnected(true);
+                    setCurrentNetwork(status.ssid);
+                    setSelectedNetwork(null);
+                    setPassword('');
+                    setShowKeyboard(false);
+                } else {
+                    setConnectionError(status.error);
+                }
+            });
         }
 
         return () => {
             if (window.electron && window.electron.ipcRenderer) {
                 window.electron.ipcRenderer.removeAllListeners('wifi-status');
+                window.electron.ipcRenderer.removeAllListeners('wifi-connection-status');
             }
         };
     }, []);
@@ -57,6 +73,7 @@ function WifiSettings({ onClose }) {
             password: password
         });
         if (selectedNetwork && password) {
+            setIsConnecting(true);
             window.electron.ipcRenderer.send('connect-wifi', { 
                 ssid: selectedNetwork.ssid, 
                 password 
@@ -98,6 +115,11 @@ function WifiSettings({ onClose }) {
                 ) : (
                     <div>
                         <h3>Connect to {selectedNetwork.ssid}</h3>
+                        {connectionError && (
+                            <div className="error-message">
+                                {connectionError}
+                            </div>
+                        )}
                         <input
                             type="text"
                             value={password}
@@ -106,7 +128,12 @@ function WifiSettings({ onClose }) {
                             placeholder="Enter password"
                         />
                         <div className="button-container">
-                            <button onClick={handleConnect}>Connect</button>
+                            <button 
+                                onClick={handleConnect}
+                                disabled={isConnecting}
+                            >
+                                {isConnecting ? 'Connecting...' : 'Connect'}
+                            </button>
                             <button onClick={handleCancel}>Cancel</button>
                         </div>
                         {showKeyboard && (
