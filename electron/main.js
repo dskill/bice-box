@@ -11,9 +11,9 @@ const OSCManager = require('./oscManager');
 const packageJson = require('../package.json');
 const appVersion = packageJson.version;
 const axios = require('axios');
-const { 
-  synths, 
-  getCurrentEffect, 
+const {
+  synths,
+  getCurrentEffect,
   setCurrentEffect,
   initializeSuperCollider,
   sendCodeToSclang,
@@ -28,7 +28,8 @@ let mainWindow;
 let oscManager;
 let updateAvailable = false;
 
-if (process.argv.includes('--version')) {
+if (process.argv.includes('--version'))
+{
   console.log(`v${packageJson.version}`);
   process.exit(0);
 }
@@ -91,15 +92,18 @@ console.log('Logging initialized');
 const isDev = process.env.NODE_ENV === 'development';
 
 // Enable live reload for Electron
-if (isDev) {
-    try {
-        require('electron-reloader')(module, {
-            debug: true,
-            watchRenderer: true
-        });
-    } catch (err) {
-        console.log('Error loading electron-reloader:', err);
-    }
+if (isDev)
+{
+  try
+  {
+    require('electron-reloader')(module, {
+      debug: true,
+      watchRenderer: true
+    });
+  } catch (err)
+  {
+    console.log('Error loading electron-reloader:', err);
+  }
 }
 
 function createWindow()
@@ -127,8 +131,9 @@ function createWindow()
   };
 
   console.log('Creating BrowserWindow...');
-  
-  try {
+
+  try
+  {
     mainWindow = new BrowserWindow(windowOptions);
     console.log('BrowserWindow created successfully');
 
@@ -138,27 +143,33 @@ function createWindow()
     mainWindow.loadURL(loadUrl);
     console.log('URL loaded');
 
-    mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
+    mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) =>
+    {
       console.error('Failed to load:', errorCode, errorDescription);
     });
 
-    mainWindow.webContents.on('did-finish-load', () => {
+    mainWindow.webContents.on('did-finish-load', () =>
+    {
       console.log('Content finished loading');
     });
 
-    mainWindow.webContents.on('dom-ready', () => {
+    mainWindow.webContents.on('dom-ready', () =>
+    {
       console.log('DOM is ready');
-      if (isLinux) {
+      if (isLinux)
+      {
         mainWindow.webContents.insertCSS('* { cursor: none !important; }');
       }
     });
 
-    if (isDev) {
+    if (isDev)
+    {
       console.log('Opening DevTools');
       mainWindow.webContents.openDevTools();
     }
 
-    mainWindow.once('ready-to-show', () => {
+    mainWindow.once('ready-to-show', () =>
+    {
       console.log('Window ready to show');
       mainWindow.show();
       console.log('Window shown');
@@ -179,33 +190,41 @@ function createWindow()
     checkForAppUpdate();
     setInterval(checkForAppUpdate, 1800000); // Check every 30 minutes
 
-  } catch (error) {
+  } catch (error)
+  {
     console.error('Error creating window:', error);
   }
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(() =>
+{
   console.log('App is ready');
   // Add check for electron.js file
   const electronJsPath = path.join(__dirname, '../electron/main.js');
-  if (!fs.existsSync(electronJsPath)) {
+  if (!fs.existsSync(electronJsPath))
+  {
     console.error(`ERROR: electron.js not found at ${electronJsPath}`);
     console.error('This may cause startup issues. Make sure the file is being copied correctly during build.');
-  } else {
+  } else
+  {
     console.log(`electron.js found at ${electronJsPath}`);
   }
-  
+
   createWindow();
   console.log('Window creation initiated');
-}).catch(error => {
+}).catch(error =>
+{
   console.error('Error in app.whenReady():', error);
 });
 
-app.on('window-all-closed', () => {
-  if (oscManager) {
+app.on('window-all-closed', () =>
+{
+  if (oscManager)
+  {
     oscManager.close();
   }
-  if (process.platform !== 'darwin') {
+  if (process.platform !== 'darwin')
+  {
     app.quit();
   }
 });
@@ -219,48 +238,57 @@ app.on('activate', () =>
 });
 
 // IPC listeners for renderer process communication
-ipcMain.on('send-to-supercollider', (event, code) => {
-    sendCodeToSclang(code);
+ipcMain.on('send-to-supercollider', (event, code) =>
+{
+  sendCodeToSclang(code);
 });
 
-ipcMain.on('stop-synth', (event, synthName) => {
-    sendCodeToSclang(`~${synthName}.free;`);
-    console.log(`Stopped ${synthName}`);
+ipcMain.on('stop-synth', (event, synthName) =>
+{
+  sendCodeToSclang(`~${synthName}.free;`);
+  console.log(`Stopped ${synthName}`);
 });
 
-ipcMain.on('reboot-server', (event) => {
-    console.log('Rebooting SuperCollider server...');
-    // Send killall command
-    sendCodeToSclang('Server.killAll;')
-        .then(() => {
-            setTimeout(() => {
-                const loadEffectsCallback = () => loadEffectsList(mainWindow, getEffectsPath);
-                initializeSuperCollider(mainWindow, getEffectsPath, loadEffectsCallback);
-            }, 1000); // Wait for 1 second before rebooting
-        })
-        .catch((error) => {
-            console.error('Error sending Server.killAll command:', error);
-            // Still attempt to reboot even if the kill command fails
-            setTimeout(() => {
-                const loadEffectsCallback = () => loadEffectsList(mainWindow, getEffectsPath);
-                initializeSuperCollider(mainWindow, getEffectsPath, loadEffectsCallback);
-            }, 1000);
-        });
+ipcMain.on('reboot-server', (event) =>
+{
+  console.log('Rebooting SuperCollider server...');
+  // Send killall command
+  sendCodeToSclang('Server.killAll;')
+    .then(() =>
+    {
+      setTimeout(() =>
+      {
+        const loadEffectsCallback = () => loadEffectsList(mainWindow, getEffectsPath);
+        initializeSuperCollider(mainWindow, getEffectsPath, loadEffectsCallback);
+      }, 1000); // Wait for 1 second before rebooting
+    })
+    .catch((error) =>
+    {
+      console.error('Error sending Server.killAll command:', error);
+      // Still attempt to reboot even if the kill command fails
+      setTimeout(() =>
+      {
+        const loadEffectsCallback = () => loadEffectsList(mainWindow, getEffectsPath);
+        initializeSuperCollider(mainWindow, getEffectsPath, loadEffectsCallback);
+      }, 1000);
+    });
 });
 
-app.on('will-quit', async () => {
-    console.log('Application shutting down...');
+app.on('will-quit', async () =>
+{
+  console.log('Application shutting down...');
 
-    // Kill SuperCollider servers
-    await killSuperCollider();
+  // Kill SuperCollider servers
+  await killSuperCollider();
 
-    // Close OSC server
-    if (oscManager) {
-        oscManager.close();
-        console.log('OSC server closed');
-    }
+  // Close OSC server
+  if (oscManager)
+  {
+    oscManager.close();
+    console.log('OSC server closed');
+  }
 
-    logStream.end();
+  logStream.end();
 });
 
 const debounce = (func, delay) =>
@@ -472,53 +500,59 @@ ipcMain.on('update-effect-params', (event, { effectName, params }) =>
 
 
 // Also fix the pull-effects-repo handler similarly:
-ipcMain.on('pull-effects-repo', async (event) => {
+ipcMain.on('pull-effects-repo', async (event) =>
+{
   const effectsPath = getEffectsPath();
-  
-  try {
+
+  try
+  {
     const { stdout: pullOutput } = await exec('git pull', { cwd: effectsPath });
     console.log('Git pull output:', pullOutput);
-    
+
     // After successful pull, reload effects and update status
     loadEffectsList();
-    
+
     // Check status again after pull
     const { stdout: statusOutput } = await exec('git status -uno', { cwd: effectsPath });
     const statusText = statusOutput ? statusOutput.toString() : '';
     const hasUpdates = statusText.includes('behind');
-    
+
     event.reply('effects-repo-status', { hasUpdates });
     event.reply('pull-effects-repo-success', pullOutput.toString());
-  } catch (error) {
+  } catch (error)
+  {
     console.error('Error pulling effects repo:', error);
     event.reply('pull-effects-repo-error', error.message || 'Unknown error pulling repo');
   }
 });
 
-ipcMain.on('check-effects-repo', async (event) => {
+ipcMain.on('check-effects-repo', async (event) =>
+{
   const effectsPath = getEffectsPath();
   console.log('Checking effects repo at:', effectsPath);
 
-  try {
+  try
+  {
     // Use the shell option to execute git commands through the system shell
-    const execOptions = { 
+    const execOptions = {
       cwd: effectsPath,
       shell: true  // This is the key change
     };
 
     // Fetch latest
     await execPromise('git fetch origin', execOptions);
-    
+
     // Compare local and remote commits
     const localHead = (await execPromise('git rev-parse HEAD', execOptions)).stdout.trim();
     const remoteHead = (await execPromise('git rev-parse origin/main', execOptions)).stdout.trim();
-    
+
     const hasUpdates = localHead !== remoteHead;
 
     console.log('Git status check complete:', { localHead, remoteHead, hasUpdates });
     event.reply('effects-repo-status', { hasUpdates });
 
-  } catch (error) {
+  } catch (error)
+  {
     console.error('Error checking effects repo:', error);
     event.reply('effects-repo-error', {
       error: error.message,
@@ -527,12 +561,17 @@ ipcMain.on('check-effects-repo', async (event) => {
   }
 });
 
-function execPromise(command, options) {
-  return new Promise((resolve, reject) => {
-    exec(command, options, (error, stdout, stderr) => {
-      if (error) {
+function execPromise(command, options)
+{
+  return new Promise((resolve, reject) =>
+  {
+    exec(command, options, (error, stdout, stderr) =>
+    {
+      if (error)
+      {
         reject(error);
-      } else {
+      } else
+      {
         resolve({ stdout, stderr });
       }
     });
@@ -567,24 +606,29 @@ ipcMain.handle('get-openai-key', () =>
   return openaiApiKey;
 });
 
-ipcMain.on('get-version', (event) => {
-    console.log("Sending version:", appVersion);
-    event.reply('version-reply', appVersion);
+ipcMain.on('get-version', (event) =>
+{
+  console.log("Sending version:", appVersion);
+  event.reply('version-reply', appVersion);
 });
 
-async function checkForAppUpdate() {
+async function checkForAppUpdate()
+{
   let latestVersion;
-  try {
+  try
+  {
     // First try GitHub API
     const response = await axios.get(`https://api.github.com/repos/dskill/bice-box/releases/latest`);
     latestVersion = response.data.tag_name.replace('v', '');
     const currentVersion = packageJson.version;
-    
+
     console.log(`Checking app version: current=${currentVersion}, latest=${latestVersion}`);
     updateAvailable = compareVersions(currentVersion, latestVersion) === 'smaller';
-  } catch (error) {
+  } catch (error)
+  {
     console.log('GitHub API failed or rate limited, trying alternative method...');
-    try {
+    try
+    {
       // Fallback to getting redirect URL of latest release
       const response = await axios.get('https://github.com/dskill/bice-box/releases/latest', {
         maxRedirects: 0,
@@ -596,35 +640,40 @@ async function checkForAppUpdate() {
       latestVersion = redirectUrl.split('/').pop().replace('v', '');
       const currentVersion = packageJson.version;
 
-      if (!latestVersion) {
+      if (!latestVersion)
+      {
         throw new Error('Could not extract version from redirect URL');
       }
 
       console.log(`Checking app version (fallback method): current=${currentVersion}, latest=${latestVersion}`);
       updateAvailable = compareVersions(currentVersion, latestVersion) === 'smaller';
-    } catch (fallbackError) {
+    } catch (fallbackError)
+    {
       console.error('Error checking for app update (both methods failed):', fallbackError);
       return false;
     }
   }
 
-  if (mainWindow && mainWindow.webContents) {
-    mainWindow.webContents.send('app-update-status', { 
+  if (mainWindow && mainWindow.webContents)
+  {
+    mainWindow.webContents.send('app-update-status', {
       hasUpdate: updateAvailable,
       currentVersion: packageJson.version,
-      latestVersion 
+      latestVersion
     });
   }
-  
+
   return updateAvailable;
 }
 
-function compareVersions(current, latest) {
+function compareVersions(current, latest)
+{
   if (current === latest) return 'equal';
   const currentParts = current.split('.').map(Number);
   const latestParts = latest.split('.').map(Number);
-  
-  for (let i = 0; i < 3; i++) {
+
+  for (let i = 0; i < 3; i++)
+  {
     if (currentParts[i] < latestParts[i]) return 'smaller';
     if (currentParts[i] > latestParts[i]) return 'greater';
   }
@@ -632,22 +681,27 @@ function compareVersions(current, latest) {
 }
 
 // Add these IPC handlers
-ipcMain.on('check-app-update', async (event) => {
+ipcMain.on('check-app-update', async (event) =>
+{
   await checkForAppUpdate();
 });
 
-ipcMain.on('update-app', async (event) => {
-  const command = process.platform === 'darwin' ? 
+ipcMain.on('update-app', async (event) =>
+{
+  const command = process.platform === 'darwin' ?
     'curl -L https://raw.githubusercontent.com/dskill/bice-box/main/scripts/install.sh | bash -s -- -r' :
     'curl -L https://raw.githubusercontent.com/dskill/bice-box/main/scripts/install.sh | bash -s -- -r';
-    
+
   console.log('Updating app with command:', command);
   // TODO: actually figure out if an error occurred and report it
-  exec(command, (error, stdout, stderr) => {
-    if (error) {
+  exec(command, (error, stdout, stderr) =>
+  {
+    if (error)
+    {
       console.error('Error updating app:', error);
       event.reply('app-update-error', error.message);
-    } else {
+    } else
+    {
       console.log('App update initiated:', stdout);
     }
   });
@@ -656,82 +710,97 @@ ipcMain.on('update-app', async (event) => {
 
 });
 
-ipcMain.on('quit-app', () => {
-    app.quit();
+ipcMain.on('quit-app', () =>
+{
+  app.quit();
 });
 
-ipcMain.on('reload-all-effects', (event) => {
-    console.log('Reloading all effects...');
-    try {
-        const loadedSynths = loadEffectsList(mainWindow, getEffectsPath);
-        const validSynths = loadedSynths.filter(synth => synth && synth.name);
-        event.reply('effects-data', validSynths);
-        console.log('Effects data sent to renderer process');
-    } catch (error) {
-        console.error('Error loading or sending effects data:', error);
-        event.reply('effects-error', error.message);
-    }
+ipcMain.on('reload-all-effects', (event) =>
+{
+  console.log('Reloading all effects...');
+  try
+  {
+    const loadedSynths = loadEffectsList(mainWindow, getEffectsPath);
+    const validSynths = loadedSynths.filter(synth => synth && synth.name);
+    event.reply('effects-data', validSynths);
+    console.log('Effects data sent to renderer process');
+  } catch (error)
+  {
+    console.error('Error loading or sending effects data:', error);
+    event.reply('effects-error', error.message);
+  }
 });
 
 // Add this IPC handler for loading p5 sketches
-ipcMain.handle('load-p5-sketch', async (event, sketchPath) => {
-    try {
-        return loadP5SketchSync(sketchPath, getEffectsPath);
-    } catch (error) {
-        console.error('Error loading p5 sketch:', error);
-        throw error;
-    }
+ipcMain.handle('load-p5-sketch', async (event, sketchPath) =>
+{
+  try
+  {
+    return loadP5SketchSync(sketchPath, getEffectsPath);
+  } catch (error)
+  {
+    console.error('Error loading p5 sketch:', error);
+    throw error;
+  }
 });
 
 // Add handler for loading SC files
-ipcMain.on('load-sc-file', (event, filePath) => {
-    loadScFile(filePath, getEffectsPath);
+ipcMain.on('load-sc-file', (event, filePath) =>
+{
+  loadScFile(filePath, getEffectsPath);
 });
 
 wifi.init({
-    iface: null // network interface, choose a random wifi interface if set to null
+  iface: null // network interface, choose a random wifi interface if set to null
 });
 
-ipcMain.on('scan-wifi', (event) => {
+ipcMain.on('scan-wifi', (event) =>
+{
   console.log('Scanning WiFi networks...');
-  wifi.scan((error, networks) => {
-    if (error) {
+  wifi.scan((error, networks) =>
+  {
+    if (error)
+    {
       console.error(error);
-    } else {
+    } else
+    {
       console.log('Raw WiFi networks:', networks);
 
+      /*
       // for testing
       networks.push({
         ssid: 'Test Network 1',
         signal_level: -50,
         security: 'WPA2'
-    });
+      });
 
-    networks.push({
-      ssid: 'Test Network 2',
-      signal_level: -90,
-      security: 'WPA2'
-    });
+      networks.push({
+        ssid: 'Test Network 2',
+        signal_level: -90,
+        security: 'WPA2'
+      });
 
-    networks.push({
-      ssid: 'Test Network 3',
-      signal_level: -30,
-      security: 'WPA2'
-    });
-      
-    networks.push({
-      ssid: 'Test Network 1',
-      signal_level: -30,
-      security: 'WPA2'
-    });
-    
-      
+      networks.push({
+        ssid: 'Test Network 3',
+        signal_level: -30,
+        security: 'WPA2'
+      });
+
+      networks.push({
+        ssid: 'Test Network 1',
+        signal_level: -30,
+        security: 'WPA2'
+      });
+      */
+
       // Filter and deduplicate networks
       const filteredNetworks = networks
         // Remove duplicates by keeping the strongest signal for each SSID
-        .reduce((unique, network) => {
+        .reduce((unique, network) =>
+        {
           const existingNetwork = unique.find(n => n.ssid === network.ssid);
-          if (!existingNetwork || existingNetwork.signal_level < network.signal_level) {
+          if (!existingNetwork || existingNetwork.signal_level < network.signal_level)
+          {
             // Remove existing weaker network if present
             const filtered = unique.filter(n => n.ssid !== network.ssid);
             return [...filtered, network];
@@ -750,46 +819,54 @@ ipcMain.on('scan-wifi', (event) => {
 });
 
 
-ipcMain.on('connect-wifi', (event, { ssid, password }) => {
+ipcMain.on('connect-wifi', (event, { ssid, password }) =>
+{
   console.log(`Attempting to connect to WiFi network: ${ssid}`);
   const WIFI_CONNECT_TIMEOUT = 20000;
   const connectOptions = {
-      ssid,
-      password,
-      timeout: WIFI_CONNECT_TIMEOUT
+    ssid,
+    password,
+    timeout: WIFI_CONNECT_TIMEOUT
   };
 
-  wifi.connect(connectOptions, (error) => {
-      if (error) {
-          console.error('WiFi connection error:', error);
-          event.sender.send('wifi-connection-status', {
-              success: false,
-              error: error.message || 'Failed to connect to WiFi'
-          });
-      } else {
-          console.log(`Successfully connected to ${ssid}`);
-          event.sender.send('wifi-connection-status', {
-              success: true,
-              ssid: ssid
-          });
-      }
+  wifi.connect(connectOptions, (error) =>
+  {
+    if (error)
+    {
+      console.error('WiFi connection error:', error);
+      event.sender.send('wifi-connection-status', {
+        success: false,
+        error: error.message || 'Failed to connect to WiFi'
+      });
+    } else
+    {
+      console.log(`Successfully connected to ${ssid}`);
+      event.sender.send('wifi-connection-status', {
+        success: true,
+        ssid: ssid
+      });
+    }
   });
 });
 
-ipcMain.on('check-wifi-status', (event) => {
-    wifi.getCurrentConnections((error, currentConnections) => {
-        if (error) {
-            console.error('Error checking WiFi status:', error);
-            event.sender.send('wifi-status', {
-                connected: false,
-                error: error.message
-            });
-        } else {
-            const currentConnection = currentConnections[0];
-            event.sender.send('wifi-status', {
-                connected: !!currentConnection,
-                ssid: currentConnection ? currentConnection.ssid : null
-            });
-        }
-    });
+ipcMain.on('check-wifi-status', (event) =>
+{
+  wifi.getCurrentConnections((error, currentConnections) =>
+  {
+    if (error)
+    {
+      console.error('Error checking WiFi status:', error);
+      event.sender.send('wifi-status', {
+        connected: false,
+        error: error.message
+      });
+    } else
+    {
+      const currentConnection = currentConnections[0];
+      event.sender.send('wifi-status', {
+        connected: !!currentConnection,
+        ssid: currentConnection ? currentConnection.ssid : null
+      });
+    }
+  });
 });
