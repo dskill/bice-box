@@ -3,7 +3,7 @@ import Button from './Button';
 import ToggleButton from './ToggleButton'; // Import ToggleButton
 import WifiSettings from './WifiSettings'; // Import WifiSettings
 import './App.css';
-import { FaSync, FaCheck, FaExclamationTriangle, FaDownload } from 'react-icons/fa';
+import { FaSync, FaCheck, FaExclamationTriangle, FaDownload, FaWifi } from 'react-icons/fa';
 
 const electron = window.electron;
 
@@ -22,6 +22,7 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
     const [isUpdatingApp, setIsUpdatingApp] = useState(false);
     const [hasUpdates, setHasUpdates] = useState(false);
     const [showWifiSettings, setShowWifiSettings] = useState(false);
+    const [wifiStatus, setWifiStatus] = useState({ connected: false, ssid: null });
 
     useEffect(() =>
     {
@@ -94,6 +95,23 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
             {
                 electron.ipcRenderer.removeListener('app-update-status', handleAppUpdateStatus);
                 electron.ipcRenderer.removeListener('app-update-error', () => { });
+            };
+        }
+    }, []);
+
+    useEffect(() => {
+        if (electron && electron.ipcRenderer) {
+            const handleWifiStatus = (status) => {
+                setWifiStatus(status);
+                // Refresh IP when WiFi status changes
+                fetchIp();
+            };
+
+            electron.ipcRenderer.on('wifi-status', handleWifiStatus);
+            electron.ipcRenderer.send('check-wifi-status');
+
+            return () => {
+                electron.ipcRenderer.removeListener('wifi-status', handleWifiStatus);
             };
         }
     }, []);
@@ -412,6 +430,21 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
         );
     };
 
+    const renderWifiButton = () => (
+        <Button 
+            label={
+                <>
+                    {wifiStatus.connected ? (
+                        <><FaWifi /> WiFi: {wifiStatus.ssid}</>
+                    ) : (
+                        <><FaWifi style={{ color: '#ff8c00' }} /> WiFi Settings</>
+                    )}
+                </>
+            }
+            onClick={handleWifiButtonClick}
+        />
+    );
+
     // Run checks on mount and when menu expands
     useEffect(() =>
     {
@@ -470,7 +503,7 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
                     <Button label={"Reload All Effects"} onClick={reloadEffectList} />
                     <Button label={"Reload Current Effect"} onClick={handleReloadCurrentEffect} />
                     <Button label={"Reboot Server"} onClick={rebootServer} />
-                    <Button label={"WiFi Settings"} onClick={handleWifiButtonClick} />
+                    {renderWifiButton()}
                 </div>
                 {errorMessage && <div className="effect-management__error">{errorMessage}</div>}
                 <div className="effect-management__info">

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Keyboard from 'react-simple-keyboard';
+import { FaCheck, FaExclamationTriangle } from 'react-icons/fa';
 import 'react-simple-keyboard/build/css/index.css';
 
 function WifiSettings({ onClose }) {
@@ -8,6 +9,8 @@ function WifiSettings({ onClose }) {
     const [password, setPassword] = useState('');
     const [showKeyboard, setShowKeyboard] = useState(false);
     const [layoutName, setLayoutName] = useState("default");
+    const [isConnected, setIsConnected] = useState(false);
+    const [currentNetwork, setCurrentNetwork] = useState(null);
 
     useEffect(() => {
         console.log('WifiSettings mounted');
@@ -17,7 +20,19 @@ function WifiSettings({ onClose }) {
                 console.log('Received networks:', networks);
                 setNetworks(networks);
             });
+
+            window.electron.ipcRenderer.send('check-wifi-status');
+            window.electron.ipcRenderer.on('wifi-status', (status) => {
+                setIsConnected(status.connected);
+                setCurrentNetwork(status.ssid);
+            });
         }
+
+        return () => {
+            if (window.electron && window.electron.ipcRenderer) {
+                window.electron.ipcRenderer.removeAllListeners('wifi-status');
+            }
+        };
     }, []);
 
     const handleKeyboardInput = (input) => {
@@ -59,6 +74,19 @@ function WifiSettings({ onClose }) {
         <>
             <div className="wifi-settings-overlay" onClick={onClose}></div>
             <div className="wifi-settings-modal">
+                <div className="wifi-status">
+                    {isConnected ? (
+                        <div className="status-connected">
+                            <FaCheck className="status-icon" />
+                            <span>Connected to {currentNetwork}</span>
+                        </div>
+                    ) : (
+                        <div className="status-disconnected">
+                            <FaExclamationTriangle className="status-icon" />
+                            <span>Not Connected</span>
+                        </div>
+                    )}
+                </div>
                 {!selectedNetwork ? (
                     <ul>
                         {networks.map(network => (
