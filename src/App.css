@@ -295,9 +295,6 @@ main {
   background-color: rgb(46, 45, 54);
 }
 
-.knob:active {
-}
-
 .knob-indicator {
   width: 2px;
   height: 20px;
@@ -1021,4 +1018,22 @@ button:active {
   bottom: 0;
   z-index: 5000;
   pointer-events: all;
+}
+
+.wifi-settings-button-container button {
+  font-size: 14px; /* Smaller font size */
+  border: 1px solid #ccc; /* Outline */
+  padding: 5px 10px; /* Padding for aesthetic spacing */
+  background-color: transparent; /* Transparent background */
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.wifi-settings-button-container button:hover {
+  border-color: #999; /* Darker outline on hover */
+}
+
+.wifi-settings-button-container button:focus {
+  outline: none;
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.2); /* Glow effect on focus */
 }

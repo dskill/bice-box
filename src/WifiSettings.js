@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Keyboard from 'react-simple-keyboard';
-import { FaCheck, FaExclamationTriangle } from 'react-icons/fa';
+import { FaCheck, FaExclamationTriangle, FaSync } from 'react-icons/fa';
 import 'react-simple-keyboard/build/css/index.css';
 
 function WifiSettings({ onClose }) {
@@ -97,6 +97,11 @@ function WifiSettings({ onClose }) {
                             <FaCheck className="status-icon" />
                             <span>Connected to {currentNetwork}</span>
                         </div>
+                    ) : isConnecting ? (
+                        <div className="status-checking">
+                            <FaSync className="spin status-icon" />
+                            <span>Checking...</span>
+                        </div>
                     ) : (
                         <div className="status-disconnected">
                             <FaExclamationTriangle className="status-icon" />
@@ -127,7 +132,7 @@ function WifiSettings({ onClose }) {
                             onFocus={() => setShowKeyboard(true)}
                             placeholder="Enter password"
                         />
-                        <div className="button-container">
+                        <div className="wifi-settings-button-container">
                             <button 
                                 onClick={handleConnect}
                                 disabled={isConnecting}

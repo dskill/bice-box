@@ -766,32 +766,34 @@ ipcMain.on('scan-wifi', (event) =>
     {
       console.log('Raw WiFi networks:', networks);
 
-      /*
-      // for testing
-      networks.push({
-        ssid: 'Test Network 1',
-        signal_level: -50,
-        security: 'WPA2'
-      });
+      if (process.platform === 'darwin')
+      {
+        // for testing
+        networks.push({
+          ssid: 'Test Network 1',
+          signal_level: -50,
+          security: 'WPA2'
+        });
 
-      networks.push({
-        ssid: 'Test Network 2',
-        signal_level: -90,
-        security: 'WPA2'
-      });
+        networks.push({
+          ssid: 'Test Network 2',
+          signal_level: -90,
+          security: 'WPA2'
+        });
 
-      networks.push({
-        ssid: 'Test Network 3',
-        signal_level: -30,
-        security: 'WPA2'
-      });
+        networks.push({
+          ssid: 'Test Network 3',
+          signal_level: -30,
+          security: 'WPA2'
+        });
 
-      networks.push({
-        ssid: 'Test Network 1',
-        signal_level: -30,
-        security: 'WPA2'
-      });
-      */
+        networks.push({
+          ssid: 'Test Network 1',
+          signal_level: -30,
+          security: 'WPA2'
+        });
+      }
+
 
       // Filter and deduplicate networks
       const filteredNetworks = networks
