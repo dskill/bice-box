@@ -11,7 +11,7 @@ function WifiSettings({ onClose }) {
     const [layoutName, setLayoutName] = useState("default");
     const [isConnected, setIsConnected] = useState(false);
     const [currentNetwork, setCurrentNetwork] = useState(null);
-    const [isConnecting, setIsConnecting] = useState(false);
+    const [isConnecting, setIsConnecting] = useState(true);
     const [connectionError, setConnectionError] = useState('');
 
     useEffect(() => {
