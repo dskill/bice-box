@@ -405,7 +405,7 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
         {
             return (
                 <Button
-                    label={<><FaSync className="spin" /> Updating App...</>}
+                    label={<><FaSync className="spin" /> Checking for Updates...</>}
                     disabled={true}
                 />
             );
@@ -416,7 +416,7 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
             return (
                 <Button
                     //onClick={handleUpdateApp}
-                    label={<><FaDownload /> Reboot for Update</>}
+                    label={<><FaDownload /> Reboot to Apply</>}
                     className="update-available"
                 />
             );
