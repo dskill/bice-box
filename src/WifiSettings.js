@@ -91,22 +91,27 @@ function WifiSettings({ onClose }) {
         <>
             <div className="wifi-settings-overlay" onClick={onClose}></div>
             <div className="wifi-settings-modal">
-                <div className="wifi-status">
-                    {isConnected ? (
-                        <div className="status-connected">
-                            <FaCheck className="status-icon" />
-                            <span>Connected to {currentNetwork}</span>
-                        </div>
-                    ) : isConnecting ? (
-                        <div className="status-checking">
-                            <FaSync className="spin status-icon" />
-                            <span>Checking...</span>
-                        </div>
-                    ) : (
-                        <div className="status-disconnected">
-                            <FaExclamationTriangle className="status-icon" />
-                            <span>Not Connected</span>
-                        </div>
+                <div className="wifi-header">
+                    <div className="wifi-status">
+                        {isConnected ? (
+                            <div className="status-connected">
+                                <FaCheck className="status-icon" />
+                                <span>Connected to {currentNetwork}</span>
+                            </div>
+                        ) : isConnecting ? (
+                            <div className="status-checking">
+                                <FaSync className="spin status-icon" />
+                                <span>Checking...</span>
+                            </div>
+                        ) : (
+                            <div className="status-disconnected">
+                                <FaExclamationTriangle className="status-icon" />
+                                <span>Not Connected</span>
+                            </div>
+                        )}
+                    </div>
+                    {selectedNetwork && (
+                        <h3>Connect to {selectedNetwork.ssid}</h3>
                     )}
                 </div>
                 {!selectedNetwork ? (
@@ -119,7 +124,6 @@ function WifiSettings({ onClose }) {
                     </ul>
                 ) : (
                     <div>
-                        <h3>Connect to {selectedNetwork.ssid}</h3>
                         {connectionError && (
                             <div className="error-message">
                                 {connectionError}
@@ -142,7 +146,7 @@ function WifiSettings({ onClose }) {
                             <button onClick={handleCancel}>Cancel</button>
                         </div>
                         {showKeyboard && (
-                            <div className="keyboard-container">
+                            <div className="keyboard-container" style={{ marginTop: '20px' }}>
                                 <Keyboard
                                     layoutName={layoutName}
                                     onChange={handleKeyboardInput}

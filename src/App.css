@@ -954,7 +954,7 @@ button:active {
     z-index: 4000 !important;
     border-radius: 8px;
     width: 80%;
-    max-width: 400px;
+    max-width: 500px;
     pointer-events: auto !important;
 }
 
@@ -976,9 +976,11 @@ button:active {
 }
 
 .wifi-settings-modal li {
-    padding: 10px;
+    padding: 15px;
+    margin: 5px 0;
+    border-radius: 4px;
     cursor: pointer;
-    border-bottom: 1px solid #eee;
+    transition: background-color 0.2s ease;
 }
 
 .wifi-settings-modal li:hover {
@@ -1011,7 +1013,7 @@ button:active {
 }
 
 .wifi-settings-container {
-  position: fixed;
+  position: fixed;  
   top: 0;
   left: 0;
   right: 0;
@@ -1022,18 +1024,94 @@ button:active {
 
 .wifi-settings-button-container button {
   font-size: 14px; /* Smaller font size */
-  border: 1px solid #ccc; /* Outline */
-  padding: 5px 10px; /* Padding for aesthetic spacing */
+  border: 1px solid #000000; /* Outline */
+  padding: 10px 15px; /* Padding for aesthetic spacing */
   background-color: transparent; /* Transparent background */
   cursor: pointer;
   transition: all 0.3s ease;
+  color: #444444;
+  border-radius: 5px;
 }
 
 .wifi-settings-button-container button:hover {
-  border-color: #999; /* Darker outline on hover */
+  background-color: #ffffff;
 }
 
 .wifi-settings-button-container button:focus {
   outline: none;
-  box-shadow: 0 0 5px rgba(0, 0, 0, 0.2); /* Glow effect on focus */
+  box-shadow: 0 0 5px rgb(0, 0, 0); /* Glow effect on focus */
+}
+
+/* Add styles for the password input field in WifiSettings */
+.wifi-settings-modal input[type="text"] {
+    width: 100%;
+    padding: 5px;
+    margin-top: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 16px;
+    box-sizing: border-box;
+    transition: border-color 0.3s ease;
+}
+
+.wifi-settings-modal input[type="text"]:focus {
+    border-color: #ff8c00; /* Change border color on focus */
+    outline: none;
+    box-shadow: 0 0 5px rgba(255, 115, 0, 0.5); /* Add a subtle glow effect */
+}
+
+/* Add spacing between elements */
+.wifi-settings-modal h3 {
+    margin: 0 0 20px 0;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eee;
+}
+
+.wifi-settings-modal ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.wifi-settings-modal li {
+    padding: 15px;
+    margin: 5px 0;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.wifi-settings-modal li:hover {
+    background-color: #f5f5f5;
+}
+
+.wifi-settings-button-container {
+    margin-top: 5px;
+    display: flex;
+    gap: 5px;
+    justify-content: flex-end;
+}
+
+.error-message {
+    margin: 0 0;
+    padding: 10px;
+    background-color: #fff2f2;
+    border-radius: 4px;
+    color: #dc3545;
+}
+
+.wifi-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 5px;
+}
+
+.wifi-header h3 {
+    margin: 0;
+    padding: 0;
+}
+
+.keyboard-container {
+    margin-top: 5px;
 }
