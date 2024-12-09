@@ -252,8 +252,13 @@ function App() {
   };
 
   const handleEffectSelect = (synthName) => {
-    switchSynth(synthName);
-    setCurrentScreen('visualization');
+    if (synthName === null) {
+      console.log('null synth received, closing effect select screen');
+      setCurrentScreen('visualization');
+    } else {
+      switchSynth(synthName);
+      setCurrentScreen('visualization');
+    }
   };
 
   const openEffectSelect = () => {

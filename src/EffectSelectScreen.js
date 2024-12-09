@@ -8,8 +8,16 @@ function EffectSelectScreen({ synths, onSelectEffect, currentSynth }) {
     return name.replace(/(?:^|\s)\S/g, function(a) { return a.toUpperCase(); });
   };
 
+  const handleBackgroundClick = (e) => {
+    // Only close if clicking directly on the background (effect-select-screen),
+    // not its children
+    if (e.target.className === 'effect-select-screen') {
+      onSelectEffect(null);
+    }
+  };
+
   return (
-    <div className="effect-select-screen">
+    <div className="effect-select-screen" onClick={handleBackgroundClick}>
       <div className="effect-grid">
         {synths.map((synth) => (
           <div className="effect-tile-wrapper" key={synth.name}>
