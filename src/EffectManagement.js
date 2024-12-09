@@ -4,6 +4,7 @@ import ToggleButton from './ToggleButton'; // Import ToggleButton
 import WifiSettings from './WifiSettings'; // Import WifiSettings
 import './App.css';
 import { FaSync, FaCheck, FaExclamationTriangle, FaDownload, FaWifi } from 'react-icons/fa';
+import ReactDOM from 'react-dom';
 
 const electron = window.electron;
 
@@ -536,7 +537,13 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
               
 
             </div>
-            {showWifiSettings && <WifiSettings onClose={() => setShowWifiSettings(false)} />}
+            
+            {/* Render WiFi settings modal when showWifiSettings is true. Use createPortal to mount it at document.body 
+                level to ensure proper z-index stacking and overlay behavior */}
+            {showWifiSettings && ReactDOM.createPortal(
+                <WifiSettings onClose={() => setShowWifiSettings(false)} />,
+                document.body
+            )}
         </div>
     );
 }
