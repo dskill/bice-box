@@ -169,14 +169,14 @@ function VisualizationCanvas({ currentEffect }) {
 
     return () => {
       console.log('Removing all event listeners');
-      window.electron.ipcRenderer.removeAllListeners('waveform0-data', updateWaveform0Data);
-      window.electron.ipcRenderer.removeAllListeners('waveform1-data', updateWaveform1Data);
-      window.electron.ipcRenderer.removeAllListeners('audio-analysis', updateAudioAnalysis);
-      window.electron.ipcRenderer.removeAllListeners('tuner-data', updateTunerData);
-      window.electron.ipcRenderer.removeAllListeners('fft0-data', updateFFT0Data);
-      window.electron.ipcRenderer.removeAllListeners('fft1-data', updateFFT1Data);
-      window.electron.ipcRenderer.removeAllListeners('visual-effect-updated', handleVisualEffectUpdate);
-      cleanupP5Instance();
+      window.electron.ipcRenderer.removeAllListeners('waveform0-data');
+      window.electron.ipcRenderer.removeAllListeners('waveform1-data');
+      window.electron.ipcRenderer.removeAllListeners('audio-analysis');
+      window.electron.ipcRenderer.removeAllListeners('tuner-data');
+      window.electron.ipcRenderer.removeAllListeners('fft0-data');
+      window.electron.ipcRenderer.removeAllListeners('fft1-data');
+      window.electron.ipcRenderer.removeAllListeners('visual-effect-updated');
+            cleanupP5Instance();
     };
   }, [handleVisualEffectUpdate, cleanupP5Instance]);
 
