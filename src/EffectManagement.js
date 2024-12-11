@@ -484,8 +484,19 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
         setShowWifiSettings(true);
     };
 
+    const handleWrapperClick = (e) => {
+        // Only close if clicking the wrapper itself, not its children
+        if (e.target === e.currentTarget) {
+            setIsExpanded(false);
+        }
+    };
+
     return (
-        <div className="effect-management">
+        <div 
+            className={`effect-management-modal ${isExpanded ? 'effect-management-modal--expanded' : ''}`}
+            onClick={handleWrapperClick}
+        >
+            <div className="effect-management">
             <ToggleButton 
                 isOn={isExpanded}
                 setIsOn={setIsExpanded}
@@ -544,6 +555,7 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
                 <WifiSettings onClose={() => setShowWifiSettings(false)} />,
                 document.body
             )}
+            </div>
         </div>
     );
 }
