@@ -1,14 +1,34 @@
-import React from 'react';
+import React, { useState } from 'react';
 import EffectManagement from './EffectManagement';
 import ParamFader from './ParamFader';
 import VisualizationCanvas from './VisualizationCanvas';
 import ToggleButton from './ToggleButton';
 
-function VisualizationMode({ synths, currentSynth, switchSynth, nextSynth, previousSynth,  reloadEffectList, pullEffectsRepo, onOpenEffectSelect, effectsRepoStatus, onCheckEffectsRepo }) {
+function VisualizationMode({ synths, currentSynth, switchSynth, nextSynth, previousSynth, reloadEffectList, pullEffectsRepo, onOpenEffectSelect, effectsRepoStatus, onCheckEffectsRepo }) {
+  const [isLoadingEffect, setIsLoadingEffect] = useState(false);
+
   const prettifySynthName = (name) => {
     if (!name) return '';
     name = name.replace(/_/g, " ");
     return name.replace(/(?:^|\s)\S/g, function (a) { return a.toUpperCase(); });
+  };
+
+  const handleNextSynth = () => {
+    if (!isLoadingEffect) {
+      setIsLoadingEffect(true);
+      nextSynth();
+    }
+  };
+
+  const handlePreviousSynth = () => {
+    if (!isLoadingEffect) {
+      setIsLoadingEffect(true);
+      previousSynth();
+    }
+  };
+
+  const handleEffectLoaded = () => {
+    setIsLoadingEffect(false);
   };
 
   return (
@@ -29,25 +49,32 @@ function VisualizationMode({ synths, currentSynth, switchSynth, nextSynth, previ
       <div className="effect-select-container">
         <button 
           className="nav-button effect-nav-button prev-button" 
-          onClick={previousSynth}
+          onClick={handlePreviousSynth}
+          disabled={isLoadingEffect}
         >
           ‹
         </button>
         <ToggleButton
           isOn={false}
-          setIsOn={() => onOpenEffectSelect()}
+          setIsOn={() => {
+            if (!isLoadingEffect) {
+              onOpenEffectSelect();
+            }
+          }}
           onText={currentSynth ? prettifySynthName(currentSynth.name) : 'No Effect Selected'}
           offText={currentSynth ? prettifySynthName(currentSynth.name) : 'No Effect Selected'}
+          disabled={isLoadingEffect}
         />
         <button 
           className="nav-button effect-nav-button next-button" 
-          onClick={nextSynth}
+          onClick={handleNextSynth}
+          disabled={isLoadingEffect}
         >
           ›
         </button>
       </div>
 
-      <VisualizationCanvas currentEffect={currentSynth} />
+      <VisualizationCanvas currentEffect={currentSynth} onEffectLoaded={handleEffectLoaded} />
       <div className="visualization-controls">
         <div className="knobs-container">
           {currentSynth && currentSynth.params && currentSynth.params.map((param, index) => (
@@ -62,13 +89,15 @@ function VisualizationMode({ synths, currentSynth, switchSynth, nextSynth, previ
 
       <button 
         className="nav-button prev-button" 
-        onClick={previousSynth}
+        onClick={handlePreviousSynth}
+        disabled={isLoadingEffect}
       >
         ‹
       </button>
       <button 
         className="nav-button next-button" 
-        onClick={nextSynth}
+        onClick={handleNextSynth}
+        disabled={isLoadingEffect}
       >
         ›
       </button>

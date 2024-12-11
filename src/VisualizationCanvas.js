@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useCallback } from 'react';
 import p5 from 'p5';
 
-function VisualizationCanvas({ currentEffect }) {
+function VisualizationCanvas({ currentEffect, onEffectLoaded }) {
   const canvasRef = useRef(null);
   const p5InstanceRef = useRef(null);
   const waveform0DataRef = useRef([]);
@@ -226,7 +226,10 @@ function VisualizationCanvas({ currentEffect }) {
             p5InstanceCountRef.current += 1;
             console.log(`Current p5 instance count: ${p5InstanceCountRef.current}`);
 
-            // ... set up p5 instance properties ...
+            // Call onEffectLoaded when sketch is ready
+            if (onEffectLoaded) {
+              onEffectLoaded();
+            }
 
             console.log('p5 instance created');
           } else {

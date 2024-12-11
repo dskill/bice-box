@@ -1115,3 +1115,18 @@ button:active {
 .keyboard-container {
     margin-top: 5px;
 }
+
+button:disabled {
+  opacity: 0.5;
+  color: rgba(198, 202, 224, 0.5);
+}
+
+.nav-button:disabled {
+  opacity: 0.5;
+  color: rgba(198, 202, 224, 0.5);
+}
+
+.toggle-button:disabled {
+  opacity: 0.5;
+  color: rgba(198, 202, 224, 0.5);
+}
