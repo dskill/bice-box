@@ -27,6 +27,7 @@ const wifi = require('node-wifi');
 let mainWindow;
 let oscManager;
 let updateAvailable = false;
+let experimentalMode = false;
 
 if (process.argv.includes('--version'))
 {
@@ -176,7 +177,7 @@ function createWindow()
     });
 
     // Initialize SuperCollider with the necessary callbacks
-    const loadEffectsCallback = () => loadEffectsList(mainWindow, getEffectsPath);
+    const loadEffectsCallback = () => loadEffectsList(mainWindow, getEffectsPath, experimentalMode);
     initializeSuperCollider(mainWindow, getEffectsPath, loadEffectsCallback);
 
     // Initialize OSC Server after creating the window
@@ -258,7 +259,7 @@ ipcMain.on('reboot-server', (event) =>
     {
       setTimeout(() =>
       {
-        const loadEffectsCallback = () => loadEffectsList(mainWindow, getEffectsPath);
+        const loadEffectsCallback = () => loadEffectsList(mainWindow, getEffectsPath, experimentalMode);
         initializeSuperCollider(mainWindow, getEffectsPath, loadEffectsCallback);
       }, 1000); // Wait for 1 second before rebooting
     })
@@ -268,7 +269,7 @@ ipcMain.on('reboot-server', (event) =>
       // Still attempt to reboot even if the kill command fails
       setTimeout(() =>
       {
-        const loadEffectsCallback = () => loadEffectsList(mainWindow, getEffectsPath);
+        const loadEffectsCallback = () => loadEffectsList(mainWindow, getEffectsPath, experimentalMode);
         initializeSuperCollider(mainWindow, getEffectsPath, loadEffectsCallback);
       }, 1000);
     });
@@ -720,7 +721,7 @@ ipcMain.on('reload-all-effects', (event) =>
   console.log('Reloading all effects...');
   try
   {
-    const loadedSynths = loadEffectsList(mainWindow, getEffectsPath);
+    const loadedSynths = loadEffectsList(mainWindow, getEffectsPath, experimentalMode);
     const validSynths = loadedSynths.filter(synth => synth && synth.name);
     event.reply('effects-data', validSynths);
     console.log('Effects data sent to renderer process');
@@ -882,4 +883,16 @@ ipcMain.on('check-wifi-status', (event) =>
       });
     }
   });
+});
+
+// Add these IPC handlers
+ipcMain.handle('get-experimental-mode', () => experimentalMode);
+
+ipcMain.on('toggle-experimental-mode', (event) => {
+    experimentalMode = !experimentalMode;
+    mainWindow.webContents.send('experimental-mode-changed', experimentalMode);
+    
+    // Reload effects list with new mode
+    const loadedSynths = loadEffectsList(mainWindow, getEffectsPath, experimentalMode);
+    event.reply('effects-data', loadedSynths);
 });

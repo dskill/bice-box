@@ -31,7 +31,7 @@ function App() {
   useEffect(() => {
     // Initial effects load and repo check
     Promise.all([
-      getEffectList(),
+      reloadEffectList(),
       checkEffectsRepoStatus()
     ]).catch(err => {
       console.error("Failed to initialize:", err);
@@ -124,7 +124,7 @@ function App() {
     }
   }, [currentSynth]); // Add currentSynth to the dependency array
 
-  const getEffectList = () => {
+  const reloadEffectList = () => {
     return new Promise((resolve, reject) => {
       console.log("loadEffects function called");
       if (electron) {
@@ -211,7 +211,7 @@ function App() {
         
         electron.ipcRenderer.once('pull-effects-repo-success', () => {
           console.log('Effects repo pulled successfully');
-          getEffectList()
+          reloadEffectList()
             .then(() => resolve())
             .catch(error => reject(error));
         });
@@ -323,7 +323,7 @@ function App() {
         switchSynth={handleEffectSelect}
         nextSynth={nextSynth}
         previousSynth={previousSynth}
-        reloadEffectList={getEffectList}
+        reloadEffectList={reloadEffectList}
         pullEffectsRepo={pullEffectsRepo}
         onOpenEffectSelect={openEffectSelect}
         effectsRepoStatus={effectsRepoStatus}

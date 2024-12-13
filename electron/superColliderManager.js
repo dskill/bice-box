@@ -17,8 +17,9 @@ function setCurrentEffect(effect) {
     console.log('Current effect set to:', effect ? effect.name : 'None');
 }
 
-function loadEffectsList(mainWindow, getEffectsPath) {
+function loadEffectsList(mainWindow, getEffectsPath, experimentalMode) {
     console.log('Loading effects list...');
+    console.log('Experimental mode:', experimentalMode);
     const effectsPath = getEffectsPath();
     const effectFiles = fs.readdirSync(effectsPath).filter(file => file.endsWith('.json'));
 
@@ -30,13 +31,12 @@ function loadEffectsList(mainWindow, getEffectsPath) {
         const filePath = path.join(effectsPath, file);
         const effect = loadEffectFromFile(filePath, getEffectsPath);
 
-        // Only add curated effects
-        if (effect.curated) {
+        // In experimental mode, load all effects. Otherwise, only load curated ones
+        if (experimentalMode || effect.curated) {
             if (effect.p5SketchPath) {
                 console.log(`Reloading p5.js sketch for ${effect.name}: ${effect.p5SketchPath}`);
                 effect.p5SketchContent = loadP5SketchSync(effect.p5SketchPath, getEffectsPath);
             }
-
             synths.push(effect);
         }
     });

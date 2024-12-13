@@ -24,6 +24,7 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
     const [hasUpdates, setHasUpdates] = useState(false);
     const [showWifiSettings, setShowWifiSettings] = useState(false);
     const [wifiStatus, setWifiStatus] = useState({ connected: false, ssid: null });
+    const [experimentalMode, setExperimentalMode] = useState(false);
 
     useEffect(() =>
     {
@@ -113,6 +114,25 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
 
             return () => {
                 electron.ipcRenderer.removeListener('wifi-status', handleWifiStatus);
+            };
+        }
+    }, []);
+
+    useEffect(() => {
+        if (electron && electron.ipcRenderer) {
+            // Get initial state
+            electron.ipcRenderer.invoke('get-experimental-mode').then(setExperimentalMode);
+
+            // Listen for changes
+            const handleModeChange = (newMode) => {
+                console.log('Experimental mode changed:', newMode);
+                setExperimentalMode(newMode);
+            };
+
+            electron.ipcRenderer.on('experimental-mode-changed', handleModeChange);
+
+            return () => {
+                electron.ipcRenderer.removeListener('experimental-mode-changed', handleModeChange);
             };
         }
     }, []);
@@ -491,6 +511,11 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
         }
     };
 
+    const handleExperimentalModeToggle = () => {
+        electron.ipcRenderer.send('toggle-experimental-mode');
+        reloadEffectList();
+    };
+
     return (
         <div 
             className={`effect-management-modal ${isExpanded ? 'effect-management-modal--expanded' : ''}`}
@@ -500,19 +525,22 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
             <ToggleButton 
                 isOn={isExpanded}
                 setIsOn={setIsExpanded}
-                onText="Hide Tools"
-                offText="Tools"
+                onText="Close"
+                offText="Settings"
                 hasUpdates={hasUpdates}
                 className="effect-management__toggle tools-toggle"
             />
 
             <div className={`effect-management__content ${isExpanded ? 'effect-management__content--expanded' : ''}`}>
-                <p></p>
-
                 <div className="effect-management__buttons">
                     {renderWifiButton()}
                     {renderAppUpdateButton()}
                     {renderSyncButton()}
+                    <Button 
+                        label={experimentalMode ? "Experimental Effects" : "Curated Effects Only"}
+                        onClick={handleExperimentalModeToggle}
+                        className={experimentalMode ? "experimental-mode-on" : ""}
+                    />
                     <Button label={"Reload All Effects"} onClick={reloadEffectList} />
                     <Button label={"Reload Current Effect"} onClick={handleReloadCurrentEffect} />
                     <Button label={"Reboot Server"} onClick={rebootServer} />
