@@ -13,6 +13,7 @@ function VisualizationCanvas({ currentEffect, onEffectLoaded }) {
   // Add new refs for FFT data
   const fft0DataRef = useRef([]);
   const fft1DataRef = useRef([]);
+  const oscMessageRef = useRef([]);
 
   const numUpdates = useRef(0);
 
@@ -157,6 +158,14 @@ function VisualizationCanvas({ currentEffect, onEffectLoaded }) {
     
   }, []);
 
+  const updateOSCMessage = useCallback((data) => {
+    numUpdates.current++;
+    oscMessageRef.current = data;
+    if (p5InstanceRef.current) {
+        p5InstanceRef.current.oscMessage = data;
+    }
+  }, []);
+
   useEffect(() => {
     console.log('Setting up all event listeners');
     window.electron.ipcRenderer.on('waveform0-data', updateWaveform0Data);
@@ -166,6 +175,7 @@ function VisualizationCanvas({ currentEffect, onEffectLoaded }) {
     window.electron.ipcRenderer.on('fft0-data', updateFFT0Data);
     window.electron.ipcRenderer.on('fft1-data', updateFFT1Data);
     window.electron.ipcRenderer.on('visual-effect-updated', handleVisualEffectUpdate);
+    window.electron.ipcRenderer.on('osc-message', updateOSCMessage);
 
     return () => {
       console.log('Removing all event listeners');
@@ -176,6 +186,7 @@ function VisualizationCanvas({ currentEffect, onEffectLoaded }) {
       window.electron.ipcRenderer.removeAllListeners('fft0-data');
       window.electron.ipcRenderer.removeAllListeners('fft1-data');
       window.electron.ipcRenderer.removeAllListeners('visual-effect-updated');
+      window.electron.ipcRenderer.removeAllListeners('osc-message');
             cleanupP5Instance();
     };
   }, [handleVisualEffectUpdate, cleanupP5Instance]);

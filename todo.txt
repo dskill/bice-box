@@ -1,12 +1,13 @@
 //high pri
-- WIFI login from device
 - make cool effects and test as much as possible
 - bigger easier to press buttons
+- pass arbitrary data from sc osc messages into p5.js for consumption
 
 //lower pri
 - DOCUMENTATION of 3 repos and how they all work together
 - Document how to image SD cards
 - capture cad drawing
+- lots of code refactoring for clarity/simplicity
 
 BUGS
 fix electron reloader
