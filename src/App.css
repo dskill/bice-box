@@ -906,6 +906,7 @@ button:active {
     transition: all 0.3s ease;
     text-transform: none;
     color: rgb(198, 202, 224);
+    min-width: 200px;
 }
 
 /* Specific styles for the tools toggle button */
