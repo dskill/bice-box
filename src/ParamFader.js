@@ -15,7 +15,7 @@ const throttle = (func, limit) => {
   }
 };
 
-const ParamFader = ({ synthName, param }) => {
+const ParamFader = ({ synthName, param, onParamChange }) => {
   const { name, value, range } = param;
   const { sendCode } = useSuperCollider();
   const [faderValue, setFaderValue] = useState(value);
@@ -44,16 +44,24 @@ const ParamFader = ({ synthName, param }) => {
     if (value !== currentValueRef.current) {
       currentValueRef.current = value;
       setFaderValue(value);
+      onParamChange(name, faderValue);
     }
   }, [value]);
+
+  // init value
+  useEffect(() => {
+    onParamChange(name, faderValue);
+  }, []);
 
   // Handle SuperCollider updates
   useEffect(() => {
     if (faderValue !== currentValueRef.current) {
       currentValueRef.current = faderValue;
-      throttledSendCode(`~effect.set(\\${name}, ${faderValue})`);
+      const code = `~${synthName}.set(\\${name}, ${faderValue});`;
+      throttledSendCode(code);
+      onParamChange(name, faderValue);
     }
-  }, [faderValue, name, throttledSendCode]);
+  }, [faderValue, name, throttledSendCode, synthName, onParamChange]);
 
   useEffect(() => {
     const handleMouseMove = (e) => {

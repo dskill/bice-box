@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useCallback } from 'react';
 import p5 from 'p5';
 
-function VisualizationCanvas({ currentEffect, onEffectLoaded }) {
+function VisualizationCanvas({ currentEffect, paramValuesRef, onEffectLoaded }) {
   const canvasRef = useRef(null);
   const p5InstanceRef = useRef(null);
   const waveform0DataRef = useRef([]);
@@ -122,6 +122,7 @@ function VisualizationCanvas({ currentEffect, onEffectLoaded }) {
         // Add FFT data to p5 instance
         p5InstanceRef.current.fft0 = fft0DataRef.current;
         p5InstanceRef.current.fft1 = fft1DataRef.current;
+        p5InstanceRef.current.params = paramValuesRef.current;
 
         console.log('New p5 instance created');
       } catch (error) {
@@ -233,6 +234,11 @@ function VisualizationCanvas({ currentEffect, onEffectLoaded }) {
             p5InstanceRef.current.tunerData = tunerDataRef.current;
             p5InstanceRef.current.fft0 = fft0DataRef.current;
             p5InstanceRef.current.fft1 = fft1DataRef.current;
+
+            // Define params as a getter to always access the current values
+            Object.defineProperty(p5InstanceRef.current, 'params', {
+              get: () => paramValuesRef.current
+            });
 
             p5InstanceCountRef.current += 1;
             console.log(`Current p5 instance count: ${p5InstanceCountRef.current}`);

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import EffectManagement from './EffectManagement';
 import ParamFader from './ParamFader';
 import VisualizationCanvas from './VisualizationCanvas';
@@ -6,6 +6,7 @@ import ToggleButton from './ToggleButton';
 
 function VisualizationMode({ synths, currentSynth, switchSynth, nextSynth, previousSynth, reloadEffectList, pullEffectsRepo, onOpenEffectSelect, effectsRepoStatus, onCheckEffectsRepo }) {
   const [isLoadingEffect, setIsLoadingEffect] = useState(false);
+  const paramValuesRef = useRef({});
 
   const prettifySynthName = (name) => {
     if (!name) return '';
@@ -29,6 +30,10 @@ function VisualizationMode({ synths, currentSynth, switchSynth, nextSynth, previ
 
   const handleEffectLoaded = () => {
     setIsLoadingEffect(false);
+  };
+
+  const handleParamChange = (paramName, value) => {
+    paramValuesRef.current[paramName] = value;
   };
 
   return (
@@ -74,7 +79,7 @@ function VisualizationMode({ synths, currentSynth, switchSynth, nextSynth, previ
         </button>
       </div>
 
-      <VisualizationCanvas currentEffect={currentSynth} onEffectLoaded={handleEffectLoaded} />
+      <VisualizationCanvas currentEffect={currentSynth} paramValuesRef={paramValuesRef} onEffectLoaded={handleEffectLoaded} />
       <div className="visualization-controls">
         <div className="knobs-container">
           {currentSynth && currentSynth.params && currentSynth.params.map((param, index) => (
@@ -82,6 +87,7 @@ function VisualizationMode({ synths, currentSynth, switchSynth, nextSynth, previ
               key={`${currentSynth.name}-${param.name}`}
               synthName={currentSynth.name}
               param={{ ...param, index }}
+              onParamChange={handleParamChange}
             />
           ))}
         </div>
