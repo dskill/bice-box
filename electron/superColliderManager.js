@@ -41,6 +41,13 @@ function loadEffectsList(mainWindow, getEffectsPath, experimentalMode) {
         }
     });
 
+    // Move "Bypass" to the front if it exists
+    const bypassIndex = synths.findIndex(effect => effect.name === "bypass");
+    if (bypassIndex !== -1) {
+        const bypass = synths.splice(bypassIndex, 1)[0];
+        synths.unshift(bypass);
+    }
+
     // Notify renderer about updated effects
     if (mainWindow && mainWindow.webContents) {
         mainWindow.webContents.send('effects-updated', synths);
