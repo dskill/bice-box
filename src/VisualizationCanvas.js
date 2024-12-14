@@ -158,11 +158,11 @@ function VisualizationCanvas({ currentEffect, onEffectLoaded }) {
     
   }, []);
 
-  const updateOSCMessage = useCallback((data) => {
+  const updateCustomMessage = useCallback((data) => {
     numUpdates.current++;
     oscMessageRef.current = data;
     if (p5InstanceRef.current) {
-        p5InstanceRef.current.oscMessage = data;
+        p5InstanceRef.current.customMessage = data;
     }
   }, []);
 
@@ -175,7 +175,7 @@ function VisualizationCanvas({ currentEffect, onEffectLoaded }) {
     window.electron.ipcRenderer.on('fft0-data', updateFFT0Data);
     window.electron.ipcRenderer.on('fft1-data', updateFFT1Data);
     window.electron.ipcRenderer.on('visual-effect-updated', handleVisualEffectUpdate);
-    window.electron.ipcRenderer.on('osc-message', updateOSCMessage);
+    window.electron.ipcRenderer.on('custom-message', updateCustomMessage);
 
     return () => {
       console.log('Removing all event listeners');
@@ -186,7 +186,7 @@ function VisualizationCanvas({ currentEffect, onEffectLoaded }) {
       window.electron.ipcRenderer.removeAllListeners('fft0-data');
       window.electron.ipcRenderer.removeAllListeners('fft1-data');
       window.electron.ipcRenderer.removeAllListeners('visual-effect-updated');
-      window.electron.ipcRenderer.removeAllListeners('osc-message');
+      window.electron.ipcRenderer.removeAllListeners('custom-message');
             cleanupP5Instance();
     };
   }, [handleVisualEffectUpdate, cleanupP5Instance]);

@@ -84,7 +84,7 @@ class OSCManager
                     // Forward any unhandled OSC messages to the renderer
                     //console.log('Non Standard OSC message:', oscMsg.address);
                     const values = oscMsg.args.map(arg => arg.value);
-                    this.mainWindow.webContents.send('osc-message', {
+                    this.mainWindow.webContents.send('custom-message', {
                         address: oscMsg.address,
                         values: values
                     });
