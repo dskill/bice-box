@@ -57,7 +57,7 @@ const ParamFader = ({ synthName, param, onParamChange }) => {
   useEffect(() => {
     if (faderValue !== currentValueRef.current) {
       currentValueRef.current = faderValue;
-      const code = `~${synthName}.set(\\${name}, ${faderValue});`;
+      const code = `~effect.set(\\${name}, ${faderValue})`;
       throttledSendCode(code);
       onParamChange(name, faderValue);
     }
