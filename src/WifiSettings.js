@@ -14,6 +14,38 @@ function WifiSettings({ onClose }) {
     const [isConnecting, setIsConnecting] = useState(true);
     const [connectionError, setConnectionError] = useState('');
 
+    const keyboard = {
+        layout: {
+            default: [
+                "1 2 3 4 5 6 7 8 9 0",
+                "q w e r t y u i o p",
+                "a s d f g h j k l",
+                "{shift} {symbols} z x c v b n m {bksp}",
+                "{space}"
+            ],
+            shift: [
+                "! @ # $ % ^ & * ( )",
+                "Q W E R T Y U I O P",
+                "A S D F G H J K L",
+                "{shift} {symbols} Z X C V B N M {bksp}",
+                "{space}"
+            ],
+            symbols: [
+                "! @ # $ % ^ & * ( )",
+                "[ ] { } < > ~ ` |",
+                "- = + _ \\ / ? :",
+                "{abc} ; ' \" , . @ $ {bksp}",
+                "{space}"
+            ]
+        },
+        buttonTheme: [
+            {
+                class: "keyboard-button",
+                buttons: "{shift} {symbols} {abc} {bksp}"
+            }
+        ]
+    };
+
     useEffect(() => {
         console.log('WifiSettings mounted');
         if (window.electron && window.electron.ipcRenderer) {
@@ -69,9 +101,20 @@ function WifiSettings({ onClose }) {
         setPassword(input);
     };
 
-    const handleShift = () => {
-        const newLayoutName = layoutName === "default" ? "shift" : "default";
-        setLayoutName(newLayoutName);
+    const handleKeyPress = (button) => {
+        switch (button) {
+            case "{shift}":
+                setLayoutName(layoutName === "default" ? "shift" : "default");
+                break;
+            case "{symbols}":
+                setLayoutName("symbols");
+                break;
+            case "{abc}":
+                setLayoutName("default");
+                break;
+            default:
+                break;
+        }
     };
 
     const handleNetworkSelect = (network) => {
@@ -161,34 +204,19 @@ function WifiSettings({ onClose }) {
                         {showKeyboard && (
                             <div className="keyboard-container" style={{ marginTop: '20px' }}>
                                 <Keyboard
+                                    keyboardRef={r => (keyboard.current = r)}
                                     layoutName={layoutName}
+                                    layout={keyboard.layout}
                                     onChange={handleKeyboardInput}
-                                    onKeyPress={(button) => {
-                                        console.log('Button pressed:', button);
-                                        if (button === "{shift}" || button === "{lock}") handleShift();
-                                    }}
-                                    layout={{
-                                        default: [
-                                            "1 2 3 4 5 6 7 8 9 0",
-                                            "q w e r t y u i o p",
-                                            "a s d f g h j k l",
-                                            "{shift} z x c v b n m {bksp}",
-                                            "{space}"
-                                        ],
-                                        shift: [
-                                            "! @ # $ % ^ & * ( )",
-                                            "Q W E R T Y U I O P",
-                                            "A S D F G H J K L",
-                                            "{shift} Z X C V B N M {bksp}",
-                                            "{space}"
-                                        ]
-                                    }}
+                                    onKeyPress={handleKeyPress}
+                                    buttonTheme={keyboard.buttonTheme}
                                     display={{
                                         '{bksp}': '⌫',
-                                        '{space}': ' ',
-                                        '{shift}': '⇧'
+                                        '{shift}': '⇧',
+                                        '{symbols}': '!@#',
+                                        '{abc}': 'ABC',
+                                        '{space}': ' '
                                     }}
-                                    theme="hg-theme-default hg-layout-default myTheme"
                                 />
                             </div>
                         )}
