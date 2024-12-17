@@ -1,7 +1,7 @@
 //high pri
 - make cool effects and test as much as possible
 - bigger easier to press buttons
-- pass arbitrary data from sc osc messages into p5.js for consumption
+X pass arbitrary data from sc osc messages into p5.js for consumption
 
 //lower pri
 - DOCUMENTATION of 3 repos and how they all work together

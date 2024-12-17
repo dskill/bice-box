@@ -666,7 +666,7 @@ button:active {
   transform: translateY(-50%);
   z-index: 1000;
   padding: 19px;
-  border: 1px solid rgba(198, 202, 224, 0.1);
+  border: 1px solid rgba(198, 202, 224, 0.3);
   border-radius: 5px;
   background: none;
   cursor: pointer;
@@ -899,7 +899,7 @@ button:active {
     font-family: 'Aldrich', 'Inconsolata', monospace;
     font-size: 21px;
     background: rgba(0, 0, 0, 0.0);
-    border: 1px solid rgba(198, 202, 224, 0.1);
+    border: 1px solid rgba(198, 202, 224, 0.3);
     border-radius: 5px;
     padding: 23px 13px;
     cursor: pointer;
