@@ -1,13 +1,14 @@
-//high pri
-- make cool effects and test as much as possible
-- bigger easier to press buttons
-X pass arbitrary data from sc osc messages into p5.js for consumption
+install the sc3 extensions
+
+BUGS
+"GetEffectsPath" is not a function
+maybe hide the reload effects buttons unless experimental mode is on
+^^ rename the curated effect button to "enable dev mode" and "disable dev mode"
+hide the other dev buttons if dev mode is off
 
 //lower pri
+- fix electron reloader
 - DOCUMENTATION of 3 repos and how they all work together
 - Document how to image SD cards
 - capture cad drawing
 - lots of code refactoring for clarity/simplicity
-
-BUGS
-fix electron reloader
