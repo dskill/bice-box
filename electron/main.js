@@ -511,7 +511,7 @@ ipcMain.on('pull-effects-repo', async (event) =>
     console.log('Git pull output:', pullOutput);
 
     // After successful pull, reload effects and update status
-    loadEffectsList();
+    loadEffectsList(mainWindow, getEffectsPath, experimentalMode);
 
     // Check status again after pull
     const { stdout: statusOutput } = await exec('git status -uno', { cwd: effectsPath });

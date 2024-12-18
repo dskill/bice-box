@@ -1,7 +1,6 @@
 install the sc3 extensions
 
 BUGS
-"GetEffectsPath" is not a function
 maybe hide the reload effects buttons unless experimental mode is on
 ^^ rename the curated effect button to "enable dev mode" and "disable dev mode"
 hide the other dev buttons if dev mode is off
@@ -12,3 +11,5 @@ hide the other dev buttons if dev mode is off
 - Document how to image SD cards
 - capture cad drawing
 - lots of code refactoring for clarity/simplicity
+
+-this uses super collider, so we need to add the right license file before any distribution
