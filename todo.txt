@@ -1,9 +1,3 @@
-install the sc3 extensions
-
-BUGS
-maybe hide the reload effects buttons unless experimental mode is on
-^^ rename the curated effect button to "enable dev mode" and "disable dev mode"
-hide the other dev buttons if dev mode is off
 
 //lower pri
 - fix electron reloader
