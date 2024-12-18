@@ -24,7 +24,7 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
     const [hasUpdates, setHasUpdates] = useState(false);
     const [showWifiSettings, setShowWifiSettings] = useState(false);
     const [wifiStatus, setWifiStatus] = useState({ connected: false, ssid: null });
-    const [experimentalMode, setExperimentalMode] = useState(false);
+    const [devMode, setDevMode] = useState(false);
 
     useEffect(() =>
     {
@@ -121,18 +121,18 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
     useEffect(() => {
         if (electron && electron.ipcRenderer) {
             // Get initial state
-            electron.ipcRenderer.invoke('get-experimental-mode').then(setExperimentalMode);
+            electron.ipcRenderer.invoke('get-dev-mode').then(setDevMode);
 
             // Listen for changes
             const handleModeChange = (newMode) => {
-                console.log('Experimental mode changed:', newMode);
-                setExperimentalMode(newMode);
+                console.log('Dev mode changed:', newMode);
+                setDevMode(newMode);
             };
 
-            electron.ipcRenderer.on('experimental-mode-changed', handleModeChange);
+            electron.ipcRenderer.on('dev-mode-changed', handleModeChange);
 
             return () => {
-                electron.ipcRenderer.removeListener('experimental-mode-changed', handleModeChange);
+                electron.ipcRenderer.removeListener('dev-mode-changed', handleModeChange);
             };
         }
     }, []);
@@ -511,8 +511,8 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
         }
     };
 
-    const handleExperimentalModeToggle = () => {
-        electron.ipcRenderer.send('toggle-experimental-mode');
+    const handleDevModeToggle = () => {
+        electron.ipcRenderer.send('toggle-dev-mode');
         reloadEffectList();
     };
 
@@ -537,13 +537,18 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
                     {renderAppUpdateButton()}
                     {renderSyncButton()}
                     <Button 
-                        label={experimentalMode ? "Experimental Effects" : "Curated Effects Only"}
-                        onClick={handleExperimentalModeToggle}
-                        className={experimentalMode ? "experimental-mode-on" : ""}
+                        label={devMode ? "Disable Dev Mode" : "Enable Dev Mode"}
+                        onClick={handleDevModeToggle}
+                        className={devMode ? "dev-mode-on" : ""}
                     />
-                    <Button label={"Reload All Effects"} onClick={reloadEffectList} />
-                    <Button label={"Reload Current Effect"} onClick={handleReloadCurrentEffect} />
-                    <Button label={"Reboot Server"} onClick={rebootServer} />
+                    
+                    {devMode && (
+                        <>
+                            <Button label={"Reload All Effects"} onClick={reloadEffectList} />
+                            <Button label={"Reload Current Effect"} onClick={handleReloadCurrentEffect} />
+                            <Button label={"Reboot Server"} onClick={rebootServer} />
+                        </>
+                    )}
                 </div>
                 {errorMessage && <div className="effect-management__error">{errorMessage}</div>}
                 <div className="effect-management__info">
