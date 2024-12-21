@@ -783,25 +783,37 @@ ipcMain.on('scan-wifi', (event) =>
         // for testing
         networks.push({
           ssid: 'Test Network 1',
-          signal_level: -50,
+          signal_level: -10,
           security: 'WPA2'
         });
 
         networks.push({
           ssid: 'Test Network 2',
-          signal_level: -90,
+          signal_level: -10,
           security: 'WPA2'
         });
 
         networks.push({
           ssid: 'Test Network 3',
-          signal_level: -30,
+          signal_level: -10,
           security: 'WPA2'
         });
 
         networks.push({
-          ssid: 'Test Network 1',
-          signal_level: -30,
+          ssid: 'Test Network 4',
+          signal_level: -10,
+          security: 'WPA2'
+        });
+
+        networks.push({
+          ssid: 'Test Network 5',
+          signal_level: -10,
+          security: 'WPA2'
+        });
+
+        networks.push({
+          ssid: 'Test Network 6',
+          signal_level: -10,
           security: 'WPA2'
         });
       }
