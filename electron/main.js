@@ -68,13 +68,17 @@ console.error = function ()
 
 function getEffectsPath()
 {
+  return getEffectsRepoPath() + '/effects';
+}
+
+function getEffectsRepoPath()
+{
   return app.getPath("home") + '/bice-box-effects';
 }
 
 console.log('Is app packaged?', app.isPackaged);
-console.log("NODE_ENV:", process.env.NODE_ENV);
 console.log('Home path:', app.getPath("home"));
-console.log('Effects path:', getEffectsPath());
+console.log('Repo path:', getEffectsRepoPath());
 
 // Log unhandled exceptions
 process.on('uncaughtException', (error) =>
@@ -177,8 +181,8 @@ function createWindow()
     });
 
     // Initialize SuperCollider with the necessary callbacks
-    const loadEffectsCallback = () => loadEffectsList(mainWindow, getEffectsPath, devMode);
-    initializeSuperCollider(mainWindow, getEffectsPath, loadEffectsCallback);
+    const loadEffectsCallback = () => loadEffectsList(mainWindow, getEffectsRepoPath, getEffectsPath, devMode);
+    initializeSuperCollider(mainWindow, getEffectsRepoPath, loadEffectsCallback);
 
     // Initialize OSC Server after creating the window
     oscManager = new OSCManager(mainWindow);
@@ -259,8 +263,8 @@ ipcMain.on('reboot-server', (event) =>
     {
       setTimeout(() =>
       {
-        const loadEffectsCallback = () => loadEffectsList(mainWindow, getEffectsPath, devMode);
-        initializeSuperCollider(mainWindow, getEffectsPath, loadEffectsCallback);
+        const loadEffectsCallback = () => loadEffectsList(mainWindow, getEffectsRepoPath, getEffectsPath, devMode);
+        initializeSuperCollider(mainWindow, getEffectsRepoPath, loadEffectsCallback);
       }, 1000); // Wait for 1 second before rebooting
     })
     .catch((error) =>
@@ -269,8 +273,8 @@ ipcMain.on('reboot-server', (event) =>
       // Still attempt to reboot even if the kill command fails
       setTimeout(() =>
       {
-        const loadEffectsCallback = () => loadEffectsList(mainWindow, getEffectsPath, devMode);
-        initializeSuperCollider(mainWindow, getEffectsPath, loadEffectsCallback);
+        const loadEffectsCallback = () => loadEffectsList(mainWindow, getEffectsRepoPath, getEffectsPath, devMode);
+        initializeSuperCollider(mainWindow, getEffectsRepoPath, loadEffectsCallback);
       }, 1000);
     });
 });
@@ -306,7 +310,7 @@ const debounce = (func, delay) =>
 
 function setupEffectsWatcher()
 {
-  const effectsPath = getEffectsPath();
+  const effectsPath = getEffectsRepoPath();
   const watcher = chokidar.watch(effectsPath, {
     ignored: /(^|[\/\\])\../, // ignore dotfiles
     persistent: true,
@@ -325,7 +329,7 @@ function setupEffectsWatcher()
 function reloadEffectForChangedFile(changedPath)
 {
   const extension = path.extname(changedPath).toLowerCase();
-  const relativeChangedPath = path.relative(getEffectsPath(), changedPath);
+  const relativeChangedPath = path.relative(getEffectsRepoPath(), changedPath);
   const fileName = path.basename(changedPath);
 
   console.log(`File changed: ${changedPath}`);
@@ -368,7 +372,7 @@ function reloadFullEffect(jsonPath)
         name: newEffectData.name || effectName,
         scFilePath: newEffectData.audio,
         p5SketchPath: newEffectData.visual,
-        p5SketchContent: loadP5SketchSync(newEffectData.visual, getEffectsPath),
+        p5SketchContent: loadP5SketchSync(newEffectData.visual, getEffectsRepoPath),
         params: newEffectData.params || []
       };
       console.log(`Updated effect object:`, updatedEffect);
@@ -379,7 +383,7 @@ function reloadFullEffect(jsonPath)
       if (updatedEffect.scFilePath)
       {
         console.log(`Loading SC file: ${updatedEffect.scFilePath}`);
-        loadScFile(updatedEffect.scFilePath, getEffectsPath);
+        loadScFile(updatedEffect.scFilePath, getEffectsRepoPath);
       } else
       {
         console.warn(`No SC file path provided for effect ${effectName}`);
@@ -423,7 +427,7 @@ function reloadAudioEffect(scFilePath)
   if (affectedEffect)
   {
     console.log(`Reloading audio for effect: ${affectedEffect.name}`);
-    loadScFile(scFilePath, getEffectsPath);
+    loadScFile(scFilePath, getEffectsRepoPath);
   } else
   {
     console.log(`No effect found using SC file: ${scFilePath}`);
@@ -440,14 +444,14 @@ function reloadVisualEffect(jsFilePath)
   if (currentEffect)
   {
     // Compare the relative paths
-    const currentSketchPath = path.relative(getEffectsPath(), currentEffect.p5SketchPath);
-    const changedFilePath = path.relative(getEffectsPath(), jsFilePath);
+    const currentSketchPath = path.relative(getEffectsRepoPath(), currentEffect.p5SketchPath);
+    const changedFilePath = path.relative(getEffectsRepoPath(), jsFilePath);
     console.log('Comparing paths:', currentSketchPath, changedFilePath);
 
     if (currentSketchPath === changedFilePath)
     {
       console.log(`Reloading visual for current effect: ${currentEffect.name}`);
-      const updatedSketchContent = loadP5SketchSync(jsFilePath, getEffectsPath);
+      const updatedSketchContent = loadP5SketchSync(jsFilePath, getEffectsRepoPath);
 
       if (updatedSketchContent)
       {
@@ -503,18 +507,18 @@ ipcMain.on('update-effect-params', (event, { effectName, params }) =>
 // Also fix the pull-effects-repo handler similarly:
 ipcMain.on('pull-effects-repo', async (event) =>
 {
-  const effectsPath = getEffectsPath();
+  const effectsRepoPath = getEffectsRepoPath();
 
   try
   {
-    const { stdout: pullOutput } = await exec('git pull', { cwd: effectsPath });
+    const { stdout: pullOutput } = await exec('git pull', { cwd: effectsRepoPath });
     console.log('Git pull output:', pullOutput);
 
     // After successful pull, reload effects and update status
-    loadEffectsList(mainWindow, getEffectsPath, devMode);
+    loadEffectsList(mainWindow, getEffectsRepoPath, getEffectsPath, devMode);
 
     // Check status again after pull
-    const { stdout: statusOutput } = await exec('git status -uno', { cwd: effectsPath });
+    const { stdout: statusOutput } = await exec('git status -uno', { cwd: effectsRepoPath });
     const statusText = statusOutput ? statusOutput.toString() : '';
     const hasUpdates = statusText.includes('behind');
 
@@ -529,14 +533,14 @@ ipcMain.on('pull-effects-repo', async (event) =>
 
 ipcMain.on('check-effects-repo', async (event) =>
 {
-  const effectsPath = getEffectsPath();
-  console.log('Checking effects repo at:', effectsPath);
+  const effectsRepoPath = getEffectsRepoPath();
+  console.log('Checking effects repo at:', effectsRepoPath);
 
   try
   {
     // Use the shell option to execute git commands through the system shell
     const execOptions = {
-      cwd: effectsPath,
+      cwd: effectsRepoPath,
       shell: true  // This is the key change
     };
 
@@ -721,7 +725,7 @@ ipcMain.on('reload-all-effects', (event) =>
   console.log('Reloading all effects...');
   try
   {
-    const loadedSynths = loadEffectsList(mainWindow, getEffectsPath, devMode);
+    const loadedSynths = loadEffectsList(mainWindow, getEffectsRepoPath, getEffectsPath, devMode);
     const validSynths = loadedSynths.filter(synth => synth && synth.name);
     event.reply('effects-data', validSynths);
     console.log('Effects data sent to renderer process');
@@ -737,7 +741,7 @@ ipcMain.handle('load-p5-sketch', async (event, sketchPath) =>
 {
   try
   {
-    return loadP5SketchSync(sketchPath, getEffectsPath);
+    return loadP5SketchSync(sketchPath, getEffectsRepoPath);
   } catch (error)
   {
     console.error('Error loading p5 sketch:', error);
@@ -748,7 +752,7 @@ ipcMain.handle('load-p5-sketch', async (event, sketchPath) =>
 // Add handler for loading SC files
 ipcMain.on('load-sc-file', (event, filePath) =>
 {
-  loadScFile(filePath, getEffectsPath);
+  loadScFile(filePath, getEffectsRepoPath);
 });
 
 wifi.init({
@@ -905,6 +909,6 @@ ipcMain.on('toggle-dev-mode', (event) => {
     mainWindow.webContents.send('dev-mode-changed', devMode);
     
     // Reload effects list with new mode
-    const loadedSynths = loadEffectsList(mainWindow, getEffectsPath, devMode);
+    const loadedSynths = loadEffectsList(mainWindow, getEffectsRepoPath, getEffectsPath, devMode);
     event.reply('effects-data', loadedSynths);
 });

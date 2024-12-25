@@ -17,7 +17,7 @@ function setCurrentEffect(effect) {
     console.log('Current effect set to:', effect ? effect.name : 'None');
 }
 
-function loadEffectsList(mainWindow, getEffectsPath, devMode) {
+function loadEffectsList(mainWindow, getEffectsRepoPath, getEffectsPath, devMode) {
     console.log('Loading effects list...');
     console.log('Dev mode:', devMode);
     const effectsPath = getEffectsPath();
@@ -29,7 +29,7 @@ function loadEffectsList(mainWindow, getEffectsPath, devMode) {
     // Add new effects to the array
     effectFiles.forEach(file => {
         const filePath = path.join(effectsPath, file);
-        const effect = loadEffectFromFile(filePath, getEffectsPath);
+        const effect = loadEffectFromFile(filePath, getEffectsRepoPath);
 
         // In dev mode, load all effects. Otherwise, only load curated ones
         if (devMode || effect.curated) {
@@ -56,21 +56,21 @@ function loadEffectsList(mainWindow, getEffectsPath, devMode) {
     return synths;
 }
 
-function loadEffectFromFile(filePath, getEffectsPath) {
+function loadEffectFromFile(filePath, getEffectsRepoPath) {
     const synthData = JSON.parse(fs.readFileSync(filePath, 'utf8'));
     return {
         name: synthData.name,
         scFilePath: synthData.audio,
         p5SketchPath: synthData.visual,
-        p5SketchContent: loadP5SketchSync(synthData.visual, getEffectsPath),
+        p5SketchContent: loadP5SketchSync(synthData.visual, getEffectsRepoPath),
         params: synthData.params,
         curated: synthData.curated || false
     };
 }
 
-function loadP5SketchSync(sketchPath, getEffectsPath) {
+function loadP5SketchSync(sketchPath, getEffectsRepoPath) {
     try {
-        const effectsPath = getEffectsPath();
+        const effectsPath = getEffectsRepoPath();
         const fullPath = path.join(effectsPath, sketchPath);
 
         if (!fs.existsSync(fullPath)) {
@@ -86,9 +86,9 @@ function loadP5SketchSync(sketchPath, getEffectsPath) {
     }
 }
 
-function loadScFile(filePath, getEffectsPath) {
+function loadScFile(filePath, getEffectsRepoPath) {
     // Ensure filePath is relative to the effects directory
-    const scFilePath = path.join(getEffectsPath(), filePath);
+    const scFilePath = path.join(getEffectsRepoPath(), filePath);
     console.log(`Loading SC file: ${scFilePath}`);
 
     const scCommand = `("${scFilePath}").load;`;
@@ -117,7 +117,7 @@ function getSclangPath() {
     throw new Error('sclang not found in any of the expected paths');
 }
 
-function initializeSuperCollider(mainWindow, getEffectsPath, loadEffectsCallback) {
+function initializeSuperCollider(mainWindow, getEffectsRepoPath, loadEffectsCallback) {
     console.log('Initializing SuperCollider...');
 
     let sclangPath;
@@ -162,11 +162,11 @@ function initializeSuperCollider(mainWindow, getEffectsPath, loadEffectsCallback
         serverBooted = false;
     });
 
-    bootSuperColliderServer(getEffectsPath);
+    bootSuperColliderServer(getEffectsRepoPath);
 }
 
-async function bootSuperColliderServer(getEffectsPath) {
-    const startupFilePath = path.join(getEffectsPath(), '/utilities/init.sc');
+async function bootSuperColliderServer(getEffectsRepoPath) {
+    const startupFilePath = path.join(getEffectsRepoPath(), '/utilities/init.sc');
     console.log(`Loading startup file from: ${startupFilePath}`);
 
     const scCommand = `("${startupFilePath}").load;`;
