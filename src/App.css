@@ -674,6 +674,8 @@ button:active {
   font-size: 24px;
   color: rgb(198, 202, 224);
   transition: all 0.3s ease;
+  text-shadow: 1px 1px 3px rgba(0, 0, 0, 1); /* Added drop shadow */
+
 }
 
 .prev-button {
@@ -907,6 +909,8 @@ button:active {
     text-transform: none;
     color: rgb(198, 202, 224);
     min-width: 200px;
+    text-shadow: 1px 1px 5px rgba(0, 0, 0, 1); /* Added drop shadow */
+
 }
 
 /* Specific styles for the tools toggle button */
