@@ -1,5 +1,7 @@
 # Bice-Box
 
+An Audiovisual Effects Processor designed for Raspberry Pi systems.
+
 ## Development Setup
 
 1. Install dependencies:
@@ -9,10 +11,10 @@
 
 2. Start development environment with hot-reloading:
    ```
-   npm start
+   npm run dev
    ```
 
-   This runs both the React development server and Electron concurrently using `start:react` and `start:electron` scripts.
+   This runs both the React development server and Electron concurrently using `dev:react` and `dev:electron` scripts.
 
 ## Building for Production
 
@@ -39,14 +41,22 @@
 ## Project Structure
 
 - React app source is in the `src` directory
-- Electron main process file is `main.js` in the root directory
+- Electron main process files are in the `electron` directory
 - Build output goes to the `build` directory
-- Build artifacts are stored in the `out` directory
+- Distribution files are stored in the `dist` directory
 - Requires a separate Effects Repository to be available in the users home directory.
 
 ## Scripts Reference
 
-- `npm start`: Runs React and Electron in development mode with hot-reloading
-- `npm run package`: Builds React and packages the app
-- `npm run package:pi`: Builds React and packages the app for Raspberry Pi
+- `npm run dev`: Runs React and Electron in development mode with hot-reloading
+- `npm run build:electron`: Builds React and packages the app for standard systems
+- `npm run build:electron:pi`: Builds React and packages the app for Raspberry Pi (arm64)
+- `npm run release:publish`: Builds and publishes a new release for Raspberry Pi
 - `npm run clean`: Removes build and packaging artifacts
+
+## Build Information
+
+- Targets Raspberry Pi (arm64) by default
+- Packages as Linux zip file
+- Includes automatic GitHub release publishing
+- Output files are named in the format: Bice-Box-[version]-[architecture].[extension]
