@@ -110,6 +110,6 @@
     "electron-reloader": "^1.2.3",
     "wait-on": "^8.0.0"
   },
-  "description": "Bice-Box - An Audio Visual Effects Box",
+  "description": "Audiovisual Effects Processor",
   "author": "Drew Skillman <drewskillman@gmail.com>"
 }
