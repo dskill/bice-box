@@ -1,6 +1,6 @@
 # Bice-Box
 
-An Audiovisual Effects Processor designed for Raspberry Pi systems.
+An Audiovisual Effects Processor designed for Raspberry Pi (but it also runs on Mac for development).
 
 ## Development Setup
 
