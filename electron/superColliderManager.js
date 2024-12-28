@@ -87,15 +87,31 @@ function loadP5SketchSync(sketchPath, getEffectsRepoPath) {
 }
 
 function loadScFile(filePath, getEffectsRepoPath) {
-    // Ensure filePath is relative to the effects directory
     const scFilePath = path.join(getEffectsRepoPath(), filePath);
     console.log(`Loading SC file: ${scFilePath}`);
 
     const scCommand = `("${scFilePath}").load;`;
 
     return sendCodeToSclang(scCommand)
-        .then(result => console.log('SC file load result:', result))
-        .catch(error => console.error('Error loading SC file:', error));
+        .then(result => {
+            if (result.includes('ERROR:') || result.includes('has bad input')) {
+                // Format the error message consistently
+                throw new Error(result.trim());
+            }
+            console.log('SC file load result:', result);
+            return result;
+        })
+        .catch(error => {
+            console.error('Error loading SC file:', error);
+            // Standardize error message format
+            if (global.mainWindow) {
+                global.mainWindow.webContents.send('sc-compilation-error', {
+                    file: filePath,
+                    errorMessage: error.message || 'Unknown SuperCollider error'
+                });
+            }
+            throw error;
+        });
 }
 
 function getSclangPath() {
@@ -125,7 +141,10 @@ function initializeSuperCollider(mainWindow, getEffectsRepoPath, loadEffectsCall
         sclangPath = getSclangPath();
     } catch (error) {
         console.error('Failed to get sclang path:', error);
-        mainWindow.webContents.send('sc-error', 'SuperCollider (sclang) not found in resources');
+        mainWindow.webContents.send('sc-compilation-error', {
+            file: 'sclang',
+            errorMessage: 'SuperCollider (sclang) not found in resources'
+        });
         return;
     }
 
@@ -135,7 +154,10 @@ function initializeSuperCollider(mainWindow, getEffectsRepoPath, loadEffectsCall
         sclang = spawn(sclangPath);
     } catch (error) {
         console.error('Failed to start SuperCollider:', error);
-        mainWindow.webContents.send('sc-error', 'Failed to start SuperCollider.');
+        mainWindow.webContents.send('sc-compilation-error', {
+            file: 'sclang',
+            errorMessage: 'Failed to start SuperCollider.'
+        });
         return;
     }
 
@@ -180,6 +202,12 @@ function sendCodeToSclang(code) {
     return new Promise((resolve, reject) => {
         if (!sclang) {
             console.error('SuperCollider is not initialized');
+            if (global.mainWindow) {
+                global.mainWindow.webContents.send('sc-compilation-error', {
+                    file: 'sclang',
+                    errorMessage: 'SuperCollider is not initialized'
+                });
+            }
             reject('SuperCollider is not initialized');
             return;
         }

@@ -27,6 +27,7 @@ function App() {
     isChecking: false,
     error: null
   });
+  const [scError, setScError] = useState(null);
 
   useEffect(() => {
     // Initial effects load and repo check
@@ -123,6 +124,21 @@ function App() {
       };
     }
   }, [currentSynth]); // Add currentSynth to the dependency array
+
+  useEffect(() => {
+    if (electron) {
+        const handleScError = (errorData) => {
+          console.log("SC error received:", errorData);
+            setScError(errorData);
+        };
+
+        electron.ipcRenderer.on('sc-compilation-error', handleScError);
+
+        return () => {
+            electron.ipcRenderer.removeListener('sc-compilation-error', handleScError);
+        };
+    }
+  }, []);
 
   const reloadEffectList = () => {
     return new Promise((resolve, reject) => {
@@ -335,6 +351,20 @@ function App() {
             onSelectEffect={handleEffectSelect}
             currentSynth={currentSynth}
           />
+      )}
+      {scError && (
+          <div className="sc-error-display">
+              <button 
+                  className="sc-error-close" 
+                  onClick={() => setScError(null)}
+              >
+                  ×
+              </button>
+              <div className="sc-error-header">
+                  SuperCollider Compilation Error in {scError.file}:
+              </div>
+              <pre>{scError.errorMessage}</pre>
+          </div>
       )}
     </div>
   );

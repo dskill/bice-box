@@ -752,7 +752,16 @@ ipcMain.handle('load-p5-sketch', async (event, sketchPath) =>
 // Add handler for loading SC files
 ipcMain.on('load-sc-file', (event, filePath) =>
 {
-  loadScFile(filePath, getEffectsRepoPath);
+  loadScFile(filePath, getEffectsRepoPath)
+    .catch(error => {
+      console.error('Error loading SC file:', error);
+
+      // Forward the same standardized structure to the renderer
+      event.reply('sc-compilation-error', {
+        file: filePath || 'Unknown file',
+        errorMessage: error.message || 'Unknown SuperCollider error'
+      });
+    });
 });
 
 wifi.init({

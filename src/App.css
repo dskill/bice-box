@@ -1152,3 +1152,43 @@ button:disabled {
   opacity: 0.5;
   color: rgba(198, 202, 224, 0.5);
 }
+
+.sc-error-display {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    right: 20px;
+    background-color: rgba(43, 38, 55, 0.95);
+    border: 1px solid #ff4444;
+    border-radius: 4px;
+    padding: 15px;
+    color: #ff9999;
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 1000;
+    white-space: pre-wrap;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+.sc-error-header {
+    color: #ff4444;
+    font-weight: bold;
+    margin-bottom: 8px;
+}
+
+.sc-error-close {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: none;
+    border: none;
+    color: #ff9999;
+    cursor: pointer;
+    font-size: 18px;
+}
+
+.sc-error-close:hover {
+    color: #ff4444;
+}
