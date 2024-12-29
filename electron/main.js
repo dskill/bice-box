@@ -383,7 +383,7 @@ function reloadFullEffect(jsonPath)
       if (updatedEffect.scFilePath)
       {
         console.log(`Loading SC file: ${updatedEffect.scFilePath}`);
-        loadScFile(updatedEffect.scFilePath, getEffectsRepoPath);
+        loadScFile(updatedEffect.scFilePath, getEffectsRepoPath, mainWindow);
       } else
       {
         console.warn(`No SC file path provided for effect ${effectName}`);
@@ -427,7 +427,7 @@ function reloadAudioEffect(scFilePath)
   if (affectedEffect)
   {
     console.log(`Reloading audio for effect: ${affectedEffect.name}`);
-    loadScFile(scFilePath, getEffectsRepoPath);
+    loadScFile(scFilePath, getEffectsRepoPath, mainWindow);
   } else
   {
     console.log(`No effect found using SC file: ${scFilePath}`);
@@ -750,18 +750,8 @@ ipcMain.handle('load-p5-sketch', async (event, sketchPath) =>
 });
 
 // Add handler for loading SC files
-ipcMain.on('load-sc-file', (event, filePath) =>
-{
-  loadScFile(filePath, getEffectsRepoPath)
-    .catch(error => {
-      console.error('Error loading SC file:', error);
-
-      // Forward the same standardized structure to the renderer
-      event.reply('sc-compilation-error', {
-        file: filePath || 'Unknown file',
-        errorMessage: error.message || 'Unknown SuperCollider error'
-      });
-    });
+ipcMain.on('load-sc-file', (event, filePath) => {
+    loadScFile(filePath, getEffectsRepoPath, mainWindow);
 });
 
 wifi.init({

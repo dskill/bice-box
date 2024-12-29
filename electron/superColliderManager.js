@@ -86,7 +86,7 @@ function loadP5SketchSync(sketchPath, getEffectsRepoPath) {
     }
 }
 
-function loadScFile(filePath, getEffectsRepoPath) {
+function loadScFile(filePath, getEffectsRepoPath, mainWindow) {
     const scFilePath = path.join(getEffectsRepoPath(), filePath);
     console.log(`Loading SC file: ${scFilePath}`);
 
@@ -95,7 +95,6 @@ function loadScFile(filePath, getEffectsRepoPath) {
     return sendCodeToSclang(scCommand)
         .then(result => {
             if (result.includes('ERROR:') || result.includes('has bad input')) {
-                // Format the error message consistently
                 throw new Error(result.trim());
             }
             console.log('SC file load result:', result);
@@ -103,9 +102,8 @@ function loadScFile(filePath, getEffectsRepoPath) {
         })
         .catch(error => {
             console.error('Error loading SC file:', error);
-            // Standardize error message format
-            if (global.mainWindow) {
-                global.mainWindow.webContents.send('sc-compilation-error', {
+            if (mainWindow && mainWindow.webContents) {
+                mainWindow.webContents.send('sc-compilation-error', {
                     file: filePath,
                     errorMessage: error.message || 'Unknown SuperCollider error'
                 });
