@@ -154,8 +154,16 @@ async function runTests() {
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
-      webSecurity: false
+      webSecurity: false,
+      additionalArguments: [`--app-path=${app.getAppPath()}`]
     }
+  });
+
+  // Set base directory for file protocol
+  const protocol = require('electron').protocol;
+  protocol.registerFileProtocol('file', (request, callback) => {
+    const url = request.url.substr(7);
+    callback({ path: path.normalize(`${__dirname}/${url}`) });
   });
 
   // Position window in a visible area
