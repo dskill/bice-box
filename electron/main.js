@@ -754,6 +754,23 @@ ipcMain.on('load-sc-file', (event, filePath) => {
     loadScFile(filePath, getEffectsRepoPath, mainWindow);
 });
 
+// Handler for WebGL capabilities logging
+ipcMain.on('log-webgl-capabilities', (event, data) => {
+  console.log('WebGL Capabilities Report:');
+  console.log(JSON.stringify(data, null, 2));
+  
+  // Save to a file for future reference
+  const webglReportPath = path.join(app.getPath('userData'), 'webgl-capabilities.json');
+  fs.writeFileSync(webglReportPath, JSON.stringify({
+    timestamp: new Date().toISOString(),
+    platform: process.platform,
+    arch: process.arch,
+    ...data
+  }, null, 2));
+  
+  console.log(`WebGL capabilities report saved to ${webglReportPath}`);
+});
+
 wifi.init({
   iface: null // network interface, choose a random wifi interface if set to null
 });

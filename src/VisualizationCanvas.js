@@ -1,5 +1,6 @@
-import React, { useRef, useEffect, useCallback } from 'react';
+import React, { useRef, useEffect, useCallback, useState } from 'react';
 import p5 from 'p5';
+import WebGLDetector from './utils/webGLDetector';
 
 function VisualizationCanvas({ currentEffect, paramValuesRef, onEffectLoaded }) {
   const canvasRef = useRef(null);
@@ -14,6 +15,8 @@ function VisualizationCanvas({ currentEffect, paramValuesRef, onEffectLoaded }) 
   const fft0DataRef = useRef([]);
   const fft1DataRef = useRef([]);
   const oscMessageRef = useRef([]);
+  const [webGLCapabilities, setWebGLCapabilities] = useState(null);
+  const [isPlatformRaspberryPi, setIsPlatformRaspberryPi] = useState(false);
 
   const numUpdates = useRef(0);
 
@@ -164,6 +167,32 @@ function VisualizationCanvas({ currentEffect, paramValuesRef, onEffectLoaded }) 
     oscMessageRef.current = data;
     if (p5InstanceRef.current) {
         p5InstanceRef.current.customMessage = data;
+    }
+  }, []);
+
+  // Detect WebGL capabilities on mount
+  useEffect(() => {
+    // Check WebGL capabilities
+    const capabilities = WebGLDetector.testWebGLCapabilities();
+    setWebGLCapabilities(capabilities);
+    
+    // Check if we're on a Raspberry Pi
+    const isPi = WebGLDetector.isPlatformRaspberryPi();
+    setIsPlatformRaspberryPi(isPi);
+    
+    console.log('WebGL capabilities:', capabilities);
+    console.log('Platform detection:', { 
+      isRaspberryPi: isPi,
+      userAgent: navigator.userAgent,
+      platform: navigator.platform 
+    });
+    
+    // Log to main process for debugging
+    if (window.electron) {
+      window.electron.ipcRenderer.send('log-webgl-capabilities', {
+        capabilities,
+        isPlatformRaspberryPi: isPi
+      });
     }
   }, []);
 
