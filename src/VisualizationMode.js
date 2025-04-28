@@ -2,31 +2,22 @@ import React, { useState, useRef } from 'react';
 import EffectManagement from './EffectManagement';
 import ParamFader from './ParamFader';
 import VisualizationCanvas from './VisualizationCanvas';
-import ToggleButton from './ToggleButton';
 
-function VisualizationMode({ synths, currentSynth, switchSynth, nextSynth, previousSynth, reloadEffectList, pullEffectsRepo, onOpenEffectSelect, effectsRepoStatus, onCheckEffectsRepo }) {
+function VisualizationMode({ 
+  currentPresetName,
+  currentAudioSourcePath, 
+  currentVisualSourcePath, 
+  currentVisualContent,
+  currentAudioParams,
+  onOpenAudioSelect, 
+  onOpenVisualSelect,
+  reloadEffectList, 
+  pullEffectsRepo, 
+  effectsRepoStatus, 
+  onCheckEffectsRepo 
+}) {
   const [isLoadingEffect, setIsLoadingEffect] = useState(false);
   const paramValuesRef = useRef({});
-
-  const prettifySynthName = (name) => {
-    if (!name) return '';
-    name = name.replace(/_/g, " ");
-    return name.replace(/(?:^|\s)\S/g, function (a) { return a.toUpperCase(); });
-  };
-
-  const handleNextSynth = () => {
-    if (!isLoadingEffect) {
-      setIsLoadingEffect(true);
-      nextSynth();
-    }
-  };
-
-  const handlePreviousSynth = () => {
-    if (!isLoadingEffect) {
-      setIsLoadingEffect(true);
-      previousSynth();
-    }
-  };
 
   const handleEffectLoaded = () => {
     setIsLoadingEffect(false);
@@ -34,6 +25,25 @@ function VisualizationMode({ synths, currentSynth, switchSynth, nextSynth, previ
 
   const handleParamChange = (paramName, value) => {
     paramValuesRef.current[paramName] = value;
+    if (window.electron && currentAudioSourcePath) {
+      const derivedSynthDefName = currentAudioSourcePath.split('/').pop().split('.')[0];
+      if (derivedSynthDefName) {
+        const scCode = `~${derivedSynthDefName}.set(\${paramName}, ${value});`;
+        console.log(`Sending SC: ${scCode}`);
+        window.electron.ipcRenderer.send('send-to-supercollider', scCode);
+      } else {
+        console.warn(`Could not derive SynthDef name from: ${currentAudioSourcePath}`);
+      }
+    } else {
+      console.warn('Cannot send param change: No current audio source path');
+    }
+  };
+
+  const prettifySourceName = (sourcePath) => {
+    if (!sourcePath) return 'None';
+    let name = sourcePath.split('/').pop().split('.')[0];
+    name = name.replace(/_/g, " ");
+    return name;
   };
 
   return (
@@ -43,70 +53,44 @@ function VisualizationMode({ synths, currentSynth, switchSynth, nextSynth, previ
           <EffectManagement 
             reloadEffectList={reloadEffectList} 
             pullEffectsRepo={pullEffectsRepo}
-            currentSynth={currentSynth}
-            switchSynth={switchSynth}   
             effectsRepoStatus={effectsRepoStatus}
             onCheckEffectsRepo={onCheckEffectsRepo}
           />
         </div>
       )}
       
-      <div className="effect-select-container">
+      <div className="source-select-container">
         <button 
-          className="nav-button effect-nav-button prev-button" 
-          onClick={handlePreviousSynth}
-          disabled={isLoadingEffect}
+          className="nav-button audio-select-button" 
+          onClick={onOpenAudioSelect}
         >
-          ‹
+          Audio: {prettifySourceName(currentAudioSourcePath)}
         </button>
-        <ToggleButton
-          isOn={false}
-          setIsOn={() => {
-            if (!isLoadingEffect) {
-              onOpenEffectSelect();
-            }
-          }}
-          onText={currentSynth ? prettifySynthName(currentSynth.name) : 'No Effect Selected'}
-          offText={currentSynth ? prettifySynthName(currentSynth.name) : 'No Effect Selected'}
-          disabled={isLoadingEffect}
-        />
         <button 
-          className="nav-button effect-nav-button next-button" 
-          onClick={handleNextSynth}
-          disabled={isLoadingEffect}
+          className="nav-button visual-select-button" 
+          onClick={onOpenVisualSelect}
         >
-          ›
+          Visual: {prettifySourceName(currentVisualSourcePath)}
         </button>
       </div>
 
-      <VisualizationCanvas currentEffect={currentSynth} paramValuesRef={paramValuesRef} onEffectLoaded={handleEffectLoaded} />
+      <VisualizationCanvas 
+        currentEffect={currentAudioSourcePath}
+        currentVisualContent={currentVisualContent}
+        paramValuesRef={paramValuesRef} 
+        onEffectLoaded={handleEffectLoaded}
+      />
       <div className="visualization-controls">
         <div className="knobs-container">
-          {currentSynth && currentSynth.params && currentSynth.params.map((param, index) => (
+          {currentAudioParams && currentAudioParams.map((param, index) => (
             <ParamFader
-              key={`${currentSynth.name}-${param.name}`}
-              synthName={currentSynth.name}
+              key={`${currentAudioSourcePath}-${param.name}`}
               param={{ ...param, index }}
               onParamChange={handleParamChange}
             />
           ))}
         </div>
       </div>
-
-      <button 
-        className="nav-button prev-button" 
-        onClick={handlePreviousSynth}
-        disabled={isLoadingEffect}
-      >
-        ‹
-      </button>
-      <button 
-        className="nav-button next-button" 
-        onClick={handleNextSynth}
-        disabled={isLoadingEffect}
-      >
-        ›
-      </button>
     </div>
   );
 }

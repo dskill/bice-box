@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useCallback, useState } from 'react';
 import p5 from 'p5';
 import WebGLDetector from './utils/webGLDetector';
 
-function VisualizationCanvas({ currentEffect, paramValuesRef, onEffectLoaded }) {
+function VisualizationCanvas({ currentEffect, currentVisualContent, paramValuesRef, onEffectLoaded }) {
   const canvasRef = useRef(null);
   const p5InstanceRef = useRef(null);
   const waveform0DataRef = useRef([]);
@@ -91,6 +91,9 @@ function VisualizationCanvas({ currentEffect, paramValuesRef, onEffectLoaded }) 
   }, []);
 
   const handleVisualEffectUpdate = useCallback((updatedEffect) => {
+    // This handler might need revisiting if file-watching updates are needed 
+    // alongside direct content injection. For now, the main useEffect handles
+    // content changes via the currentVisualContent prop.
     if (!updatedEffect || typeof updatedEffect !== 'object') {
       console.warn('Received invalid updatedEffect, skipping update');
       return;
@@ -232,69 +235,70 @@ function VisualizationCanvas({ currentEffect, paramValuesRef, onEffectLoaded }) 
   }, []);
   */
 
+  // Update useEffect to depend on currentVisualContent
   useEffect(() => {
     async function loadAndCreateSketch() {
-      if (currentEffect && currentEffect.p5SketchPath) {
-        console.log('Loading sketch:', currentEffect.p5SketchPath);
+      // Check if we have valid visual content to load
+      if (currentVisualContent) {
+        console.log('Visual content changed, creating/updating sketch...');
 
-        cleanupP5Instance();
-
-        // Remove existing p5 instance if any
-        if (p5InstanceRef.current) {
-          console.log('Removing existing p5 instance');
-          p5InstanceRef.current.remove();
-        }
+        cleanupP5Instance(); // Clean up previous instance first
 
         try {
-          const sketchContent = await window.electron.ipcRenderer.invoke('load-p5-sketch', currentEffect.p5SketchPath);
-          if (sketchContent) {
-            const sketchModule = new Function('module', 'exports', sketchContent);
-            const exports = {};
-            const module = { exports };
-            sketchModule(module, exports);
-            const sketchFunction = module.exports;
+          // Use the currentVisualContent prop directly
+          console.log('Evaluating sketch content...');
+          const sketchFunctionWrapper = new Function('module', 'exports', currentVisualContent);
+          const exports = {};
+          const module = { exports };
+          sketchFunctionWrapper(module, exports);
+          const sketchDefinition = module.exports;
 
-            console.log('Creating new p5 instance');
-            p5InstanceRef.current = new p5(sketchFunction, canvasRef.current);
-            p5InstanceRef.current.waveform0 = waveform0DataRef.current;
-            p5InstanceRef.current.waveform1 = waveform1DataRef.current;
-            p5InstanceRef.current.rmsInput = rmsInputRef.current;
-            p5InstanceRef.current.rmsOutput = rmsOutputRef.current;
-            p5InstanceRef.current.tunerData = tunerDataRef.current;
-            p5InstanceRef.current.fft0 = fft0DataRef.current;
-            p5InstanceRef.current.fft1 = fft1DataRef.current;
-
-            // Define params as a getter to always access the current values
-            Object.defineProperty(p5InstanceRef.current, 'params', {
-              get: () => paramValuesRef.current
-            });
-
-            p5InstanceCountRef.current += 1;
-            console.log(`Current p5 instance count: ${p5InstanceCountRef.current}`);
-
-            // Call onEffectLoaded when sketch is ready
-            if (onEffectLoaded) {
-              onEffectLoaded();
-            }
-
-            console.log('p5 instance created');
-          } else {
-            console.error('Failed to load sketch content');
-            errorRef.current = 'Failed to load visualization';
+          if (typeof sketchDefinition !== 'function') {
+            throw new Error('Sketch content did not export a function.');
           }
+
+          console.log('Creating new p5 instance...');
+          const newP5Instance = new p5(sketchDefinition, canvasRef.current);
+          p5InstanceCountRef.current += 1;
+          console.log(`P5 instance created. Current count: ${p5InstanceCountRef.current}`);
+
+          // Attach data refs and params to the new instance
+          newP5Instance.waveform0 = waveform0DataRef.current;
+          newP5Instance.waveform1 = waveform1DataRef.current;
+          newP5Instance.fft0 = fft0DataRef.current;
+          newP5Instance.fft1 = fft1DataRef.current;
+          newP5Instance.rmsInput = rmsInputRef.current;
+          newP5Instance.rmsOutput = rmsOutputRef.current;
+          newP5Instance.tunerData = tunerDataRef.current;
+          newP5Instance.customMessage = oscMessageRef.current;
+          newP5Instance.params = paramValuesRef.current; // Pass current params
+          // Expose WebGL capabilities and platform info to sketch
+          newP5Instance.webGLCapabilities = webGLCapabilities;
+          newP5Instance.isPlatformRaspberryPi = isPlatformRaspberryPi;
+
+
+          p5InstanceRef.current = newP5Instance; // Store the new instance
+          errorRef.current = null; // Clear any previous error
+          console.log('New p5 instance setup complete.');
+          onEffectLoaded(); // Notify parent component
+
         } catch (error) {
-          console.error('Error loading sketch:', error);
-          errorRef.current = 'Failed to load visualization';
+          console.error('Error creating p5 sketch from content:', error);
+          errorRef.current = 'Failed to load visualization.';
+          // Ensure cleanup happens even on error
+          cleanupP5Instance(); 
         }
       } else {
-        console.log('No current effect or p5SketchPath provided');
+        // If no visual content, ensure cleanup
+        console.log('No visual content, ensuring canvas is clean.');
+        cleanupP5Instance();
       }
     }
 
     loadAndCreateSketch();
 
-    return cleanupP5Instance;
-  }, [currentEffect, cleanupP5Instance]);
+    // Dependency array now includes currentVisualContent
+  }, [currentVisualContent, cleanupP5Instance, paramValuesRef, onEffectLoaded, webGLCapabilities, isPlatformRaspberryPi]);
 
   if (errorRef.current) {
     return <div>Error: {errorRef.current}</div>;

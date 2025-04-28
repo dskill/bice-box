@@ -209,7 +209,7 @@ app.whenReady().then(() =>
   if (!fs.existsSync(electronJsPath))
   {
     console.error(`ERROR: electron.js not found at ${electronJsPath}`);
-    console.error('This may cause startup issues. Make sure the file is being copied correctly during build.');
+    console.error('This may cause startup issues. Make sure the file is being copying correctly during build.');
   } else
   {
     console.log(`electron.js found at ${electronJsPath}`);
@@ -927,4 +927,43 @@ ipcMain.on('toggle-dev-mode', (event) => {
     // Reload effects list with new mode
     const loadedSynths = loadEffectsList(mainWindow, getEffectsRepoPath, getEffectsPath, devMode);
     event.reply('effects-data', loadedSynths);
+});
+
+// --- Function to Scan for Visualizers ---
+function getAvailableVisualizers(effectsRepoPath) {
+  const visualsDir = path.join(effectsRepoPath, 'visual');
+  console.log(`Scanning for visualizers in: ${visualsDir}`);
+  try {
+    if (!fs.existsSync(visualsDir)) {
+      console.warn(`Visuals directory not found: ${visualsDir}`);
+      return [];
+    }
+    const files = fs.readdirSync(visualsDir);
+    const visualizers = files
+      .filter(file => path.extname(file).toLowerCase() === '.js')
+      .map(file => {
+        const name = path.basename(file, '.js').replace(/_/g, ' ');
+        // Capitalize first letter of each word (optional)
+        // const prettyName = name.replace(/\b\w/g, l => l.toUpperCase());
+        return {
+          name: name, // Use the cleaned-up name
+          p5SketchPath: path.join('visual', file) // Path relative to effects repo root
+        };
+      })
+      .sort((a, b) => a.name.localeCompare(b.name)); // Sort alphabetically
+      
+    console.log(`Found ${visualizers.length} visualizers:`, visualizers.map(v => v.name));
+    return visualizers;
+  } catch (error) {
+    console.error(`Error scanning visualizers directory ${visualsDir}:`, error);
+    return []; // Return empty list on error
+  }
+}
+
+// --- IPC Handlers ---
+
+// Add handler for getting visualizers
+ipcMain.handle('get-visualizers', async (event) => {
+  const effectsRepoPath = getEffectsRepoPath();
+  return getAvailableVisualizers(effectsRepoPath);
 });

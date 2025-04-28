@@ -15,7 +15,7 @@ const throttle = (func, limit) => {
   }
 };
 
-const ParamFader = ({ synthName, param, onParamChange }) => {
+const ParamFader = ({ param, onParamChange }) => {
   const { name, value, range } = param;
   const { sendCode } = useSuperCollider();
   const [faderValue, setFaderValue] = useState(value);
@@ -61,7 +61,7 @@ const ParamFader = ({ synthName, param, onParamChange }) => {
       throttledSendCode(code);
       onParamChange(name, faderValue);
     }
-  }, [faderValue, name, throttledSendCode, synthName, onParamChange]);
+  }, [faderValue, name, throttledSendCode, onParamChange]);
 
   useEffect(() => {
     const handleMouseMove = (e) => {

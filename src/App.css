@@ -607,7 +607,7 @@ button:active {
   pointer-events: auto;
 }
 
-.effect-select-container {
+.source-select-container {
   position: fixed;
   top: 5px;
   left: 50%;
@@ -633,6 +633,7 @@ button:active {
   padding: 10px;
   box-sizing: border-box;
   pointer-events: none;
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
 }
 
 .visualization-mode .effect-select-wrapper {
@@ -659,6 +660,7 @@ button:active {
   color: rgb(198, 202, 224);
   font-size: 10px;
   font-style: italic;
+  text-shadow: 1px 1px 3px rgba(0, 0, 0, 1); /* Added drop shadow */
 }
 
 .nav-button {
@@ -680,6 +682,7 @@ button:active {
 
 .prev-button {
   left: 100px;
+  pointer-events: auto;
 }
 
 .next-button {
@@ -1191,4 +1194,37 @@ button:disabled {
 
 .sc-error-close:hover {
     color: #ff4444;
+}
+
+/* Override fixed positioning for nav buttons inside the source selector */
+.source-select-container .nav-button {
+  position: static; /* Override fixed positioning */
+  transform: none;  /* Remove vertical transform */
+  font-family: 'Aldrich', 'Inconsolata', monospace; /* Match general button font */
+  font-size: 21px; /* Adjust font size */
+  padding: 10px 15px; /* Adjust padding */
+  border: 1px solid rgba(198, 202, 224, 0.3); /* Ensure border is visible */
+  border-radius: 5px; /* Ensure border radius is applied */
+  min-width: 180px; /* Give buttons a minimum width */
+  text-align: center; /* Center text */
+}
+
+/* Ensure hover effect works correctly */
+.source-select-container .nav-button:hover {
+  color: white;
+  background-color: rgba(198, 202, 224, 0.1); /* Add subtle background on hover */
+}
+
+/* Remove the original nav-button positioning */
+/* This might be redundant now due to the override above, but keep for clarity? */
+/* 
+.nav-button.prev-button,
+.nav-button.next-button {
+  position: static; 
+}
+*/
+
+/* Hide the original nav buttons at the sides */
+.visualization-mode > .nav-button {
+  display: none;
 }
