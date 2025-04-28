@@ -26,6 +26,7 @@ function App() {
   const [currentScreen, setCurrentScreen] = useState('visualization'); // 'visualization' or 'select' - Will be replaced
   const [showAudioSelector, setShowAudioSelector] = useState(false);
   const [showVisualSelector, setShowVisualSelector] = useState(false);
+  const [showPresetSelector, setShowPresetSelector] = useState(false); // State for preset selector
   const [visualizerList, setVisualizerList] = useState([]); // State for direct visualizers
   const [currentAudioParams, setCurrentAudioParams] = useState([]); // State for active audio params
   const [effectsRepoStatus, setEffectsRepoStatus] = useState({
@@ -311,7 +312,7 @@ function App() {
     }
   };
 
-  // --- New Handlers for Audio/Visual Selection ---
+  // --- New Handlers for Audio/Visual/Preset Selection ---
 
   const handleAudioSelect = (scFilePath) => {
     if (!scFilePath) {
@@ -385,30 +386,34 @@ function App() {
     });
   };
 
-  // Updated handler for selecting a preset from the list
+  // Handles selecting a preset from the list
   const handlePresetSelect = (presetName) => {
-    if (presetName === null) {
-      console.log('Preset selection cancelled');
-      // Close whichever selector was open (logic to be added)
-      setShowAudioSelector(false); 
-      setShowVisualSelector(false);
-    } else {
-      switchPreset(presetName);
-      // Close selectors after selection
-      setShowAudioSelector(false); 
-      setShowVisualSelector(false);
+    if (!presetName) {
+      console.log('Preset selection cancelled.');
+      setShowPresetSelector(false);
+      return;
     }
-    setCurrentScreen('visualization'); // Keep this for now, might remove later
+    console.log(`Preset selected: ${presetName}`);
+    switchPreset(presetName); // Call the existing function to load the preset
+    setShowPresetSelector(false);
   };
 
-  // Placeholder - will eventually open the audio selector
-  const openAudioSelect = () => {
-    console.log("Open Audio Selector triggered");
-    // setCurrentScreen('select'); // Replace with specific selector state
-    setShowAudioSelector(true);
+  // Opens the preset selector
+  const openPresetSelect = () => {
+    console.log("Open Preset Selector triggered");
+    setShowPresetSelector(true);
+    setShowAudioSelector(false);
     setShowVisualSelector(false);
   };
 
+  // Opens the audio selector
+  const openAudioSelect = () => {
+    console.log("Open Audio Selector triggered");
+    setShowAudioSelector(true);
+    setShowPresetSelector(false);
+    setShowVisualSelector(false);
+  };
+  
   // Updated to fetch visualizer list on demand
   const openVisualSelect = async () => {
     console.log("Open Visual Selector triggered");
@@ -421,6 +426,7 @@ function App() {
         setVisualizerList(fetchedVisualizers || []); 
         setShowVisualSelector(true); // Show selector only after successful fetch
         setShowAudioSelector(false); 
+        setShowPresetSelector(false); // Also hide preset selector
       } else {
          throw new Error("Electron IPC not available");
       }
@@ -498,6 +504,7 @@ function App() {
         reloadEffectList={reloadEffectList}
         pullEffectsRepo={pullEffectsRepo}
         // Pass handlers to open selectors
+        onOpenPresetSelect={openPresetSelect}
         onOpenAudioSelect={openAudioSelect} 
         onOpenVisualSelect={openVisualSelect} 
         // onOpenEffectSelect={openEffectSelect} // Replace this
@@ -508,6 +515,15 @@ function App() {
         // using `currentSynth.name` as the target synthdef.
       />
       {/* Render selectors conditionally based on new state */}
+      { showPresetSelector && (
+        <EffectSelectScreen
+          type="preset"
+          items={synths} // Use the full synths list for presets
+          onSelect={handlePresetSelect} // Use the new preset handler
+          currentSourcePath={currentSynth?.name} // Highlight based on current preset name
+          onClose={() => setShowPresetSelector(false)}
+        />
+      )}
       { showAudioSelector && (
           <EffectSelectScreen
             type="audio"

@@ -11,6 +11,7 @@ function VisualizationMode({
   currentAudioParams,
   onOpenAudioSelect, 
   onOpenVisualSelect,
+  onOpenPresetSelect,
   reloadEffectList, 
   pullEffectsRepo, 
   effectsRepoStatus, 
@@ -60,6 +61,12 @@ function VisualizationMode({
       )}
       
       <div className="source-select-container">
+        <button 
+          className="nav-button preset-select-button" 
+          onClick={onOpenPresetSelect}
+        >
+          Preset: {currentPresetName} 
+        </button>
         <button 
           className="nav-button audio-select-button" 
           onClick={onOpenAudioSelect}
