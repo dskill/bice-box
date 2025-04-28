@@ -65,19 +65,22 @@ function VisualizationMode({
           className="nav-button preset-select-button" 
           onClick={onOpenPresetSelect}
         >
-          Preset: {currentPresetName} 
+          <span className="button-label">Preset:</span>
+          <span className="button-value">{currentPresetName}</span> 
         </button>
         <button 
           className="nav-button audio-select-button" 
           onClick={onOpenAudioSelect}
         >
-          Audio: {prettifySourceName(currentAudioSourcePath)}
+          <span className="button-label">Audio:</span>
+          <span className="button-value">{prettifySourceName(currentAudioSourcePath)}</span>
         </button>
         <button 
           className="nav-button visual-select-button" 
           onClick={onOpenVisualSelect}
         >
-          Visual: {prettifySourceName(currentVisualSourcePath)}
+          <span className="button-label">Visual:</span>
+          <span className="button-value">{prettifySourceName(currentVisualSourcePath)}</span>
         </button>
       </div>
 

@@ -610,14 +610,13 @@ button:active {
 .source-select-container {
   position: fixed;
   top: 5px;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 2.5%; /* Add some padding from the left edge */
+  right: 20%; /* Leave space on the right for settings */
   z-index: 2000;
   display: flex;
   align-items: center;
   gap: 15px;
-  min-width: 300px;
-  justify-content: center;
+  justify-content: space-around; /* Distribute buttons */
 }
 
 .visualization-controls {
@@ -918,9 +917,31 @@ button:active {
 
 /* Specific styles for the tools toggle button */
 .effect-management .toggle-button {
-  min-width: 150px;
+  min-width: 180px; /* Match the other buttons */
   margin-right: 10px;
+  /* Inherit or explicitly set styles to match nav-buttons */
+  font-family: 'Aldrich', 'Inconsolata', monospace; /* Match font */
+  font-size: 21px; /* Match font size */
+  padding: 0 15px; /* Horizontal padding only */
+  border: 1px solid rgba(198, 202, 224, 0.3); /* Match border */
+  border-radius: 5px; /* Match border radius */
+  color: rgb(198, 202, 224); /* Match color */
+  background: none; /* Ensure no background */
+  text-shadow: 1px 1px 3px rgba(0, 0, 0, 1); /* Match shadow */
+  text-align: center; /* Center text */
+  transition: all 0.3s ease; /* Match transition */
+  height: 60px; /* Set fixed height */
+  display: flex; /* Enable flexbox for centering */
+  align-items: center; /* Center vertically */
+  justify-content: center; /* Center horizontally */
 }
+
+/* Ensure hover matches */
+.effect-management .toggle-button:hover {
+  color: white;
+  background-color: rgba(198, 202, 224, 0.1);
+}
+
 /* Add these additional toggle button styles */
 .toggle-button.on {
     color: white;
@@ -929,10 +950,6 @@ button:active {
 
 .toggle-button.off {
     opacity: 0.8;
-}
-
-.toggle-button:hover {
-    color: white;
 }
 
 .toggle-button:focus {
@@ -1202,11 +1219,36 @@ button:disabled {
   transform: none;  /* Remove vertical transform */
   font-family: 'Aldrich', 'Inconsolata', monospace; /* Match general button font */
   font-size: 21px; /* Adjust font size */
-  padding: 10px 15px; /* Adjust padding */
+  padding: 0 15px; /* Horizontal padding only */
   border: 1px solid rgba(198, 202, 224, 0.3); /* Ensure border is visible */
   border-radius: 5px; /* Ensure border radius is applied */
-  min-width: 180px; /* Give buttons a minimum width */
+  flex: 1; /* Allow buttons to grow */
+  margin: 0 5px; /* Add horizontal margin */
   text-align: center; /* Center text */
+  height: 60px; /* Set fixed height */
+  display: flex; /* Enable flexbox for centering */
+  align-items: center; /* Center vertically */
+  justify-content: center; /* Center horizontally */
+  line-height: 1.2; /* Adjust line height for wrapped text */
+}
+
+/* Style for the spans inside the source select buttons */
+.source-select-container .nav-button span {
+  display: block; /* Make spans behave like block elements for layout */
+  text-align: center; /* Ensure text inside span is centered */
+}
+
+.source-select-container .nav-button .button-label {
+  font-size: 0.65em; /* Make label smaller */
+  opacity: 0.8; /* Make label slightly less prominent */
+  margin-bottom: 2px; /* Add small space between label and value */
+  line-height: 1; /* Adjust line height for the smaller text */
+}
+
+.source-select-container .nav-button .button-value {
+  font-size: 0.9em; /* Slightly smaller value text to fit better */
+  line-height: 1.1; /* Adjust line height */
+  font-weight: 500; /* Slightly bolder */
 }
 
 /* Ensure hover effect works correctly */
