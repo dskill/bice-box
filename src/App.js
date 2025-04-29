@@ -263,6 +263,8 @@ function App() {
 
     console.log(`Switching to preset: ${presetName}`);
     setCurrentSynth(selectedPreset);
+    // Set the params based on the newly selected preset
+    setCurrentAudioParams(selectedPreset.params || []);
     
     // Update audio source and load it
     if (selectedPreset.scFilePath) {
