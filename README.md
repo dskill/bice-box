@@ -60,3 +60,19 @@ An Audiovisual Effects Processor designed for Raspberry Pi (but it also runs on 
 - Packages as Linux zip file
 - Includes automatic GitHub release publishing
 - Output files are named in the format: Bice-Box-[version]-[architecture].[extension]
+
+## Release Process
+
+To publish a new release:
+
+1. Update the version number (e.g., for a patch release):
+   ```
+   npm version patch
+   ```
+
+2. Build and publish the new release:
+   ```
+   npm run release:publish
+   ```
+
+This will automatically handle building for Raspberry Pi, creating a GitHub release, and uploading the artifact.
