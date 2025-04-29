@@ -76,3 +76,18 @@ To publish a new release:
    ```
 
 This will automatically handle building for Raspberry Pi, creating a GitHub release, and uploading the artifact.
+
+**Note on Tag Conflicts:**
+
+`npm version` creates a local tag, while `release:publish` may create a tag on the remote (GitHub). If you pull changes after a release, you might see a `rejected ... (would clobber existing tag)` error.
+
+To resolve this:
+
+1. Delete the local tag:
+   ```
+   git tag -d <tag_name>  # e.g., git tag -d v0.1.42
+   ```
+2. Fetch the correct tag from the remote:
+   ```
+   git fetch origin --tags
+   ```
