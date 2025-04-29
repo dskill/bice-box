@@ -2,7 +2,7 @@
   "name": "bice-box",
   "main": "electron/main.js",
   "homepage": ".",
-  "version": "0.1.41",
+  "version": "0.1.42",
   "private": true,
   "dependencies": {
     "@testing-library/jest-dom": "^5.17.0",
