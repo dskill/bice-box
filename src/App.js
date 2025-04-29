@@ -54,6 +54,14 @@ function App() {
     return Array.from(sources.values()).sort((a, b) => a.name.localeCompare(b.name));
   }, [synths]);
 
+  // Derived list for curated presets selector
+  const curatedPresets = useMemo(() => {
+    console.log('Filtering curated presets from:', synths);
+    const filtered = synths.filter(synth => synth.curated === true);
+    console.log('Curated presets:', filtered.map(s => s.name));
+    return filtered;
+  }, [synths]);
+
   useEffect(() => {
     // Initial effects load and repo check
     Promise.all([
@@ -520,7 +528,7 @@ function App() {
       { showPresetSelector && (
         <EffectSelectScreen
           type="preset"
-          items={synths} // Use the full synths list for presets
+          items={curatedPresets} // Use the filtered list of curated presets
           onSelect={handlePresetSelect} // Use the new preset handler
           currentSourcePath={currentSynth?.name} // Highlight based on current preset name
           onClose={() => setShowPresetSelector(false)}

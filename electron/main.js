@@ -181,7 +181,7 @@ function createWindow()
     });
 
     // Initialize SuperCollider with the necessary callbacks
-    const loadEffectsCallback = () => loadEffectsList(mainWindow, getEffectsRepoPath, getEffectsPath, devMode);
+    const loadEffectsCallback = () => loadEffectsList(mainWindow, getEffectsRepoPath, getEffectsPath);
     initializeSuperCollider(mainWindow, getEffectsRepoPath, loadEffectsCallback);
 
     // Initialize OSC Server after creating the window
@@ -263,7 +263,7 @@ ipcMain.on('reboot-server', (event) =>
     {
       setTimeout(() =>
       {
-        const loadEffectsCallback = () => loadEffectsList(mainWindow, getEffectsRepoPath, getEffectsPath, devMode);
+        const loadEffectsCallback = () => loadEffectsList(mainWindow, getEffectsRepoPath, getEffectsPath);
         initializeSuperCollider(mainWindow, getEffectsRepoPath, loadEffectsCallback);
       }, 1000); // Wait for 1 second before rebooting
     })
@@ -273,7 +273,7 @@ ipcMain.on('reboot-server', (event) =>
       // Still attempt to reboot even if the kill command fails
       setTimeout(() =>
       {
-        const loadEffectsCallback = () => loadEffectsList(mainWindow, getEffectsRepoPath, getEffectsPath, devMode);
+        const loadEffectsCallback = () => loadEffectsList(mainWindow, getEffectsRepoPath, getEffectsPath);
         initializeSuperCollider(mainWindow, getEffectsRepoPath, loadEffectsCallback);
       }, 1000);
     });
@@ -515,7 +515,7 @@ ipcMain.on('pull-effects-repo', async (event) =>
     console.log('Git pull output:', pullOutput);
 
     // After successful pull, reload effects and update status
-    loadEffectsList(mainWindow, getEffectsRepoPath, getEffectsPath, devMode);
+    loadEffectsList(mainWindow, getEffectsRepoPath, getEffectsPath);
 
     // Check status again after pull
     const { stdout: statusOutput } = await exec('git status -uno', { cwd: effectsRepoPath });
@@ -725,7 +725,7 @@ ipcMain.on('reload-all-effects', (event) =>
   console.log('Reloading all effects...');
   try
   {
-    const loadedSynths = loadEffectsList(mainWindow, getEffectsRepoPath, getEffectsPath, devMode);
+    const loadedSynths = loadEffectsList(mainWindow, getEffectsRepoPath, getEffectsPath);
     const validSynths = loadedSynths.filter(synth => synth && synth.name);
     event.reply('effects-data', validSynths);
     console.log('Effects data sent to renderer process');
@@ -925,7 +925,7 @@ ipcMain.on('toggle-dev-mode', (event) => {
     mainWindow.webContents.send('dev-mode-changed', devMode);
     
     // Reload effects list with new mode
-    const loadedSynths = loadEffectsList(mainWindow, getEffectsRepoPath, getEffectsPath, devMode);
+    const loadedSynths = loadEffectsList(mainWindow, getEffectsRepoPath, getEffectsPath);
     event.reply('effects-data', loadedSynths);
 });
 
