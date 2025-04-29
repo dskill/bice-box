@@ -498,7 +498,7 @@ button:active {
 .effect-management {
   position: fixed;
   top: 5px;
-  right: 5px;
+  right: 15px;
   z-index: 5;
   display: flex;
   flex-direction: column;
@@ -610,13 +610,15 @@ button:active {
 .source-select-container {
   position: fixed;
   top: 5px;
-  left: 2.5%; /* Add some padding from the left edge */
-  right: 20%; /* Leave space on the right for settings */
+  left: 50%;
+  transform: translateX(-50%);
+  width: 65%;
+  max-width: 600px;
   z-index: 2000;
   display: flex;
   align-items: center;
   gap: 15px;
-  justify-content: space-around; /* Distribute buttons */
+  justify-content: center;
 }
 
 .visualization-controls {
@@ -910,18 +912,16 @@ button:active {
     transition: all 0.3s ease;
     text-transform: none;
     color: rgb(198, 202, 224);
-    min-width: 200px;
     text-shadow: 1px 1px 5px rgba(0, 0, 0, 1); /* Added drop shadow */
 
 }
 
 /* Specific styles for the tools toggle button */
 .effect-management .toggle-button {
-  min-width: 180px; /* Match the other buttons */
   margin-right: 10px;
   /* Inherit or explicitly set styles to match nav-buttons */
   font-family: 'Aldrich', 'Inconsolata', monospace; /* Match font */
-  padding: 0 15px; /* Horizontal padding only */
+  padding: 0 10px; /* Reduce horizontal padding */
   border: 1px solid rgba(198, 202, 224, 0.3); /* Match border */
   border-radius: 5px; /* Match border radius */
   color: rgb(198, 202, 224); /* Match color */
@@ -1223,8 +1223,7 @@ button:disabled {
   padding: 0 15px; /* Horizontal padding only */
   border: 1px solid rgba(198, 202, 224, 0.3); /* Ensure border is visible */
   border-radius: 5px; /* Ensure border radius is applied */
-  flex: 1; /* Allow buttons to grow */
-  margin: 0 5px; /* Add horizontal margin */
+  flex: 0 0 auto; /* Prevent buttons from growing/shrinking */
   text-align: center; /* Center text */
   height: 60px; /* Set fixed height */
   display: flex; /* Enable flexbox */
