@@ -710,8 +710,8 @@ button:active {
 
 .effect-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  gap: 15px;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 10px;
   padding: 20px;
   max-width: 1200px;
   width: 90%;
@@ -724,14 +724,14 @@ button:active {
 }
 
 .effect-tile {
-  width: 120px;
-  height: 80px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-radius: 8px;
+  width: 100px;
+  height: 65px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px; /* Slightly less rounded */
   cursor: pointer;
   transition: all 0.3s ease;
   position: relative;
-  background: rgba(40, 40, 40, 1);
+  background: rgba(40, 40, 45, 0.9); /* Darker background */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -744,14 +744,14 @@ button:active {
 }
 
 .effect-tile.active {
-  border-color: rgba(255, 255, 255, 1);
-  background: rgba(60, 60, 60, 1);
+  border: 1px solid rgba(255, 255, 255, 0.9); /* Active border stays thin but bright */
+  background: rgba(55, 55, 60, 1); /* Slightly lighter dark for active state */
 }
 
 .effect-name {
   color: rgba(255, 255, 255, 0.7);
   font-family: 'Aldrich', 'Inconsolata', monospace;
-  font-size: 14px;
+  font-size: 12px;
   text-align: center;
   transition: color 0.3s ease;
   line-height: 1.2;
