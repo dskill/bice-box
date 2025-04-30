@@ -62,7 +62,7 @@
                       memoryUsage: performance.memory ? 
                         (performance.memory.usedJSHeapSize / (1024 * 1024)) + 'MB' : 'unknown'
                     });
-                  }, 3000); // 3 seconds test time
+                  }, 500); // .5 seconds test time
                 } catch (err) {
                   p.remove();
                   resolve({

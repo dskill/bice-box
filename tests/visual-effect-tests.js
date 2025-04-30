@@ -4,7 +4,7 @@ const fs = require('fs');
 
 // Array to store test results
 const testResults = [];
-const TIMEOUT_MS = 5000; // 5 seconds per effect test
+const TIMEOUT_MS = 1000;  //.5 seconds per effect test
 let devMode = false; // Add dev mode flag
 
 // Get effects repo path
@@ -58,11 +58,13 @@ function loadEffects() {
         const filePath = path.join(effectsPath, file);
         const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
         
-        // Skip non-curated effects in non-dev mode
+        // Skip non-curated effects in non-dev mode - DISABLED to test ALL effects
+        /*
         if (!devMode && !data.curated) {
           console.log(`Skipping non-curated effect: ${data.name}`);
           return null;
         }
+        */
         
         return {
           name: data.name,
