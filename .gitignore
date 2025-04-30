@@ -142,8 +142,3 @@ Thumbs.db
 build/
 dist/
 
-# Add to your .gitignore
-*.html
-output.txt
-# Exceptions if needed
-!src/**/*.html
