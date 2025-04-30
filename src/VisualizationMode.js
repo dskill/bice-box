@@ -15,7 +15,8 @@ function VisualizationMode({
   reloadEffectList, 
   pullEffectsRepo, 
   effectsRepoStatus, 
-  onCheckEffectsRepo 
+  onCheckEffectsRepo,
+  devMode
 }) {
   const [isLoadingEffect, setIsLoadingEffect] = useState(false);
   const paramValuesRef = useRef({});
@@ -68,20 +69,24 @@ function VisualizationMode({
           <span className="button-label">Preset:</span>
           <span className="button-value">{currentPresetName}</span> 
         </button>
-        <button 
-          className="nav-button audio-select-button" 
-          onClick={onOpenAudioSelect}
-        >
-          <span className="button-label">Audio:</span>
-          <span className="button-value">{prettifySourceName(currentAudioSourcePath)}</span>
-        </button>
-        <button 
-          className="nav-button visual-select-button" 
-          onClick={onOpenVisualSelect}
-        >
-          <span className="button-label">Visual:</span>
-          <span className="button-value">{prettifySourceName(currentVisualSourcePath)}</span>
-        </button>
+        {devMode && (
+          <>
+            <button 
+              className="nav-button audio-select-button" 
+              onClick={onOpenAudioSelect}
+            >
+              <span className="button-label">Audio:</span>
+              <span className="button-value">{prettifySourceName(currentAudioSourcePath)}</span>
+            </button>
+            <button 
+              className="nav-button visual-select-button" 
+              onClick={onOpenVisualSelect}
+            >
+              <span className="button-label">Visual:</span>
+              <span className="button-value">{prettifySourceName(currentVisualSourcePath)}</span>
+            </button>
+          </>
+        )}
       </div>
 
       <VisualizationCanvas 

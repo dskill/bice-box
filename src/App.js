@@ -36,6 +36,7 @@ function App() {
     error: null
   });
   const [scError, setScError] = useState(null);
+  const [devMode, setDevMode] = useState(false);
 
   // --- Derived State for Selectors ---
   const audioSources = useMemo(() => {
@@ -199,6 +200,25 @@ function App() {
         return () => {
             electron.ipcRenderer.removeListener('sc-compilation-error', handleScError);
         };
+    }
+  }, []);
+
+  useEffect(() => {
+    if (electron && electron.ipcRenderer) {
+      // Get initial dev mode state
+      electron.ipcRenderer.invoke('get-dev-mode').then(setDevMode);
+
+      // Listen for changes to dev mode
+      const handleDevModeChange = (newMode) => {
+        console.log('Dev mode changed:', newMode);
+        setDevMode(newMode);
+      };
+
+      electron.ipcRenderer.on('dev-mode-changed', handleDevModeChange);
+
+      return () => {
+        electron.ipcRenderer.removeListener('dev-mode-changed', handleDevModeChange);
+      };
     }
   }, []);
 
@@ -520,6 +540,7 @@ function App() {
         // onOpenEffectSelect={openEffectSelect} // Replace this
         effectsRepoStatus={effectsRepoStatus}
         onCheckEffectsRepo={checkEffectsRepoStatus}
+        devMode={devMode}
         // Still need a way to handle parameter changes, maybe pass `currentSynth.params`?
         // And a handler `onParamChange(paramName, value)` that sends SC messages
         // using `currentSynth.name` as the target synthdef.
