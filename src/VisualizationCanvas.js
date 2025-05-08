@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useCallback, useState } from 'react';
 import p5 from 'p5';
 import WebGLDetector from './utils/webGLDetector';
 
-function VisualizationCanvas({ currentEffect, currentVisualContent, paramValuesRef, onEffectLoaded }) {
+function VisualizationCanvas({ currentVisualContent, paramValuesRef, onEffectLoaded }) {
   const canvasRef = useRef(null);
   const p5InstanceRef = useRef(null);
   const waveform0DataRef = useRef([]);
@@ -90,56 +90,6 @@ function VisualizationCanvas({ currentEffect, currentVisualContent, paramValuesR
     }
   }, []);
 
-  const handleVisualEffectUpdate = useCallback((updatedEffect) => {
-    // This handler might need revisiting if file-watching updates are needed 
-    // alongside direct content injection. For now, the main useEffect handles
-    // content changes via the currentVisualContent prop.
-    if (!updatedEffect || typeof updatedEffect !== 'object') {
-      console.warn('Received invalid updatedEffect, skipping update');
-      return;
-    }
-
-    console.log('Visual effect update received:', updatedEffect);
-    
-    // Check if currentEffect exists before accessing its properties
-    if (currentEffect && updatedEffect.name === currentEffect.name) {
-      console.log('Updating visual effect:', updatedEffect.name);
-      
-      // Remove existing p5 instance if any
-      if (p5InstanceRef.current) {
-        console.log('Removing existing p5 instance');
-        p5InstanceRef.current.remove();
-      }
-
-      try {
-        const sketchFunction = new Function('module', 'exports', updatedEffect.p5SketchContent);
-        const exports = {};
-        const module = { exports };
-        sketchFunction(module, exports);
-        const newSketchFunction = module.exports;
-
-        console.log('Creating new p5 instance');
-        p5InstanceRef.current = new p5(newSketchFunction, canvasRef.current);
-        p5InstanceRef.current.waveform0 = waveform0DataRef.current;
-        p5InstanceRef.current.waveform1 = waveform1DataRef.current;
-        p5InstanceRef.current.rmsInput = rmsInputRef.current;
-        p5InstanceRef.current.rmsOutput = rmsOutputRef.current;
-        p5InstanceRef.current.tunerData = tunerDataRef.current;
-        // Add FFT data to p5 instance
-        p5InstanceRef.current.fft0 = fft0DataRef.current;
-        p5InstanceRef.current.fft1 = fft1DataRef.current;
-        p5InstanceRef.current.params = paramValuesRef.current;
-
-        console.log('New p5 instance created');
-      } catch (error) {
-        console.error('Error updating p5 sketch:', error);
-        errorRef.current = 'Failed to update visualization';
-      }
-    } else {
-      console.log('Received update for a different effect or no current effect set:', updatedEffect.name);
-    }
-  }, [currentEffect]);
-
   const cleanupP5Instance = useCallback(() => {
     if (p5InstanceRef.current) {
       console.log('Cleaning up p5 instance');
@@ -207,7 +157,6 @@ function VisualizationCanvas({ currentEffect, currentVisualContent, paramValuesR
     window.electron.ipcRenderer.on('tuner-data', updateTunerData);
     window.electron.ipcRenderer.on('fft0-data', updateFFT0Data);
     window.electron.ipcRenderer.on('fft1-data', updateFFT1Data);
-    window.electron.ipcRenderer.on('visual-effect-updated', handleVisualEffectUpdate);
     window.electron.ipcRenderer.on('custom-message', updateCustomMessage);
 
     return () => {
@@ -218,11 +167,9 @@ function VisualizationCanvas({ currentEffect, currentVisualContent, paramValuesR
       window.electron.ipcRenderer.removeAllListeners('tuner-data');
       window.electron.ipcRenderer.removeAllListeners('fft0-data');
       window.electron.ipcRenderer.removeAllListeners('fft1-data');
-      window.electron.ipcRenderer.removeAllListeners('visual-effect-updated');
       window.electron.ipcRenderer.removeAllListeners('custom-message');
-            cleanupP5Instance();
     };
-  }, [handleVisualEffectUpdate, cleanupP5Instance]);
+  }, [updateWaveform0Data, updateWaveform1Data, updateAudioAnalysis, updateTunerData, updateFFT0Data, updateFFT1Data, updateCustomMessage]);
 
   /*
   useEffect(() => {
@@ -297,7 +244,7 @@ function VisualizationCanvas({ currentEffect, currentVisualContent, paramValuesR
 
     loadAndCreateSketch();
 
-    // Dependency array now includes currentVisualContent
+    // Dependency array now includes currentVisualContent and cleanupP5Instance
   }, [currentVisualContent, cleanupP5Instance, paramValuesRef, onEffectLoaded, webGLCapabilities, isPlatformRaspberryPi]);
 
   if (errorRef.current) {

@@ -90,7 +90,6 @@ function VisualizationMode({
       </div>
 
       <VisualizationCanvas 
-        currentEffect={currentAudioSourcePath}
         currentVisualContent={currentVisualContent}
         paramValuesRef={paramValuesRef} 
         onEffectLoaded={handleEffectLoaded}
