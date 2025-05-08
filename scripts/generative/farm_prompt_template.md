@@ -33,5 +33,6 @@ Generate a gritty distortion effect with a baxandall-style tone control (bass an
 --- OUTPUT FILENAME HINT ---
 # Suggest a base filename (without extension) for the new effect.
 # This will be used for both the .sc and .json files.
-# Example: MyNewChorus
-GrittyBaxandallDistortion 
+# Convention: lowercase_with_underscores (e.g., my_cool_flanger)
+# Example: my_new_chorus
+gritty_baxandall_distortion

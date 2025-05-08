@@ -15,7 +15,9 @@ const JSON_EFFECTS_SUBDIR = 'effects';
 const PROMPT_TEMPLATE_PATH = path.join(__dirname, 'farm_prompt_template.md');
 const INSTRUCTIONS_PATH = path.join(__dirname, 'audio_effect_instructions.md');
 
-const GEMINI_MODEL = 'gemini-2.5-pro-preview-05-06'; // As specified by user
+const GEMINI_MODEL = 'gemini-2.5-pro-exp-03-25'; 
+// eventually we want to switch to 'gemini-2.5-pro-preview-05-06';
+// but that model isn't available via API just yet
 
 const ai = new GoogleGenAI({ apiKey: API_KEY });
 
@@ -27,19 +29,33 @@ async function parsePromptTemplate() {
         const sections = templateContent.split(/--- (EXAMPLES|PROMPT|OUTPUT FILENAME HINT) ---/);
 
         const examplesStr = sections.find((s, i) => sections[i-1] === 'EXAMPLES') || '';
-        const promptStr = sections.find((s, i) => sections[i-1] === 'PROMPT') || '';
-        const filenameHintStr = sections.find((s, i) => sections[i-1] === 'OUTPUT FILENAME HINT') || '';
+        let promptStr = sections.find((s, i) => sections[i-1] === 'PROMPT') || '';
+        let filenameHintStr = sections.find((s, i) => sections[i-1] === 'OUTPUT FILENAME HINT') || '';
+
+        // Strip comments from prompt and filename hint sections
+        promptStr = promptStr.split('\n').filter(line => !line.trim().startsWith('#')).join('\n');
+        filenameHintStr = filenameHintStr.split('\n').filter(line => !line.trim().startsWith('#')).join('\n');
 
         const examples = [];
         const exampleLines = examplesStr.trim().split('\n');
         for (let i = 0; i < exampleLines.length; i++) {
             const line = exampleLines[i].trim();
+            if (line.startsWith('#') || line === '') continue; // Skip comment lines and empty lines
+
             if (line.startsWith('SC_FILE:')) {
                 const scFile = line.replace('SC_FILE:', '').trim();
-                if (exampleLines[i+1] && exampleLines[i+1].trim().startsWith('JSON_FILE:')) {
-                    const jsonFile = exampleLines[i+1].replace('JSON_FILE:', '').trim();
+                // Look for the next non-comment/non-empty line for JSON_FILE
+                let j = i + 1;
+                while (j < exampleLines.length && (exampleLines[j].trim().startsWith('#') || exampleLines[j].trim() === '')) {
+                    j++;
+                }
+
+                if (j < exampleLines.length && exampleLines[j].trim().startsWith('JSON_FILE:')) {
+                    const jsonFile = exampleLines[j].trim().replace('JSON_FILE:', '').trim();
                     examples.push({ scFile, jsonFile });
-                    i++; // Skip next line as it's processed
+                    i = j; // Move i to the processed JSON_FILE line
+                } else {
+                    console.warn(`Warning: SC_FILE ${scFile} found without a subsequent JSON_FILE line in template.`);
                 }
             }
         }
@@ -122,7 +138,9 @@ async function farmAudioEffect() {
 Your goal is to create a new SuperCollider audio effect (.sc file) and its corresponding Bice-Box JSON metadata file (.json) based on the user's request. 
 Adhere STRICTLY to the provided guidelines and examples for both SuperCollider code and JSON structure. 
 Output the SuperCollider code within a \`\`\`supercollider code block and the JSON content within a \`\`\`json code block. 
-The JSON 'name' field MUST match the SynthDef name from the SuperCollider code (without the leading backslash). The JSON 'visualizer' field MUST be "visual/oscilloscope.js".`;
+The JSON 'name'  should be a user-friendly, \`\`\`pretty\`\`\` name for the effect, suitable for display in the UI (e.g., \`\`\`Green Machine\`\`\`, \`\`\`Hyperdrive\`\`\`). The AI should infer this from the user prompt or the SynthDef name, converting it to a readable title case format.
+The JSON 'visualizer' field MUST be "visual/oscilloscope.js".
+The JSON 'audio' field MUST be the path to the generated .sc file, formatted as "audio/EFFECT_FILENAME.sc", where EFFECT_FILENAME.sc is the filename derived from the output filename hint (e.g., if the hint is 'my_effect', the path should be 'audio/my_effect.sc').`;
 
         const fullPromptContents = [
             {
@@ -137,12 +155,20 @@ The JSON 'name' field MUST match the SynthDef name from the SuperCollider code (
             }
         ];
         
+        console.log('\n--- Full Prompt to Gemini API ---');
+        console.log(JSON.stringify(fullPromptContents, null, 2));
+        // For a more concise view of just the text parts, you could also do:
+        // console.log('\n--- Text Parts of Prompt to Gemini API ---');
+        // fullPromptContents[0].parts.forEach(part => console.log(part.text + '\n---\n'));
+
         console.log('\nSending request to Gemini API...');
 
-        const model = ai.getGenerativeModel({ model: GEMINI_MODEL });
-        const result = await model.generateContent({ contents: fullPromptContents });
-        const response = result.response;
-        const responseText = response.text();
+        const result = await ai.models.generateContent({
+            model: GEMINI_MODEL,
+            contents: fullPromptContents
+        });
+
+        const responseText = result.text; 
 
         if (!responseText) {
             console.error('Error: Empty response from Gemini API.');
@@ -163,6 +189,14 @@ The JSON 'name' field MUST match the SynthDef name from the SuperCollider code (
             console.error('Failed to extract JSON content from response. Aborting file save.');
             console.log("Full response for debugging:\n", responseText);
             return;
+        }
+
+        // Log usage metadata
+        if (result.usageMetadata) {
+            console.log('\n--- API Usage Metadata ---');
+            console.log(JSON.stringify(result.usageMetadata, null, 2));
+        } else {
+            console.log('\n(No usage metadata found in API response)');
         }
 
         // --- Save generated files ---
