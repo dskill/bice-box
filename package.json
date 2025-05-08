@@ -34,7 +34,8 @@
     "build:electron:pi": "NODE_OPTIONS=--max_old_space_size=512 react-scripts build  && electron-builder build --linux --arm64",
     "release:publish": "react-scripts build && electron-builder build --linux --arm64 --publish always",
     "release:publish:draft": "react-scripts build && electron-builder build --linux --arm64 --publish onTagOrDraft",
-    "test:visuals": "node scripts/visual-test-runner.js"
+    "test:visuals": "node scripts/visual-test-runner.js",
+    "farm:audio": "node scripts/generative/farm-audio.js"
   },
   "build": {
     "appId": "com.drewskillman.bicebox",
