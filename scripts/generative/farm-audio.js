@@ -139,7 +139,7 @@ Your goal is to create a new SuperCollider audio effect (.sc file) and its corre
 Adhere STRICTLY to the provided guidelines and examples for both SuperCollider code and JSON structure. 
 Output the SuperCollider code within a \`\`\`supercollider code block and the JSON content within a \`\`\`json code block. 
 The JSON 'name'  should be a user-friendly, \`\`\`pretty\`\`\` name for the effect, suitable for display in the UI (e.g., \`\`\`Green Machine\`\`\`, \`\`\`Hyperdrive\`\`\`). The AI should infer this from the user prompt or the SynthDef name, converting it to a readable title case format.
-The JSON 'visualizer' field MUST be "visual/oscilloscope.js".
+The JSON 'visual' field MUST be "visual/oscilloscope.js".
 The JSON 'audio' field MUST be the path to the generated .sc file, formatted as "audio/EFFECT_FILENAME.sc", where EFFECT_FILENAME.sc is the filename derived from the output filename hint (e.g., if the hint is 'my_effect', the path should be 'audio/my_effect.sc').`;
 
         const fullPromptContents = [
