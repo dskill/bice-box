@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import EffectManagement from './EffectManagement';
 import ParamFader from './ParamFader';
 import VisualizationCanvas from './VisualizationCanvas';
@@ -21,9 +21,9 @@ function VisualizationMode({
   const [isLoadingEffect, setIsLoadingEffect] = useState(false);
   const paramValuesRef = useRef({});
 
-  const handleEffectLoaded = () => {
+  const handleEffectLoaded = useCallback(() => {
     setIsLoadingEffect(false);
-  };
+  }, []);
 
   const handleParamChange = (paramName, value) => {
     paramValuesRef.current[paramName] = value;

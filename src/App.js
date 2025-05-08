@@ -247,7 +247,21 @@ function App() {
             
             // Automatically load the SC file for the first synth
             if (electron && firstSynth.scFilePath) {
-              electron.ipcRenderer.send('load-sc-file', firstSynth.scFilePath);
+              // Add a small delay to ensure SuperCollider is fully ready
+              setTimeout(() => {
+                console.log(`Loading initial SC file with delay: ${firstSynth.scFilePath}`);
+                electron.ipcRenderer.send('load-sc-file', firstSynth.scFilePath);
+                
+                // Apply params from the original preset if it exists
+                if (Array.isArray(firstSynth.params)) {
+                  firstSynth.params.forEach(param => {
+                    if (param && typeof param.name === 'string' && param.value !== undefined) {
+                      const scCode = `~${firstSynth.name}.set(\${param.name}, ${param.value});`;
+                      electron.ipcRenderer.send('send-to-supercollider', scCode);
+                    }
+                  });
+                }
+              }, 500);
               // We don't need set-current-effect anymore as state manages the active sources
               // electron.ipcRenderer.send('set-current-effect', firstSynth.name);
             }

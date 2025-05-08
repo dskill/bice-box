@@ -32,7 +32,7 @@ function loadEffectsList(mainWindow, getEffectsRepoPath, getEffectsPath) {
 
         if (effect.p5SketchPath) {
             console.log(`Reloading p5.js sketch for ${effect.name}: ${effect.p5SketchPath}`);
-            effect.p5SketchContent = loadP5SketchSync(effect.p5SketchPath, getEffectsPath);
+            effect.p5SketchContent = loadP5SketchSync(effect.p5SketchPath, getEffectsRepoPath);
         }
         synths.push(effect); 
     });
@@ -161,6 +161,7 @@ function initializeSuperCollider(mainWindow, getEffectsRepoPath, loadEffectsCall
         if (data.toString().includes('Server booted successfully.')) {
             console.log('SuperCollider server is running');
             if (!serverBooted) {
+                serverBooted = true; // Set the flag to prevent multiple notifications
                 console.log('SuperCollider server is running');
                 mainWindow.webContents.send('sc-ready');
                 loadEffectsCallback();
