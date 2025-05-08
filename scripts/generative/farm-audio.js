@@ -14,6 +14,7 @@ const AUDIO_EFFECTS_SUBDIR = 'audio';
 const JSON_EFFECTS_SUBDIR = 'effects';
 const PROMPT_TEMPLATE_PATH = path.join(__dirname, 'farm_prompt_template.md');
 const INSTRUCTIONS_PATH = path.join(__dirname, 'audio_effect_instructions.md');
+const SYSTEM_PROMPT_PATH = path.join(__dirname, 'system_prompt.md');
 
 const GEMINI_MODEL = 'gemini-2.5-pro-exp-03-25'; 
 // eventually we want to switch to 'gemini-2.5-pro-preview-05-06';
@@ -26,11 +27,11 @@ const ai = new GoogleGenAI({ apiKey: API_KEY });
 async function parsePromptTemplate() {
     try {
         const templateContent = await fs.readFile(PROMPT_TEMPLATE_PATH, 'utf-8');
-        const sections = templateContent.split(/--- (EXAMPLES|PROMPT|OUTPUT FILENAME HINT) ---/);
+        const sections = templateContent.split(/--- (EXAMPLES|PROMPT|CANONICAL SNAKE_CASE IDENTIFIER) ---/);
 
         const examplesStr = sections.find((s, i) => sections[i-1] === 'EXAMPLES') || '';
         let promptStr = sections.find((s, i) => sections[i-1] === 'PROMPT') || '';
-        let filenameHintStr = sections.find((s, i) => sections[i-1] === 'OUTPUT FILENAME HINT') || '';
+        let filenameHintStr = sections.find((s, i) => sections[i-1] === 'CANONICAL SNAKE_CASE IDENTIFIER') || '';
 
         // Strip comments from prompt and filename hint sections
         promptStr = promptStr.split('\n').filter(line => !line.trim().startsWith('#')).join('\n');
@@ -121,6 +122,7 @@ async function farmAudioEffect() {
         console.log(`Found ${examples.length} example(s) to load.`);
 
         const instructions = await loadFileContent(INSTRUCTIONS_PATH);
+        const systemPromptContent = await loadFileContent(SYSTEM_PROMPT_PATH);
         let exampleContents = '';
 
         for (const ex of examples) {
@@ -134,21 +136,18 @@ async function farmAudioEffect() {
             exampleContents += `--- Example JSON (${ex.jsonFile}) ---\n\`\`\`json\n${jsonExample}\n\`\`\`\n`;
         }
 
-        const systemPrompt = `You are an expert SuperCollider audio effect and Bice-Box JSON metadata generator. 
-Your goal is to create a new SuperCollider audio effect (.sc file) and its corresponding Bice-Box JSON metadata file (.json) based on the user's request. 
-Adhere STRICTLY to the provided guidelines and examples for both SuperCollider code and JSON structure. 
-Output the SuperCollider code within a \`\`\`supercollider code block and the JSON content within a \`\`\`json code block. 
-The JSON 'name'  should be a user-friendly, \`\`\`pretty\`\`\` name for the effect, suitable for display in the UI (e.g., \`\`\`Green Machine\`\`\`, \`\`\`Hyperdrive\`\`\`). The AI should infer this from the user prompt or the SynthDef name, converting it to a readable title case format.
-The JSON 'visual' field MUST be "visual/oscilloscope.js".
-The JSON 'audio' field MUST be the path to the generated .sc file, formatted as "audio/EFFECT_FILENAME.sc", where EFFECT_FILENAME.sc is the filename derived from the output filename hint (e.g., if the hint is 'my_effect', the path should be 'audio/my_effect.sc').`;
+        const canonicalIdentifierPart = {
+            text: `---\nCANONICAL_SNAKE_CASE_IDENTIFIER\n---\nUse the following lowercase_snake_case identifier for the SynthDef name and the filename in the JSON 'audio' field: ${outputFilenameHint}\n---`
+        };
 
         const fullPromptContents = [
             {
                 role: 'user',
                 parts: [
-                    { text: systemPrompt },
+                    { text: systemPromptContent },
                     { text: '---\nGUIDELINES\n---\n' + instructions },
-                    { text: '---\nEXAMPLES\n---' + (examples.length > 0 ? exampleContents : '\n(No examples provided in template)') },
+                    { text: '---\nEXAMPLES\n---\n' + (examples.length > 0 ? exampleContents : '\n(No examples provided in template)') },
+                    canonicalIdentifierPart,
                     { text: '---\nUSER REQUEST\n---\n' + userPrompt },
                     { text: 'Ensure the SuperCollider code is complete and functional according to the guidelines. Ensure the JSON is well-formed and all required fields from the guidelines are present and correctly formatted. The SynthDef name in the SC code must be the basis for the \'name\' field in the JSON.' }
                 ]

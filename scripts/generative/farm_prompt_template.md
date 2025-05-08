@@ -28,11 +28,12 @@ JSON_FILE: ping_pong_delay.json
 # "Generate a stereo chorus effect. It should have parameters for rate (0.1 Hz to 10 Hz),
 # depth (0 to 1), delay time (5ms to 30ms), and feedback (0 to 0.9)."
 
-Generate a gritty distortion effect with a baxandall-style tone control (bass and treble). The distortion should have a 'drive' parameter (1 to 100) and an overall 'level' parameter (0 to 1). The bass and treble parameters should range from -12 to +12 dB, defaulting to 0 dB.
+Generate a reverb effect, where the reverb ramps into distortion over time, but the initial signal is clean.  So it kind of disorts and crackles as the sound fades out.
 
---- OUTPUT FILENAME HINT ---
-# Suggest a base filename (without extension) for the new effect.
-# This will be used for both the .sc and .json files.
+--- CANONICAL SNAKE_CASE IDENTIFIER ---
+# This will be used as the CANONICAL_SNAKE_CASE_IDENTIFIER.
+# It dictates the .sc filename, the .json filename, and the SuperCollider SynthDef name.
+# It will also be used to construct the 'audio' field in the .json file (e.g., "audio/YOUR_IDENTIFIER.sc").
 # Convention: lowercase_with_underscores (e.g., my_cool_flanger)
 # Example: my_new_chorus
-gritty_baxandall_distortion
+crackle_reverb
