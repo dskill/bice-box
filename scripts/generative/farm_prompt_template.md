@@ -18,6 +18,9 @@ JSON_FILE: flames.json
 SC_FILE: ping_pong_delay.sc
 JSON_FILE: ping_pong_delay.json
 
+SC_FILE: crackle_reverb.sc
+JSON_FILE: crackle_reverb.json
+
 
 # Add more examples if needed (2-3 good examples are usually sufficient)
 

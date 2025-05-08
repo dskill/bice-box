@@ -63,31 +63,25 @@ An Audiovisual Effects Processor designed for Raspberry Pi (but it also runs on 
 
 ## Release Process
 
+The following process is designed to prevent Git tag conflicts that can occur if local and remote tags are created with different properties (e.g., lightweight vs. annotated).
+
 To publish a new release:
 
-1. Update the version number (e.g., for a patch release):
-   ```
-   npm version patch
-   ```
+1.  Update the version number in `package.json` and create an annotated Git tag:
+    ```bash
+    npm version patch -m "chore(release): version %s"
+    ```
+    Replace `patch` with `minor` or `major` as appropriate for your release (e.g., `npm version minor -m "feat(release): version %s"`). The `-m "..."` part is crucial as it creates an annotated tag, which is preferred for releases. The `%s` in the message will be automatically replaced with the new version number.
 
-2. Build and publish the new release:
-   ```
-   npm run release:publish
-   ```
+2.  Push the new commit (created by `npm version`) and its associated annotated tag to your remote repository:
+    ```bash
+    git push --follow-tags
+    ```
+    This command pushes the current branch to its configured upstream remote repository, along with any annotated tags on the commits being pushed. Ensure your current branch is set up to push to the correct remote (e.g., `origin`) and branch.
 
-This will automatically handle building for Raspberry Pi, creating a GitHub release, and uploading the artifact.
+3.  Build and publish the new release:
+    ```bash
+    npm run release:publish
+    ```
 
-**Note on Tag Conflicts:**
-
-`npm version` creates a local tag, while `release:publish` may create a tag on the remote (GitHub). If you pull changes after a release, you might see a `rejected ... (would clobber existing tag)` error.
-
-To resolve this:
-
-1. Delete the local tag:
-   ```
-   git tag -d <tag_name>  # e.g., git tag -d v0.1.42
-   ```
-2. Fetch the correct tag from the remote:
-   ```
-   git fetch origin --tags
-   ```
+This revised process ensures that the annotated tag you create locally is pushed to the remote *before* the `release:publish` script (which uses `electron-builder`) runs. The `electron-builder` tool should then use this existing tag when creating the GitHub release, thereby avoiding conflicts that might arise from differing local and remote tag objects for the same version. This should make subsequent `git pull` operations smoother without tag clobbering issues.

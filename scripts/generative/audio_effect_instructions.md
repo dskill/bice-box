@@ -126,7 +126,7 @@ Prefer `lowercase_snake_case` for actual filenames. This `lowercase_snake_case` 
     // -   **`default` (number or string):** The default value for the parameter. This **MUST** match the default value specified in the `SynthDef` arguments. (Replaced by `value`)
 
     **Standard Parameters:**
-    -   If the `SynthDef` includes a `mix = 0.5` argument (for wet/dry control), its corresponding entry in the `params` array should be:
+    -   If the `SynthDef` includes a `mix = 0.5` argument (for wet/dry control), it should be last in the list of parameters and its corresponding entry in the `params` array should be:
         ```json
         {
           "name": "mix",
