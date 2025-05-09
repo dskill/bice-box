@@ -36,7 +36,8 @@
     "release:publish": "react-scripts build && electron-builder build --linux --arm64 --publish always",
     "release:publish:draft": "react-scripts build && electron-builder build --linux --arm64 --publish onTagOrDraft",
     "test:visuals": "node scripts/visual-test-runner.js",
-    "farm:audio": "node scripts/generative/farm-audio.js"
+    "farm:audio": "node scripts/generative/farm-audio.js",
+    "generate:audio": "electron . --generate"
   },
   "build": {
     "appId": "com.drewskillman.bicebox",

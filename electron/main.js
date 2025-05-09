@@ -30,6 +30,8 @@ let oscManager;
 let updateAvailable = false;
 let devMode = false;
 
+const runGenerator = process.argv.includes('--generate');
+
 if (process.argv.includes('--version'))
 {
   console.log(`v${packageJson.version}`);
@@ -264,9 +266,10 @@ app.whenReady().then(() =>
   createWindow();
   console.log('Window creation initiated');
 
-  // Call the test function
-  if (!app.isPackaged || devMode) { // Run test in development or if devMode is explicitly true
-       testGenerativeManager();
+  // Call the test function if --generate flag is present
+  if (runGenerator) { 
+    console.log('--generate flag detected. Running generation process...');
+    testGenerativeManager();
   }
 }).catch(error =>
 {
