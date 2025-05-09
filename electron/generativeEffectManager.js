@@ -156,19 +156,34 @@ async function generateEffectFromPrompt(config) {
 
         console.log('\nSending request to Gemini API...');
         
-        // const result = await ai.models.generateContent({ model: config.geminiModel, contents: fullPromptContents });
-        // const responseText = result.text; 
-        // Simulate API call for now
-        console.warn("Simulating Gemini API call. Uncomment actual call in production.");
-        const mockResponseText = `
-\`\`\`supercollider
-// Mock SuperCollider Code for ${outputFilenameHint}
-SynthDef(\\\\${outputFilenameHint}, {\n    |out=0, amp=0.1|\n    var sig;\n    sig = SinOsc.ar(440, 0, amp);\n    Out.ar(out, [sig, sig]);\n}).add;\n\`\`\`
+        const result = await ai.models.generateContent({ model: config.geminiModel, contents: fullPromptContents });
+        const responseText = result.text; 
 
-\`\`\`json
-{\n    "name": "Mock ${outputFilenameHint}",\n    "description": "A mock effect.",\n    "audio": "audio/${outputFilenameHint}.sc",\n    "visual": "visual/oscilloscope.js",\n    "params": [\n        {"name": "amp", "value": 0.1, "range": [0.0, 1.0]}\n    ]\n}\n\`\`\`
-        `;
-        const responseText = mockResponseText; // Using mock response
+        // Simulate API call for now - COMMENTED OUT
+        // console.warn("Simulating Gemini API call. Uncomment actual call in production.");
+        // const mockResponseText = `
+        // \`\`\`supercollider
+        // // Mock SuperCollider Code for ${outputFilenameHint}
+        // SynthDef(\\\\${outputFilenameHint}, {
+        //     |out=0, amp=0.1|
+        //     var sig;
+        //     sig = SinOsc.ar(440, 0, amp);
+        //     Out.ar(out, [sig, sig]);
+        // }).add;
+        // \`\`\`
+        // 
+        // \`\`\`json
+        // {
+        //     \"name\": \"Mock ${outputFilenameHint}\",
+        //     \"description\": \"A mock effect.\",
+        //     \"audio\": \"audio/${outputFilenameHint}.sc\",
+        //     \"visual\": \"visual/oscilloscope.js\",
+        //     \"params\": [
+        //         {\"name\": \"amp\", \"value\": 0.1, \"range\": [0.0, 1.0]}\n        //     ]
+        // }
+        // \`\`\`
+        // `;
+        // const responseText = mockResponseText; // Using mock response - COMMENTED OUT
 
         if (!responseText) {
             console.error('Error: Empty response from Gemini API.');
