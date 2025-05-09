@@ -215,7 +215,9 @@ async function testGenerativeManager() {
         promptTemplatePath: path.join(__dirname, '..', 'scripts', 'generative', 'farm_prompt_template.md'),
         instructionsPath: path.join(__dirname, '..', 'scripts', 'generative', 'audio_effect_instructions.md'),
         systemPromptPath: path.join(__dirname, '..', 'scripts', 'generative', 'system_prompt.md'),
-        geminiModel: 'gemini-1.5-pro-latest' // Model name, not used by mock in manager yet
+        geminiModel: 'gemini-1.5-pro-latest', // Model name, not used by mock in manager yet
+        tempPath: app.getPath('temp'),
+        mainWindow: mainWindow
     };
 
     try {

@@ -4,26 +4,26 @@ This plan outlines the steps to integrate the generative audio effect system (cu
 
 ## Phase 1: Core Generative Logic Integration
 
-1.  **[ ] Create `electron/generativeEffectManager.js`:**
+1.  **[X] Create `electron/generativeEffectManager.js`:**
     *   Create a new file for managing the generative AI interactions.
     *   This module will house the primary logic for communicating with the Gemini API.
 
-2.  **[ ] Relocate and Adapt `farm-audio.js` Logic:**
+2.  **[X] Relocate and Adapt `farm-audio.js` Logic:**
     *   **(Note: The original scripts in `scripts/generative/` should be kept in place for now and not deleted until the new integrated system is fully functional and tested.)**
-    *   **[ ] Move `parsePromptTemplate()`:**
+    *   **[X] Move `parsePromptTemplate()`:**
         *   Transfer the `parsePromptTemplate` function from `scripts/generative/farm-audio.js` to `electron/generativeEffectManager.js`.
         *   Update paths (e.g., `PROMPT_TEMPLATE_PATH`) to be relative to the Electron app's structure or make them configurable. The `__dirname` in `farm-audio.js` for `PROMPT_TEMPLATE_PATH` will need careful adjustment. It might be better to pass the template path as an argument or configure it globally within the Electron app.
-    *   **[ ] Move `loadFileContent()`:**
+    *   **[X] Move `loadFileContent()`:**
         *   Transfer the `loadFileContent` utility function.
-    *   **[ ] Move `parseGeminiResponse()`:**
+    *   **[X] Move `parseGeminiResponse()`:**
         *   Transfer the `parseGeminiResponse` function.
-    *   **[ ] Adapt Core AI Interaction Logic:**
+    *   **[X] Adapt Core AI Interaction Logic:**
         *   The main logic from `farmAudioEffect` (constructing the prompt parts, calling `ai.models.generateContent`, etc.) will form the basis of a new function in `electron/generativeEffectManager.js`, e.g., `generateEffectFromPrompt(userPromptData)`.
         *   `API_KEY` handling: Ensure `GEMINI_API_KEY` is accessible in the Electron main process environment.
         *   Paths like `EFFECTS_REPO_PATH`, `AUDIO_EFFECTS_SUBDIR`, `JSON_EFFECTS_SUBDIR`, `INSTRUCTIONS_PATH`, `SYSTEM_PROMPT_PATH` need to be correctly resolved from the Electron app's context. `getEffectsRepoPath()` from `main.js` can be reused.
 
-3.  **[ ] Define Main Orchestration Function in `electron/generativeEffectManager.js`:**
-    *   **[ ] Create `generateAndValidateEffect(promptDetails)`:**
+3.  **[X] Define Main Orchestration Function in `electron/generativeEffectManager.js`:**
+    *   **[X] Create `generateAndValidateEffect(promptDetails)`:**
         *   This function will take an object `promptDetails` (which could include the user's textual prompt, and any pre-filled template sections if we want to bypass reading the template file for some invocations).
         *   It will implement the retry loop (e.g., max 3 attempts).
         *   **Inside the loop:**

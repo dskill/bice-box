@@ -1,6 +1,7 @@
 const fs = require('fs').promises;
 const path = require('path');
 const { GoogleGenAI } = require('@google/genai');
+const superColliderManager = require('./superColliderManager');
 
 async function parsePromptTemplate(promptTemplatePath) {
     try {
@@ -90,6 +91,8 @@ function parseGeminiResponse(responseText) {
  * @param {string} config.instructionsPath - Absolute path to the audio_effect_instructions.md file.
  * @param {string} config.systemPromptPath - Absolute path to the system_prompt.md file.
  * @param {string} config.geminiModel - The Gemini model to use (e.g., 'gemini-1.5-pro-latest').
+ * @param {string} config.tempPath - Path to the system's temporary directory.
+ * @param {object} config.mainWindow - The Electron BrowserWindow instance.
  * @returns {Promise<object|null>} A promise that resolves to an object { scCode, jsonContent, outputFilenameHint } or null if an error occurs.
  */
 async function generateEffectFromPrompt(config) {
@@ -158,12 +161,12 @@ async function generateEffectFromPrompt(config) {
         // Simulate API call for now
         console.warn("Simulating Gemini API call. Uncomment actual call in production.");
         const mockResponseText = `
-        \`\`\`supercollider
-        // Mock SuperCollider Code for ${outputFilenameHint}
-        SynthDef(\${outputFilenameHint}, {\n            |out=0, amp=0.1|\n            var sig;\n            sig = SinOsc.ar(440, 0, amp);\n            Out.ar(out, [sig, sig]);\n        }).add;\n        \`\`\`
+\`\`\`supercollider
+// Mock SuperCollider Code for ${outputFilenameHint}
+SynthDef(\\\\${outputFilenameHint}, {\n    |out=0, amp=0.1|\n    var sig;\n    sig = SinOsc.ar(440, 0, amp);\n    Out.ar(out, [sig, sig]);\n}).add;\n\`\`\`
 
-        \`\`\`json
-        {\n            "name": "Mock ${outputFilenameHint}",\n            "description": "A mock effect.",\n            "audio": "audio/${outputFilenameHint}.sc",\n            "visual": "visual/oscilloscope.js",\n            "params": [\n                {"name": "amp", "value": 0.1, "range": [0.0, 1.0]}\n            ]\n        }\n        \`\`\`
+\`\`\`json
+{\n    "name": "Mock ${outputFilenameHint}",\n    "description": "A mock effect.",\n    "audio": "audio/${outputFilenameHint}.sc",\n    "visual": "visual/oscilloscope.js",\n    "params": [\n        {"name": "amp", "value": 0.1, "range": [0.0, 1.0]}\n    ]\n}\n\`\`\`
         `;
         const responseText = mockResponseText; // Using mock response
 
@@ -185,16 +188,22 @@ async function generateEffectFromPrompt(config) {
 
 /**
  * Orchestrates the generation and validation of an audio effect.
- * Initially, this function will just call generateEffectFromPrompt.
- * Validation and retry logic will be added in Phase 2.
- * @param {object} config - Configuration object (same as for generateEffectFromPrompt).
- * @returns {Promise<object|null>} A promise that resolves to an object { scCode, jsonContent, outputFilenameHint, success: boolean, error?: string } or null.
+ * @param {object} config - Configuration object.
+ * @param {string} config.apiKey - The API key for Google GenAI.
+ * @param {string} config.effectsRepoPath - Absolute path to the bice-box-effects repository.
+ * @param {string} config.audioEffectsSubdir - Subdirectory for audio (.sc) files within effectsRepoPath.
+ * @param {string} config.jsonEffectsSubdir - Subdirectory for JSON metadata files within effectsRepoPath.
+ * @param {string} config.promptTemplatePath - Absolute path to the farm_prompt_template.md file.
+ * @param {string} config.instructionsPath - Absolute path to the audio_effect_instructions.md file.
+ * @param {string} config.systemPromptPath - Absolute path to the system_prompt.md file.
+ * @param {string} config.geminiModel - The Gemini model to use.
+ * @param {string} config.tempPath - Path to the system's temporary directory.
+ * @param {object} config.mainWindow - The Electron BrowserWindow instance.
+ * @returns {Promise<object|null>} A promise that resolves to an object { scCode, jsonContent, outputFilenameHint, success: boolean, tempScFilePath?: string, compilationSuccess?: boolean, compilationError?: string, error?: string } or null.
  */
 async function generateAndValidateEffect(config) {
     try {
         console.log('Starting generation and validation process...');
-        // For now, just call generateEffectFromPrompt directly.
-        // Retry logic and SC validation will be added here in Phase 2.
         const generationResult = await generateEffectFromPrompt(config);
 
         if (!generationResult || !generationResult.scCode || !generationResult.jsonContent) {
@@ -202,13 +211,56 @@ async function generateAndValidateEffect(config) {
             return { ...generationResult, success: false, error: 'Generation failed or incomplete.' };
         }
 
-        // Placeholder for successful generation (validation still pending in Phase 2)
-        console.log('Generation successful (validation pending).');
-        return { ...generationResult, success: true }; 
+        let tempScFilePath = null;
+        let compilationSuccess = false;
+        let compilationError = null;
+
+        if (generationResult.scCode && generationResult.outputFilenameHint) {
+            const tempScFileName = `${generationResult.outputFilenameHint}_${Date.now()}.sc`;
+            tempScFilePath = path.join(config.tempPath, tempScFileName);
+            try {
+                await fs.writeFile(tempScFilePath, generationResult.scCode);
+                console.log(`Temporary SC file written to: ${tempScFilePath}`);
+
+                // Attempt to load/compile the temporary SC file
+                try {
+                    console.log(`Attempting to compile SC file: ${tempScFilePath}`);
+                    // Note: loadScFile expects the filePath to be relative to getEffectsRepoPath for its internal logic if it's not an absolute path.
+                    // However, superColliderManager.loadScFile can handle absolute paths if we ensure it does or use a different function from SC manager.
+                    // For now, we assume loadScFile can handle an absolute path directly, or we might need a specific function in superColliderManager for absolute paths.
+                    await superColliderManager.loadScFile(tempScFilePath, config.effectsRepoPath, config.mainWindow);
+                    console.log('SC file compiled successfully.');
+                    compilationSuccess = true;
+                } catch (scError) {
+                    console.error('SC file compilation failed:', scError.message || scError);
+                    compilationError = scError.message || (typeof scError === 'string' ? scError : 'Unknown SuperCollider compilation error');
+                    compilationSuccess = false;
+                }
+            } catch (writeError) {
+                console.error(`Error writing temporary SC file to ${tempScFilePath}:`, writeError);
+                return { ...generationResult, success: false, error: `Failed to write temporary SC file: ${writeError.message}`, tempScFilePath: null, compilationSuccess: false };
+            }
+        } else {
+            console.warn('No SC code or output filename hint available to write temporary file. Skipping compilation attempt.');
+        }
+
+        console.log(`Generation process finished. Overall success: ${generationResult && compilationSuccess}, Compilation success: ${compilationSuccess}`);
+        return { 
+            ...generationResult, 
+            success: !!(generationResult && compilationSuccess), // Overall success depends on generation AND compilation
+            tempScFilePath, 
+            compilationSuccess, 
+            compilationError 
+        }; 
 
     } catch (error) {
         console.error('Error in generateAndValidateEffect:', error);
-        return { success: false, error: error.message || 'Unknown error during validation process.', scCode: null, jsonContent: null, outputFilenameHint: null };
+        return { 
+            success: false, 
+            error: error.message || 'Unknown error during validation process.', 
+            scCode: null, jsonContent: null, outputFilenameHint: null, tempScFilePath: null, 
+            compilationSuccess: false, compilationError: error.message 
+        };
     }
 }
 

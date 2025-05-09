@@ -83,8 +83,9 @@ function loadP5SketchSync(sketchPath, getEffectsRepoPath) {
 }
 
 function loadScFile(filePath, getEffectsRepoPath, mainWindow) {
-    const scFilePath = path.join(getEffectsRepoPath(), filePath);
-    console.log(`Loading SC file: ${scFilePath}`);
+    // Check if filePath is already absolute. If not, join with effects repo path.
+    const scFilePath = path.isAbsolute(filePath) ? filePath : path.join(getEffectsRepoPath(), filePath);
+    console.log(`Loading SC file: ${scFilePath}`); // Path will now be correct for temp files too
 
     const scCommand = `("${scFilePath}").load;`;
 
