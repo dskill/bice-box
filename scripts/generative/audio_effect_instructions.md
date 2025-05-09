@@ -22,6 +22,11 @@ These guidelines aim to maintain consistency and readability across the SuperCol
     -   Include standard arguments: `out = 0`, `in_bus = 0`.
     -   Include a `mix = 0.5` argument for wet/dry control if applicable.
     -   Provide sensible default values for all arguments.
+    -   **Custom Control Signals:**
+        -   If the effect requires custom control signals or triggers (e.g., a manual freeze trigger, an envelope follower input for control purposes) that are not part of the standard audio signal path (`in_bus`) or the standard GUI machinery buses (`~rms_bus_input`, etc.), these **MUST** be implemented as arguments to the `SynthDef`.
+        -   Provide a clear name (e.g., `freezeTrig`, `envFollowIn`) and a sensible default value (e.g., 0).
+        -   The value of these arguments can then be controlled externally via `.set` messages to the Synth.
+        -   **DO NOT** attempt to read from arbitrary new global bus variables (e.g., `In.kr(~my_custom_control_bus)`) unless that bus is explicitly listed as part of the "Standard Machinery (for GUI Interaction)" buses. The generation context cannot define or allocate new global buses. All new dynamic control inputs must be `SynthDef` arguments.
 -   **Variable Declaration (`var`):**
     -   **CRITICAL:** Declare *all* local variables using `var varName1, varName2, ...;` in a single block *immediately* after the argument declarations. **Do not declare variables anywhere else within the function.**
 -   **Signal Input:** Start the processing chain by getting the input signal: `sig = In.ar(in_bus);`. Store the original dry signal if needed for mixing later (e.g., `var dry = sig;`).

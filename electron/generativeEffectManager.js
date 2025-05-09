@@ -93,9 +93,12 @@ function parseGeminiResponse(responseText) {
  * @param {string} config.geminiModel - The Gemini model to use (e.g., 'gemini-1.5-pro-latest').
  * @param {string} config.tempPath - Path to the system's temporary directory.
  * @param {object} config.mainWindow - The Electron BrowserWindow instance.
+ * @param {object} [retryContext] - Optional. Context for retrying a failed generation.
+ * @param {string} [retryContext.previousScCode] - The SuperCollider code from the previous failed attempt.
+ * @param {string} [retryContext.errorMessage] - The error message from the SuperCollider compilation failure.
  * @returns {Promise<object|null>} A promise that resolves to an object { scCode, jsonContent, outputFilenameHint } or null if an error occurs.
  */
-async function generateEffectFromPrompt(config) {
+async function generateEffectFromPrompt(config, retryContext = null) {
     if (!config.apiKey) {
         console.error('Error: GEMINI_API_KEY (config.apiKey) not provided.');
         throw new Error('API key not provided for Gemini.');
@@ -106,7 +109,7 @@ async function generateEffectFromPrompt(config) {
         const { examples, userPrompt, outputFilenameHint } = await parsePromptTemplate(config.promptTemplatePath);
 
         if (!userPrompt) {
-            console.error('Error: No prompt found in the template file.');
+            console.error('Error: No prompt found in the template file for the core request.');
             return null;
         }
         if (!outputFilenameHint) {
@@ -114,7 +117,7 @@ async function generateEffectFromPrompt(config) {
             return null;
         }
 
-        console.log(`User prompt: ${userPrompt}`);
+        console.log(`User prompt (base): ${userPrompt}`);
         console.log(`Output filename hint: ${outputFilenameHint}`);
         console.log(`Found ${examples.length} example(s) to load.`);
 
@@ -137,21 +140,54 @@ async function generateEffectFromPrompt(config) {
             text: `---\nCANONICAL_SNAKE_CASE_IDENTIFIER\n---\nUse the following lowercase_snake_case identifier for the SynthDef name and the filename in the JSON \'audio\' field: ${outputFilenameHint}\n---`
         };
 
+        let retryInstructionsText = '';
+        if (retryContext && retryContext.previousScCode && retryContext.errorMessage) {
+            console.log('--- Preparing Retry Attempt ---');
+            console.log('Previous SC Code (faulty):\n', retryContext.previousScCode);
+            console.log('Compilation Error:\n', retryContext.errorMessage);
+            retryInstructionsText = `
+--- RETRY INSTRUCTIONS ---
+The previous attempt to generate SuperCollider code failed. Please analyze the following error and the faulty code, then provide a corrected version of the SuperCollider code and the corresponding JSON metadata.
+
+**Compilation Error:**
+\`\`\`
+${retryContext.errorMessage}
+\`\`\`
+
+**Faulty SuperCollider Code:**
+\`\`\`supercollider
+${retryContext.previousScCode}
+\`\`\`
+
+Ensure your new SuperCollider code addresses this error and adheres to all previously stated guidelines.
+The user's original request for the effect is below. The JSON should still match the original request and the corrected SuperCollider code.
+--- END RETRY INSTRUCTIONS ---
+`;
+        }
+
+        const fullPromptParts = [
+            { text: systemPromptContent },
+            { text: '---\nGUIDELINES\n---\n' + instructions },
+            { text: '---\nEXAMPLES\n---\n' + (examples.length > 0 ? exampleContents : '\n(No examples provided in template)') },
+            canonicalIdentifierPart,
+        ];
+
+        if (retryInstructionsText) {
+            fullPromptParts.push({ text: retryInstructionsText });
+        }
+
+        // Add user request last, or after retry instructions if they exist
+        fullPromptParts.push({ text: '---\nUSER REQUEST\n---\n' + userPrompt });
+        fullPromptParts.push({ text: 'Ensure the SuperCollider code is complete and functional according to the guidelines. Ensure the JSON is well-formed and all required fields from the guidelines are present and correctly formatted. The SynthDef name in the SC code must be the basis for the \'name\' field in the JSON.' });
+
         const fullPromptContents = [
             {
                 role: 'user',
-                parts: [
-                    { text: systemPromptContent },
-                    { text: '---\nGUIDELINES\n---\n' + instructions },
-                    { text: '---\nEXAMPLES\n---\n' + (examples.length > 0 ? exampleContents : '\n(No examples provided in template)') },
-                    canonicalIdentifierPart,
-                    { text: '---\nUSER REQUEST\n---\n' + userPrompt },
-                    { text: 'Ensure the SuperCollider code is complete and functional according to the guidelines. Ensure the JSON is well-formed and all required fields from the guidelines are present and correctly formatted. The SynthDef name in the SC code must be the basis for the \'name\' field in the JSON.' }
-                ]
+                parts: fullPromptParts
             }
         ];
         
-        console.log('\n--- Full Prompt to Gemini API ---');
+        console.log('\n--- Full Prompt to Gemini API (with retry context if applicable) ---');
         // console.log(JSON.stringify(fullPromptContents, null, 2)); // Verbose logging
 
         console.log('\nSending request to Gemini API...');
@@ -201,6 +237,8 @@ async function generateEffectFromPrompt(config) {
     }
 }
 
+const MAX_ATTEMPTS = 3;
+
 /**
  * Orchestrates the generation and validation of an audio effect.
  * @param {object} config - Configuration object.
@@ -214,104 +252,117 @@ async function generateEffectFromPrompt(config) {
  * @param {string} config.geminiModel - The Gemini model to use.
  * @param {string} config.tempPath - Path to the system's temporary directory.
  * @param {object} config.mainWindow - The Electron BrowserWindow instance.
- * @returns {Promise<object|null>} A promise that resolves to an object { scCode, jsonContent, outputFilenameHint, success: boolean, tempScFilePath?: string, compilationSuccess?: boolean, compilationError?: string, error?: string } or null.
+ * @returns {Promise<object|null>} A promise that resolves to an object containing generation results, success status, paths, compilation status, and attemptsMade.
  */
 async function generateAndValidateEffect(config) {
-    let tempScFilePath = null; // Define here to be accessible in finally block if we add it
-    try {
-        console.log('Starting generation and validation process...');
-        const generationResult = await generateEffectFromPrompt(config);
+    let retryContext = null;
+    let lastGenerationResult = null;
+    let lastCompilationError = null;
+    let attemptsMade = 0;
 
-        if (!generationResult || !generationResult.scCode || !generationResult.jsonContent) {
-            console.error('Generation failed or produced incomplete results.');
-            return { ...generationResult, success: false, error: 'Generation failed or incomplete.' };
-        }
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+        attemptsMade++;
+        console.log(`--- Attempt ${attemptsMade} of ${MAX_ATTEMPTS} ---`);
+        let tempScFilePath = null;
 
-        let compilationSuccess = false;
-        let compilationError = null;
-        let finalScPath = null;
-        let finalJsonPath = null;
+        try {
+            const generationResult = await generateEffectFromPrompt(config, retryContext);
+            lastGenerationResult = generationResult; // Store for potential use if all retries fail
 
-        if (generationResult.scCode && generationResult.outputFilenameHint) {
-            const tempScFileName = `${generationResult.outputFilenameHint}_${Date.now()}.sc`;
-            tempScFilePath = path.join(config.tempPath, tempScFileName);
-            try {
+            if (!generationResult || !generationResult.scCode || !generationResult.jsonContent) {
+                console.error(`Attempt ${attemptsMade}: Generation failed or produced incomplete results.`);
+                lastCompilationError = 'Generation failed or incomplete.'; // Treat as a form of error
+                if (attempt === MAX_ATTEMPTS - 1) {
+                    return { ...generationResult, success: false, error: lastCompilationError, attemptsMade, compilationSuccess: false, compilationError: lastCompilationError };
+                }
+                retryContext = { // Prepare for next attempt, though generation itself failed
+                    previousScCode: generationResult ? generationResult.scCode : 'No SC code generated',
+                    errorMessage: lastCompilationError
+                };
+                continue; // Go to next attempt
+            }
+
+            if (generationResult.scCode && generationResult.outputFilenameHint) {
+                const tempScFileName = `${generationResult.outputFilenameHint}_attempt${attemptsMade}_${Date.now()}.sc`;
+                tempScFilePath = path.join(config.tempPath, tempScFileName);
+                
                 await fs.writeFile(tempScFilePath, generationResult.scCode);
-                console.log(`Temporary SC file written to: ${tempScFilePath}`);
+                console.log(`Attempt ${attemptsMade}: Temporary SC file written to: ${tempScFilePath}`);
 
                 try {
-                    console.log(`Attempting to compile SC file: ${tempScFilePath}`);
+                    console.log(`Attempt ${attemptsMade}: Attempting to compile SC file: ${tempScFilePath}`);
                     await superColliderManager.loadScFile(tempScFilePath, config.effectsRepoPath, config.mainWindow);
-                    console.log('SC file compiled successfully.');
-                    compilationSuccess = true;
+                    console.log(`Attempt ${attemptsMade}: SC file compiled successfully.`);
 
-                    // If compilation is successful, save files to final destination
                     const scFileName = `${generationResult.outputFilenameHint}.sc`;
                     const jsonFileName = `${generationResult.outputFilenameHint}.json`;
-
-                    finalScPath = path.join(config.effectsRepoPath, config.audioEffectsSubdir, scFileName);
-                    finalJsonPath = path.join(config.effectsRepoPath, config.jsonEffectsSubdir, jsonFileName);
+                    const finalScPath = path.join(config.effectsRepoPath, config.audioEffectsSubdir, scFileName);
+                    const finalJsonPath = path.join(config.effectsRepoPath, config.jsonEffectsSubdir, jsonFileName);
 
                     await fs.writeFile(finalScPath, generationResult.scCode);
-                    console.log(`Successfully saved SuperCollider effect to: ${finalScPath}`);
-
+                    console.log(`Attempt ${attemptsMade}: Successfully saved SuperCollider effect to: ${finalScPath}`);
                     await fs.writeFile(finalJsonPath, generationResult.jsonContent);
-                    console.log(`Successfully saved JSON metadata to: ${finalJsonPath}`);
-
+                    console.log(`Attempt ${attemptsMade}: Successfully saved JSON metadata to: ${finalJsonPath}`);
+                    
+                    if (tempScFilePath) {
+                        try { await fs.unlink(tempScFilePath); console.log(`Attempt ${attemptsMade}: Temporary SC file deleted: ${tempScFilePath}`); } 
+                        catch (e) { console.warn(`Attempt ${attemptsMade}: Failed to delete temp file ${tempScFilePath}`, e.message); }
+                    }
+                    return { ...generationResult, success: true, finalScPath, finalJsonPath, compilationSuccess: true, compilationError: null, attemptsMade };
+                
                 } catch (scError) {
-                    console.error('SC file compilation failed:', scError.message || scError);
-                    compilationError = scError.message || (typeof scError === 'string' ? scError : 'Unknown SuperCollider compilation error');
-                    compilationSuccess = false;
+                    console.error(`Attempt ${attemptsMade}: SC file compilation failed:`, scError.message || scError);
+                    lastCompilationError = scError.message || (typeof scError === 'string' ? scError : 'Unknown SuperCollider compilation error');
+                    retryContext = {
+                        previousScCode: generationResult.scCode,
+                        errorMessage: lastCompilationError
+                    };
                 }
-            } catch (writeError) {
-                console.error(`Error writing temporary SC file to ${tempScFilePath}:`, writeError);
-                return { ...generationResult, success: false, error: `Failed to write temporary SC file: ${writeError.message}`, tempScFilePath: null, compilationSuccess: false };
+            } else {
+                console.warn(`Attempt ${attemptsMade}: No SC code or output filename hint available. Skipping compilation.`);
+                lastCompilationError = 'No SC code generated for compilation.';
             }
-        } else {
-            console.warn('No SC code or output filename hint available to write temporary file. Skipping compilation attempt.');
-        }
 
-        // Clean up temporary file if it was created
-        if (tempScFilePath) {
-            try {
-                await fs.unlink(tempScFilePath);
-                console.log(`Temporary SC file deleted: ${tempScFilePath}`);
-            } catch (unlinkError) {
-                console.warn(`Failed to delete temporary SC file ${tempScFilePath}:`, unlinkError.message);
+        } catch (generationProcessError) {
+            console.error(`Attempt ${attemptsMade}: Error during generation process:`, generationProcessError);
+            lastCompilationError = generationProcessError.message || 'Error in generation process.';
+            // If generateEffectFromPrompt itself throws, retryContext might not be formed with previousScCode
+            // We can try to use lastGenerationResult if available, or just the error for the next retry prompt
+            retryContext = {
+                previousScCode: lastGenerationResult ? lastGenerationResult.scCode : 'Error before SC code generation.',
+                errorMessage: lastCompilationError
+            };
+            if (attempt === MAX_ATTEMPTS - 1) { // Check if it's the last attempt
+                 return { 
+                    success: false, 
+                    error: 'Overall generation process failed after multiple attempts.', 
+                    scCode: lastGenerationResult ? lastGenerationResult.scCode : null, 
+                    jsonContent: lastGenerationResult ? lastGenerationResult.jsonContent : null, 
+                    outputFilenameHint: lastGenerationResult ? lastGenerationResult.outputFilenameHint : null, 
+                    compilationSuccess: false, 
+                    compilationError: lastCompilationError, 
+                    attemptsMade 
+                };
             }
-        }
-
-        console.log(`Generation process finished. Overall success: ${generationResult && compilationSuccess}, Compilation success: ${compilationSuccess}`);
-        return { 
-            ...generationResult, 
-            success: !!(generationResult && compilationSuccess), 
-            tempScFilePath: null, // It's deleted or wasn't fully processed for saving
-            finalScPath, 
-            finalJsonPath,
-            compilationSuccess, 
-            compilationError 
-        }; 
-
-    } catch (error) {
-        console.error('Error in generateAndValidateEffect:', error);
-        // Ensure temp file is cleaned up even if an error occurs earlier in the process if possible
-        if (tempScFilePath) {
-            try {
-                await fs.unlink(tempScFilePath);
-                console.log(`Attempted to clean up temp SC file after error: ${tempScFilePath}`);
-            } catch (unlinkError) {
-                // Log but don't overshadow the original error
-                console.warn(`Failed to delete temporary SC file ${tempScFilePath} during error cleanup:`, unlinkError.message);
+        } finally {
+            // Clean up the temp file for the current attempt if it exists and wasn't already deleted on success
+            if (tempScFilePath) {
+                try { await fs.unlink(tempScFilePath); console.log(`Attempt ${attemptsMade}: Cleaned up temp file from finally block: ${tempScFilePath}`); }
+                catch (e) { /* Already logged or handled, or success path deleted it */ }
             }
         }
-        return { 
-            success: false, 
-            error: error.message || 'Unknown error during validation process.', 
-            scCode: null, jsonContent: null, outputFilenameHint: null, tempScFilePath: null, 
-            finalScPath: null, finalJsonPath: null,
-            compilationSuccess: false, compilationError: error.message 
-        };
-    }
+    } // End of for loop
+
+    // If loop finishes, all attempts failed
+    console.log('All attempts failed.');
+    return { 
+        ...(lastGenerationResult || {}), // Return details from the last attempt if available
+        success: false, 
+        error: 'All generation and compilation attempts failed.', 
+        compilationSuccess: false, 
+        compilationError: lastCompilationError, 
+        attemptsMade 
+    };
 }
 
 module.exports = {
