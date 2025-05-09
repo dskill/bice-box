@@ -9,6 +9,7 @@ This plan outlines the steps to integrate the generative audio effect system (cu
     *   This module will house the primary logic for communicating with the Gemini API.
 
 2.  **[ ] Relocate and Adapt `farm-audio.js` Logic:**
+    *   **(Note: The original scripts in `scripts/generative/` should be kept in place for now and not deleted until the new integrated system is fully functional and tested.)**
     *   **[ ] Move `parsePromptTemplate()`:**
         *   Transfer the `parsePromptTemplate` function from `scripts/generative/farm-audio.js` to `electron/generativeEffectManager.js`.
         *   Update paths (e.g., `PROMPT_TEMPLATE_PATH`) to be relative to the Electron app's structure or make them configurable. The `__dirname` in `farm-audio.js` for `PROMPT_TEMPLATE_PATH` will need careful adjustment. It might be better to pass the template path as an argument or configure it globally within the Electron app.

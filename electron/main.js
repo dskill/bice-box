@@ -22,6 +22,7 @@ const {
   loadP5SketchSync,
   loadScFile,
 } = require('./superColliderManager');
+const generativeEffectManager = require('./generativeEffectManager');
 const wifi = require('node-wifi');
 
 let mainWindow;
@@ -201,6 +202,42 @@ function createWindow()
   }
 }
 
+async function testGenerativeManager() {
+    console.log('Running test for generativeEffectManager...');
+
+    const effectsRepo = getEffectsRepoPath();
+
+    const config = {
+        apiKey: process.env.GEMINI_API_KEY || 'MOCK_API_KEY', // Use actual key if available, else mock
+        effectsRepoPath: effectsRepo,
+        audioEffectsSubdir: 'audio',
+        jsonEffectsSubdir: 'effects',
+        promptTemplatePath: path.join(__dirname, '..', 'scripts', 'generative', 'farm_prompt_template.md'),
+        instructionsPath: path.join(__dirname, '..', 'scripts', 'generative', 'audio_effect_instructions.md'),
+        systemPromptPath: path.join(__dirname, '..', 'scripts', 'generative', 'system_prompt.md'),
+        geminiModel: 'gemini-1.5-pro-latest' // Model name, not used by mock in manager yet
+    };
+
+    try {
+        const result = await generativeEffectManager.generateAndValidateEffect(config);
+        console.log('--- Test Result from generateAndValidateEffect ---');
+        if (result) {
+            console.log('Success:', result.success);
+            console.log('Output Filename Hint:', result.outputFilenameHint);
+            console.log('Generated SC Code (mocked):\n', result.scCode);
+            console.log('Generated JSON Content (mocked):\n', result.jsonContent);
+            if (result.error) {
+                console.error('Error:', result.error);
+            }
+        } else {
+            console.error('Test function returned null or undefined.');
+        }
+        console.log('-------------------------------------------------');
+    } catch (error) {
+        console.error('Error during generative manager test:', error);
+    }
+}
+
 app.whenReady().then(() =>
 {
   console.log('App is ready');
@@ -217,6 +254,11 @@ app.whenReady().then(() =>
 
   createWindow();
   console.log('Window creation initiated');
+
+  // Call the test function
+  if (!app.isPackaged || devMode) { // Run test in development or if devMode is explicitly true
+       testGenerativeManager();
+  }
 }).catch(error =>
 {
   console.error('Error in app.whenReady():', error);
