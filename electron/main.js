@@ -226,9 +226,16 @@ async function testGenerativeManager() {
         if (result) {
             console.log('Success:', result.success);
             console.log('Output Filename Hint:', result.outputFilenameHint);
-            console.log('Generated SC Code (mocked):\n', result.scCode);
-            console.log('Generated JSON Content (mocked):\n', result.jsonContent);
-            if (result.error) {
+            console.log('Generated SC Code:\n', result.scCode);
+            console.log('Generated JSON Content:\n', result.jsonContent);
+            if (result.compilationSuccess) {
+                console.log('SC Compilation Success:', result.compilationSuccess);
+                console.log('Final SC Path:', result.finalScPath);
+                console.log('Final JSON Path:', result.finalJsonPath);
+            } else {
+                console.error('SC Compilation Failed. Error:', result.compilationError);
+            }
+            if (result.error && !result.compilationError) { // Display general error if not a compilation error
                 console.error('Error:', result.error);
             }
         } else {

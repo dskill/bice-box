@@ -217,6 +217,7 @@ async function generateEffectFromPrompt(config) {
  * @returns {Promise<object|null>} A promise that resolves to an object { scCode, jsonContent, outputFilenameHint, success: boolean, tempScFilePath?: string, compilationSuccess?: boolean, compilationError?: string, error?: string } or null.
  */
 async function generateAndValidateEffect(config) {
+    let tempScFilePath = null; // Define here to be accessible in finally block if we add it
     try {
         console.log('Starting generation and validation process...');
         const generationResult = await generateEffectFromPrompt(config);
@@ -226,9 +227,10 @@ async function generateAndValidateEffect(config) {
             return { ...generationResult, success: false, error: 'Generation failed or incomplete.' };
         }
 
-        let tempScFilePath = null;
         let compilationSuccess = false;
         let compilationError = null;
+        let finalScPath = null;
+        let finalJsonPath = null;
 
         if (generationResult.scCode && generationResult.outputFilenameHint) {
             const tempScFileName = `${generationResult.outputFilenameHint}_${Date.now()}.sc`;
@@ -237,15 +239,25 @@ async function generateAndValidateEffect(config) {
                 await fs.writeFile(tempScFilePath, generationResult.scCode);
                 console.log(`Temporary SC file written to: ${tempScFilePath}`);
 
-                // Attempt to load/compile the temporary SC file
                 try {
                     console.log(`Attempting to compile SC file: ${tempScFilePath}`);
-                    // Note: loadScFile expects the filePath to be relative to getEffectsRepoPath for its internal logic if it's not an absolute path.
-                    // However, superColliderManager.loadScFile can handle absolute paths if we ensure it does or use a different function from SC manager.
-                    // For now, we assume loadScFile can handle an absolute path directly, or we might need a specific function in superColliderManager for absolute paths.
                     await superColliderManager.loadScFile(tempScFilePath, config.effectsRepoPath, config.mainWindow);
                     console.log('SC file compiled successfully.');
                     compilationSuccess = true;
+
+                    // If compilation is successful, save files to final destination
+                    const scFileName = `${generationResult.outputFilenameHint}.sc`;
+                    const jsonFileName = `${generationResult.outputFilenameHint}.json`;
+
+                    finalScPath = path.join(config.effectsRepoPath, config.audioEffectsSubdir, scFileName);
+                    finalJsonPath = path.join(config.effectsRepoPath, config.jsonEffectsSubdir, jsonFileName);
+
+                    await fs.writeFile(finalScPath, generationResult.scCode);
+                    console.log(`Successfully saved SuperCollider effect to: ${finalScPath}`);
+
+                    await fs.writeFile(finalJsonPath, generationResult.jsonContent);
+                    console.log(`Successfully saved JSON metadata to: ${finalJsonPath}`);
+
                 } catch (scError) {
                     console.error('SC file compilation failed:', scError.message || scError);
                     compilationError = scError.message || (typeof scError === 'string' ? scError : 'Unknown SuperCollider compilation error');
@@ -259,21 +271,44 @@ async function generateAndValidateEffect(config) {
             console.warn('No SC code or output filename hint available to write temporary file. Skipping compilation attempt.');
         }
 
+        // Clean up temporary file if it was created
+        if (tempScFilePath) {
+            try {
+                await fs.unlink(tempScFilePath);
+                console.log(`Temporary SC file deleted: ${tempScFilePath}`);
+            } catch (unlinkError) {
+                console.warn(`Failed to delete temporary SC file ${tempScFilePath}:`, unlinkError.message);
+            }
+        }
+
         console.log(`Generation process finished. Overall success: ${generationResult && compilationSuccess}, Compilation success: ${compilationSuccess}`);
         return { 
             ...generationResult, 
-            success: !!(generationResult && compilationSuccess), // Overall success depends on generation AND compilation
-            tempScFilePath, 
+            success: !!(generationResult && compilationSuccess), 
+            tempScFilePath: null, // It's deleted or wasn't fully processed for saving
+            finalScPath, 
+            finalJsonPath,
             compilationSuccess, 
             compilationError 
         }; 
 
     } catch (error) {
         console.error('Error in generateAndValidateEffect:', error);
+        // Ensure temp file is cleaned up even if an error occurs earlier in the process if possible
+        if (tempScFilePath) {
+            try {
+                await fs.unlink(tempScFilePath);
+                console.log(`Attempted to clean up temp SC file after error: ${tempScFilePath}`);
+            } catch (unlinkError) {
+                // Log but don't overshadow the original error
+                console.warn(`Failed to delete temporary SC file ${tempScFilePath} during error cleanup:`, unlinkError.message);
+            }
+        }
         return { 
             success: false, 
             error: error.message || 'Unknown error during validation process.', 
             scCode: null, jsonContent: null, outputFilenameHint: null, tempScFilePath: null, 
+            finalScPath: null, finalJsonPath: null,
             compilationSuccess: false, compilationError: error.message 
         };
     }
