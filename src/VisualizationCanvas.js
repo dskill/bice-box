@@ -223,6 +223,14 @@ function VisualizationCanvas({ currentVisualContent, paramValuesRef, onEffectLoa
           newP5Instance.webGLCapabilities = webGLCapabilities;
           newP5Instance.isPlatformRaspberryPi = isPlatformRaspberryPi;
 
+          // Add the function to send OSC messages
+          newP5Instance.sendOscToSc = (address, ...args) => {
+            if (window.electron && window.electron.ipcRenderer) {
+              window.electron.ipcRenderer.send('send-osc-to-sc', { address, args });
+            } else {
+              console.warn('Electron IPC not available for sending OSC.');
+            }
+          };
 
           p5InstanceRef.current = newP5Instance; // Store the new instance
           errorRef.current = null; // Clear any previous error

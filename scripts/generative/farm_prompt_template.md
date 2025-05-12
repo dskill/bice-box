@@ -31,16 +31,12 @@ JSON_FILE: crackle_reverb.json
 # "Generate a stereo chorus effect. It should have parameters for rate (0.1 Hz to 10 Hz),
 # depth (0 to 1), delay time (5ms to 30ms), and feedback (0 to 0.9)."
 
-Generate a 'Monarch Synth' effect that transforms a guitar signal into a powerful monophonic synthesizer sound.
-It should perform pitch detection on the input guitar signal and use the detected pitch to drive a sawtooth oscillator.
-The effect should allow for shaping the synthesized sound with various parameters to create a wide range of synth tones, from classic leads to gritty basses.
+Generate a  phaser effedt which takes 2 parameters as input. an X param and a Y param.  This should be suitable fora  guitar phaser effect.  Hook the X and Y param up in an interesting way - the user will interact with it via touchscreen (so XY pos). 
+
+Get creative, but keep the code somewhat simple on this one.  
 
 Parameters:
-- Synth Octave (-2 to +2 octaves, Default: 0): Transposes the generated sawtooth wave by octaves relative to the detected pitch.
-- Synth Filter Cutoff (20Hz to 20kHz, Default: 5000Hz): Controls the cutoff frequency of a resonant low-pass filter applied to the sawtooth wave(s).
-- Synth Filter Resonance (0 to 1, Default: 0.2): Adjusts the resonance (Q factor) of the low-pass filter, creating a more pronounced peak at the cutoff frequency.
-- Synth Drive (0 to 1, Default: 0.1): Controls the amount of analog-style saturation or distortion applied to the sawtooth wave for a grittier, more aggressive sound.
-- Wet/Dry Mix (0 to 1, Default: 0.5): Blends between the original dry guitar signal and the wet synthesized sound.
+NONE
 
 --- CANONICAL SNAKE_CASE IDENTIFIER ---
 # This will be used as the CANONICAL_SNAKE_CASE_IDENTIFIER.
@@ -48,4 +44,4 @@ Parameters:
 # It will also be used to construct the 'audio' field in the .json file (e.g., "audio/YOUR_IDENTIFIER.sc").
 # Convention: lowercase_with_underscores (e.g., my_cool_flanger)
 # Example: my_new_chorus
-monarch_synth
+phaser_2d

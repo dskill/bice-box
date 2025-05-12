@@ -157,3 +157,101 @@ Prefer `lowercase_snake_case` for actual filenames. This `lowercase_snake_case` 
     b.  The `audio` field must be the path `audio/THE_CANONICAL_SNAKE_CASE_IDENTIFIER.sc` (where `THE_CANONICAL_SNAKE_CASE_IDENTIFIER` is the one provided in the main prompt).
     c.  For parameters, use "value" for the default and a "range" array `[min, max]`.
 3.  Carefully analyze the `SynthDef` arguments to create accurate `params` entries. Infer sensible `range` values based on common usage for audio effects if not explicitly defined by the user prompt. The `value` in the JSON *must* match the default value in the `SynthDef`.
+
+### Sending OSC Messages from p5.js Sketches to SuperCollider
+
+Your p5.js visualizations can interact with SuperCollider audio effects by sending OSC (Open Sound Control) messages. This allows for dynamic control of sound parameters based on visual elements.
+
+**1. Sending Mouse Coordinates from p5.js:**
+
+A common use case is to send normalized mouse X and Y positions to control effect parameters. The p5.js instance (`p`) in your sketch will have a `p.sendOscToSc(address, ...args)` function available.
+
+*   **OSC Address:** Use the address `'/params'` for general-purpose parameter control. This allows different visual sketches to potentially control various effects that listen on this common address.
+*   **Arguments:** Send the normalized mouse X and Y coordinates.
+
+**Example p5.js Code:**
+
+```javascript
+// In your p5.js sketch's draw() function or other relevant update loops:
+
+function draw() {
+  // ... your other drawing code ...
+
+  if (p.sendOscToSc) { // Check if the function is available
+    let x_val = p.mouseX / p.width;          // Normalize mouseX to 0.0 - 1.0
+    let y_val = 1.0 - (p.mouseY / p.height); // Normalize mouseY (inverted) to 0.0 - 1.0
+
+    // Clamp values to avoid issues at exact 0.0 or 1.0 boundaries if needed
+    x_val = Math.min(Math.max(x_val, 0.0001), 0.9999);
+    y_val = Math.min(Math.max(y_val, 0.0001), 0.9999);
+
+    p.sendOscToSc('/params', x_val, y_val);
+  }
+}
+
+// You might also send OSC messages on events like mousePressed:
+function mousePressed() {
+  if (p.sendOscToSc) {
+    let x_val = p.mouseX / p.width;
+    let y_val = 1.0 - (p.mouseY / p.height);
+     x_val = Math.min(Math.max(x_val, 0.0001), 0.9999);
+     y_val = Math.min(Math.max(y_val, 0.0001), 0.9999);
+    p.sendOscToSc('/params', x_val, y_val, "click"); // Example: sending an extra "click" argument
+  }
+}
+```
+*Note: In p5.js, the Y-coordinate is typically 0 at the top and increases downwards. If your SuperCollider effect expects Y to increase upwards (common in mathematical graphs), you might need to invert it as shown (`1.0 - (p.mouseY / p.height)`).*
+
+**2. Receiving OSC in SuperCollider:**
+
+In your SuperCollider effect's `.sc` file, you'll define an `OSCdef` to listen for messages on the `'/params'` address and use the received values to control `Synth` arguments.
+
+**Example SuperCollider Code (within the `fork { ... }` block):**
+
+```supercollider
+// ... inside the fork { } block, after ~effect is created ...
+
+if(~oscListener.notNil) { ~oscListener.free; } // Free previous listener if any
+~oscListener = OSCdef.new(
+    \paramsListener,    // A unique key for this OSCdef
+    { |msg, time, addr, recvPort|
+        // msg is an array: msg[0] is the address, msg[1] is the first arg (x_val), msg[2] is second (y_val)
+        var x_val = msg[1];
+        var y_val = msg[2];
+        // Optional: Post received values for debugging
+        // ("Received /params: X=" ++ x_val ++ ", Y=" ++ y_val).postln;
+
+        if(~effect.notNil, { // Check if the effect synth exists
+            // Assuming your SynthDef has arguments named 'x' and 'y' (or similar)
+            // These arguments would then be used internally by the SynthDef
+            // to modulate sound parameters (e.g., filter cutoff, delay time).
+            ~effect.set(
+                \x, x_val, // Or whatever your SynthDef argument is for the first value
+                \y, y_val  // Or whatever your SynthDef argument is for the second value
+            );
+        });
+    },
+    '/params', // The OSC address to listen to
+    nil        // Listen on any client address
+    // nil, 57120 // Optionally specify client and port if needed
+);
+
+// To ensure the OSCdef is removed when the effect is reloaded or stopped:
+// It's good practice to store the OSCdef in an environment variable (like ~oscListener)
+// and .free it before defining a new one, or when the effect's Synth is freed.
+// For example, when ~effect.free is called, also call ~oscListener.free;
+```
+
+**Key Considerations:**
+
+*   **SynthDef Arguments:** Your `SynthDef` must have arguments (e.g., `|x = 0.5, y = 0.5|`) that correspond to the values you intend to control via OSC. The `OSCdef` will use `.set` to update these arguments on the running synth.
+*   **Mapping:** Inside the `SynthDef`, you'll map these incoming normalized `x` and `y` values (typically 0.0 to 1.0) to useful parameter ranges for your audio processing UGens (e.g., using `.linlin`, `.linexp`).
+*   **Address Consistency:** Using `'/params'` as the default address provides a consistent target for p5.js sketches. If a sketch sends to `'/params'`, any loaded SuperCollider effect that listens on `'/params'` can respond.
+
+**3. Backend Implementation (Context - Already Handled):**
+
+*   The `p.sendOscToSc` function is injected into p5.js sketches by `src/VisualizationCanvas.js`.
+*   It uses Electron's IPC to send data to `electron/main.js`.
+*   `electron/main.js` forwards the OSC message to SuperCollider via an `oscManager`.
+
+This simplified approach allows for straightforward control of audio effects using mouse input from p5.js visualizations.

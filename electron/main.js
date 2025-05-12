@@ -350,6 +350,42 @@ app.on('will-quit', async () =>
   logStream.end();
 });
 
+// IPC listener for OSC messages from p5.js sketches
+ipcMain.on('send-osc-to-sc', (event, { address, args }) => {
+  if (oscManager && oscManager.oscServer) { // Check for oscServer directly
+    try {
+      const scHost = '127.0.0.1';
+      const scPort = 57120; // Default SuperCollider server port
+
+      // Map arguments to the format expected by the osc library
+      const typedArgs = args.map(arg => {
+        if (typeof arg === 'number') {
+          return { type: 'f', value: arg }; // Assume float for numbers
+        } else if (typeof arg === 'string') {
+          return { type: 's', value: arg };
+        } else if (typeof arg === 'boolean') {
+          // OSC doesn't have a dedicated boolean, send as int or T/F symbols
+          return { type: 'i', value: arg ? 1 : 0 }; 
+        }
+        // Add more type handling if needed (e.g., integers explicitly 'i')
+        console.warn(`Unsupported OSC argument type: ${typeof arg} for value: ${arg}. Skipping.`);
+        return null;
+      }).filter(arg => arg !== null); // Remove any unsupported args
+
+      oscManager.oscServer.send(
+        { address: address, args: typedArgs },
+        scHost,
+        scPort
+      );
+      // console.log(`OSC message sent to sc: ${address}`, typedArgs);
+    } catch (error) {
+      console.error('Error sending OSC message to SuperCollider:', error, { address, args });
+    }
+  } else {
+    console.warn('OSC Manager or oscServer not available. OSC message from p5 not sent.', { address, args });
+  }
+});
+
 const debounce = (func, delay) =>
 {
   let inDebounce;
