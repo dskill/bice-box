@@ -445,8 +445,11 @@ function reloadEffectForChangedFile(changedPath)
 function reloadFullEffect(jsonPath)
 {
   console.log(`Reloading full effect from: ${jsonPath}`);
-  const effectName = path.basename(jsonPath, '.json');
-  const effectIndex = synths.findIndex(synth => synth.name === effectName);
+  const effectNameFromFile = path.basename(jsonPath, '.json');
+  const effectIndex = synths.findIndex(synth => 
+    synth.name && effectNameFromFile && 
+    synth.name.toLowerCase() === effectNameFromFile.toLowerCase()
+  );
 
   if (effectIndex !== -1)
   {
@@ -459,7 +462,7 @@ function reloadFullEffect(jsonPath)
 
       // Update the effect in the synths array
       const updatedEffect = {
-        name: newEffectData.name || effectName,
+        name: newEffectData.name || effectNameFromFile,
         scFilePath: newEffectData.audio,
         p5SketchPath: newEffectData.visual,
         p5SketchContent: loadP5SketchSync(newEffectData.visual, getEffectsRepoPath),
@@ -476,7 +479,7 @@ function reloadFullEffect(jsonPath)
         loadScFile(updatedEffect.scFilePath, getEffectsRepoPath, mainWindow);
       } else
       {
-        console.warn(`No SC file path provided for effect ${effectName}`);
+        console.warn(`No SC file path provided for effect ${effectNameFromFile}`);
       }
 
       // Notify renderer process about the updated effect
@@ -496,15 +499,15 @@ function reloadFullEffect(jsonPath)
         paramsCount: updatedEffect.params.length
       });
 
-      console.log(`Effect ${effectName} has been reloaded`);
+      console.log(`Effect ${updatedEffect.name} has been reloaded`);
     } catch (error)
     {
-      console.error(`Error reloading effect ${effectName}:`, error);
+      console.error(`Error reloading effect ${effectNameFromFile}:`, error);
       console.error(error.stack);
     }
   } else
   {
-    console.warn(`Effect ${effectName} not found in synths array`);
+    console.warn(`Effect ${effectNameFromFile} not found in synths array`);
     console.log('Current synths:', synths.map(s => s.name));
   }
 }
@@ -512,7 +515,10 @@ function reloadFullEffect(jsonPath)
 function reloadAudioEffect(scFilePath)
 {
   console.log(`Reloading audio effect: ${scFilePath}`);
-  const affectedEffect = synths.find(synth => synth.scFilePath === scFilePath);
+  const affectedEffect = synths.find(synth => 
+    synth.scFilePath && scFilePath && 
+    synth.scFilePath.toLowerCase() === scFilePath.toLowerCase()
+  );
 
   if (affectedEffect)
   {
@@ -531,16 +537,13 @@ function reloadVisualEffect(jsFilePath)
   console.log('Current effect:', currentEffect ? currentEffect.name : 'None');
   console.log('Current effect p5SketchPath:', currentEffect ? currentEffect.p5SketchPath : 'None');
 
-  if (currentEffect)
+  if (currentEffect && currentEffect.p5SketchPath)
   {
-    // Compare the relative paths
-    const currentSketchPath = path.relative(getEffectsRepoPath(), currentEffect.p5SketchPath);
-    const changedFilePath = path.relative(getEffectsRepoPath(), jsFilePath);
-    console.log('Comparing paths:', currentSketchPath, changedFilePath);
+    console.log('Comparing visual paths. Stored sketch path:', currentEffect.p5SketchPath, 'Changed JS file path:', jsFilePath);
 
-    if (currentSketchPath === changedFilePath)
+    if (jsFilePath && currentEffect.p5SketchPath.toLowerCase() === jsFilePath.toLowerCase())
     {
-      console.log(`Reloading visual for current effect: ${currentEffect.name}`);
+      console.log(`Reloading visual for current effect: ${currentEffect.name} from changed file: ${jsFilePath}`);
       const updatedSketchContent = loadP5SketchSync(jsFilePath, getEffectsRepoPath);
 
       if (updatedSketchContent)
@@ -573,6 +576,7 @@ function reloadVisualEffect(jsFilePath)
 
 ipcMain.on('set-current-effect', (event, effectName) =>
 {
+  console.log(`IPC: Received set-current-effect for: ${effectName}`);
   const effect = synths.find(synth => synth.name === effectName);
   if (effect)
   {

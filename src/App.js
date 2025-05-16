@@ -133,7 +133,9 @@ function App() {
   // This useEffect might need adjustment based on how visual updates are handled
   useEffect(() => {
     if (electron) {
-      const handleVisualEffectUpdate = (event, { name, p5SketchContent }) => {
+      const handleVisualEffectUpdate = (payload) => { 
+        const { name, p5SketchContent } = payload; 
+
          // Check if this update corresponds to the currently selected visual source
          // This might need refinement if multiple effects share the same sketch path.
          const currentPreset = synths.find(s => s.name === name);
@@ -286,6 +288,10 @@ function App() {
     setCurrentSynth(selectedPreset);
     // Set the params based on the newly selected preset
     setCurrentAudioParams(selectedPreset.params || []);
+    
+    if (electron) {
+      electron.ipcRenderer.send('set-current-effect', selectedPreset.name);
+    }
     
     // Update audio source and load it
     if (selectedPreset.scFilePath) {
