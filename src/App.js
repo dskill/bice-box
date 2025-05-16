@@ -134,17 +134,17 @@ function App() {
   useEffect(() => {
     if (electron) {
       const handleVisualEffectUpdate = (payload) => { 
-        const { name, p5SketchContent } = payload; 
+        const { p5SketchPath: updatedPath, p5SketchContent } = payload; 
 
-         // Check if this update corresponds to the currently selected visual source
-         // This might need refinement if multiple effects share the same sketch path.
-         const currentPreset = synths.find(s => s.name === name);
-         if (currentPreset && currentPreset.p5SketchPath === currentVisualSource) {
-             console.log(`Visual content updated for ${name}`);
-             setCurrentVisualContent(p5SketchContent);
-         } else {
-            console.log("Ignoring visual update for non-active source or preset name mismatch.");
-         }
+        if (updatedPath && currentVisualSource && updatedPath.toLowerCase() === currentVisualSource.toLowerCase()) {
+          console.log(`Visual content updated for active visual source: ${currentVisualSource} (path from event: ${updatedPath})`);
+          setCurrentVisualContent(p5SketchContent);
+        } else {
+          // This condition might be hit if the fallback in main.js sent an update for a preset's visual
+          // that isn't the currently *active* visual source but is part of the current preset.
+          // Or if the paths simply don't match for other reasons.
+          console.log(`Ignoring visual update. Active visual source: ${currentVisualSource}, Updated sketch path: ${updatedPath}`);
+        }
       };
 
       electron.ipcRenderer.on('visual-effect-updated', handleVisualEffectUpdate);
@@ -233,14 +233,18 @@ function App() {
           console.log("Received effects data:", data);
           if (Array.isArray(data) && data.length > 0) {
             setSynths(data);
-            // Set the first synth as the initial preset and sources
             const firstSynth = data[0];
             setCurrentSynth(firstSynth);
             setCurrentAudioSource(firstSynth.scFilePath);
             setCurrentVisualSource(firstSynth.p5SketchPath);
-            setCurrentVisualContent(firstSynth.p5SketchContent || ''); // Load initial visual content
-            setCurrentAudioParams(firstSynth.params || []); // Load initial audio params
+            setCurrentVisualContent(firstSynth.p5SketchContent || '');
+            setCurrentAudioParams(firstSynth.params || []);
             
+            // Inform main process of initial active sources
+            electron.ipcRenderer.send('set-current-effect', firstSynth.name); // This already updates them in main
+            // electron.ipcRenderer.send('set-current-audio-source', firstSynth.scFilePath);
+            // electron.ipcRenderer.send('set-current-visual-source', firstSynth.p5SketchPath);
+
             console.log("Initial state set:", { 
               currentSynth: firstSynth.name, 
               audio: firstSynth.scFilePath, 
@@ -291,6 +295,10 @@ function App() {
     
     if (electron) {
       electron.ipcRenderer.send('set-current-effect', selectedPreset.name);
+      // set-current-effect handler in main.js now also sets activeAudioSourcePath and activeVisualSourcePath
+      // So, explicit calls here for audio/visual might be redundant if preset defines them,
+      // but crucial if it doesn't or for clarity of intent.
+      // Let main's set-current-effect handle preset-defined, and explicit ones for overrides.
     }
     
     // Update audio source and load it
@@ -298,7 +306,7 @@ function App() {
       setCurrentAudioSource(selectedPreset.scFilePath);
       if (electron) {
         electron.ipcRenderer.send('load-sc-file', selectedPreset.scFilePath);
-        // Apply params after loading the synth def
+        electron.ipcRenderer.send('set-current-audio-source', selectedPreset.scFilePath); // Explicitly set for main
         if (Array.isArray(selectedPreset.params)) {
           selectedPreset.params.forEach(param => {
             if (param && typeof param.name === 'string' && param.value !== undefined) {
@@ -317,6 +325,7 @@ function App() {
     // Update visual source and load its content
     if (selectedPreset.p5SketchPath) {
       setCurrentVisualSource(selectedPreset.p5SketchPath);
+      if (electron) electron.ipcRenderer.send('set-current-visual-source', selectedPreset.p5SketchPath); // Explicitly set for main
       try {
         if (electron) {
           // Use the preloaded content if available, otherwise load it
@@ -353,6 +362,7 @@ function App() {
     setCurrentAudioSource(scFilePath);
     if (electron) {
       electron.ipcRenderer.send('load-sc-file', scFilePath);
+      electron.ipcRenderer.send('set-current-audio-source', scFilePath); // Inform main process
       // Note: Params are NOT automatically applied when selecting audio only.
       // Find the preset associated with this audio file to load its params
       const associatedPreset = synths.find(synth => synth.scFilePath === scFilePath);
@@ -375,6 +385,7 @@ function App() {
     }
     console.log(`Selecting visual source: ${p5SketchPath}`);
     setCurrentVisualSource(p5SketchPath);
+    if (electron) electron.ipcRenderer.send('set-current-visual-source', p5SketchPath); // Inform main process
     try {
       if (electron) {
         console.log(`Loading visual content for: ${p5SketchPath}`);

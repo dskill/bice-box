@@ -30,6 +30,9 @@ let oscManager;
 let updateAvailable = false;
 let devMode = false;
 
+let activeAudioSourcePath = null; // To store the path of the user-selected audio effect
+let activeVisualSourcePath = null; // To store the path of the user-selected visual effect
+
 const runGenerator = process.argv.includes('--generate');
 
 if (process.argv.includes('--version'))
@@ -514,63 +517,78 @@ function reloadFullEffect(jsonPath)
 
 function reloadAudioEffect(scFilePath)
 {
-  console.log(`Reloading audio effect: ${scFilePath}`);
-  const affectedEffect = synths.find(synth => 
-    synth.scFilePath && scFilePath && 
-    synth.scFilePath.toLowerCase() === scFilePath.toLowerCase()
-  );
+  console.log(`Reloading audio effect (checking active): ${scFilePath}`);
+  let reloaded = false;
 
-  if (affectedEffect)
-  {
-    console.log(`Reloading audio for effect: ${affectedEffect.name}`);
-    loadScFile(scFilePath, getEffectsRepoPath, mainWindow);
-  } else
-  {
-    console.log(`No effect found using SC file: ${scFilePath}`);
+  if (activeAudioSourcePath && activeAudioSourcePath.toLowerCase() === scFilePath.toLowerCase()) {
+    console.log(`Changed SC file ${scFilePath} matches activeAudioSourcePath. Reloading.`);
+    loadScFile(scFilePath, getEffectsRepoPath, mainWindow); // Pass the function, not its result
+    reloaded = true;
+  } else {
+    console.log(`Changed SC file ${scFilePath} does not match activeAudioSourcePath (${activeAudioSourcePath}).`);
+  }
+
+  // Optional: Fallback to checking if any loaded preset uses it, if not already reloaded.
+  // This part can be kept if you want to reload an SC file even if it's not the *active* one but part of a loaded preset.
+  // For the user's current request, this might be commented out or removed if only active should hot-reload.
+  if (!reloaded) {
+    const affectedEffect = synths.find(synth => synth.scFilePath && synth.scFilePath.toLowerCase() === scFilePath.toLowerCase());
+    if (affectedEffect) {
+      console.log(`Fallback: Reloading audio for effect defined in preset: ${affectedEffect.name} as ${scFilePath}`);
+      loadScFile(scFilePath, getEffectsRepoPath, mainWindow); // Pass the function, not its result
+    } else {
+      console.log(`No active audio source or preset found using SC file: ${scFilePath}`);
+    }
   }
 }
 
 function reloadVisualEffect(jsFilePath)
 {
-  console.log(`Reloading visual effect: ${jsFilePath}`);
-  const currentEffect = getCurrentEffect();
-  console.log('Current effect:', currentEffect ? currentEffect.name : 'None');
-  console.log('Current effect p5SketchPath:', currentEffect ? currentEffect.p5SketchPath : 'None');
+  console.log(`Reloading visual effect (checking active): ${jsFilePath}`);
+  let reloaded = false;
 
-  if (currentEffect && currentEffect.p5SketchPath)
-  {
-    console.log('Comparing visual paths. Stored sketch path:', currentEffect.p5SketchPath, 'Changed JS file path:', jsFilePath);
+  if (activeVisualSourcePath && activeVisualSourcePath.toLowerCase() === jsFilePath.toLowerCase()) {
+    console.log(`Changed JS file ${jsFilePath} matches activeVisualSourcePath. Reloading.`);
+    const updatedSketchContent = loadP5SketchSync(jsFilePath, getEffectsRepoPath);
+    if (updatedSketchContent) {
+      if (mainWindow && mainWindow.webContents) {
+        mainWindow.webContents.send('visual-effect-updated', {
+          p5SketchPath: jsFilePath, // Send the path of the changed sketch
+          p5SketchContent: updatedSketchContent
+        });
+        console.log(`Sent visual-effect-updated for active visual: ${jsFilePath}`);
+      }
+      reloaded = true;
+    } else {
+      console.error(`Failed to load updated p5 sketch for active source: ${jsFilePath}`);
+    }
+  } else {
+    console.log(`Changed JS file ${jsFilePath} does not match activeVisualSourcePath (${activeVisualSourcePath}).`);
+  }
 
-    if (jsFilePath && currentEffect.p5SketchPath.toLowerCase() === jsFilePath.toLowerCase())
-    {
-      console.log(`Reloading visual for current effect: ${currentEffect.name} from changed file: ${jsFilePath}`);
+  // Fallback: if not reloaded based on activeVisualSourcePath, check currentEffect from preset
+  // This maintains previous behavior if the active path isn't directly matched but the preset uses it.
+  if (!reloaded) {
+    const currentPresetEffect = getCurrentEffect();
+    if (currentPresetEffect && currentPresetEffect.p5SketchPath && currentPresetEffect.p5SketchPath.toLowerCase() === jsFilePath.toLowerCase()) {
+      console.log(`Fallback: Reloading visual for current preset effect: ${currentPresetEffect.name} from changed file: ${jsFilePath}`);
       const updatedSketchContent = loadP5SketchSync(jsFilePath, getEffectsRepoPath);
-
-      if (updatedSketchContent)
-      {
-        currentEffect.p5SketchContent = updatedSketchContent;
-        console.log('Sending visual-effect-updated event to renderer');
-        if (mainWindow && mainWindow.webContents)
-        {
+      if (updatedSketchContent) {
+        currentPresetEffect.p5SketchContent = updatedSketchContent; // Update the preset's content in memory
+        if (mainWindow && mainWindow.webContents) {
           mainWindow.webContents.send('visual-effect-updated', {
-            name: currentEffect.name,
+            p5SketchPath: jsFilePath, // Still send path for consistency
+            // name: currentPresetEffect.name, // Optional: could also send name if using preset context
             p5SketchContent: updatedSketchContent
           });
-        } else
-        {
-          console.error('mainWindow or webContents is not available');
+          console.log('Sent visual-effect-updated for preset visual.');
         }
-      } else
-      {
-        console.error(`Failed to load updated p5 sketch: ${jsFilePath}`);
+      } else {
+        console.error(`Failed to load updated p5 sketch for preset effect: ${jsFilePath}`);
       }
-    } else
-    {
-      console.log(`Changed JS file is not for the current effect, skipping reload`);
+    } else {
+      console.log(`No active visual source or preset found using JS file: ${jsFilePath}`);
     }
-  } else
-  {
-    console.log('No current effect set, skipping reload');
   }
 }
 
@@ -581,10 +599,25 @@ ipcMain.on('set-current-effect', (event, effectName) =>
   if (effect)
   {
     setCurrentEffect(effect);
+    // When a full preset is set, also update the active audio/visual paths to match the preset
+    activeAudioSourcePath = effect.scFilePath;
+    activeVisualSourcePath = effect.p5SketchPath;
+    console.log(`Active paths updated from preset ${effectName}: Audio - ${activeAudioSourcePath}, Visual - ${activeVisualSourcePath}`);
   } else
   {
     console.error(`Effect not found: ${effectName}`);
   }
+});
+
+// IPC listeners for explicitly setting active audio/visual sources
+ipcMain.on('set-current-audio-source', (event, filePath) => {
+  activeAudioSourcePath = filePath;
+  console.log(`IPC: Active audio source path set to: ${activeAudioSourcePath}`);
+});
+
+ipcMain.on('set-current-visual-source', (event, filePath) => {
+  activeVisualSourcePath = filePath;
+  console.log(`IPC: Active visual source path set to: ${activeVisualSourcePath}`);
 });
 
 // Add this IPC handler for updating effect parameters
