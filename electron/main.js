@@ -664,7 +664,12 @@ ipcMain.on('pull-effects-repo', async (event) =>
     console.log('Git pull output:', pullOutput);
 
     // After successful pull, reload effects and update status
-    loadEffectsList(mainWindow, getEffectsRepoPath, getEffectsPath);
+    const loadedSynths = loadEffectsList(mainWindow, getEffectsRepoPath, getEffectsPath);
+    const validSynths = loadedSynths.filter(synth => synth && synth.name); // Ensure consistent filtering
+    if (mainWindow && mainWindow.webContents) {
+        mainWindow.webContents.send('effects-data', validSynths);
+        console.log('Global effects-data broadcast after git pull and effects reload.');
+    }
 
     // Check status again after pull
     const { stdout: statusOutput } = await execPromise('git status -uno', { cwd: effectsRepoPath });
