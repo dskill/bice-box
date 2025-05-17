@@ -638,14 +638,14 @@ ipcMain.on('pull-effects-repo', async (event) =>
 
   try
   {
-    const { stdout: pullOutput } = await exec('git pull', { cwd: effectsRepoPath });
+    const { stdout: pullOutput } = await execPromise('git pull', { cwd: effectsRepoPath });
     console.log('Git pull output:', pullOutput);
 
     // After successful pull, reload effects and update status
     loadEffectsList(mainWindow, getEffectsRepoPath, getEffectsPath);
 
     // Check status again after pull
-    const { stdout: statusOutput } = await exec('git status -uno', { cwd: effectsRepoPath });
+    const { stdout: statusOutput } = await execPromise('git status -uno', { cwd: effectsRepoPath });
     const statusText = statusOutput ? statusOutput.toString() : '';
     const hasUpdates = statusText.includes('behind');
 
