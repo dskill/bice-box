@@ -34,6 +34,7 @@ let activeAudioSourcePath = null; // To store the path of the user-selected audi
 let activeVisualSourcePath = null; // To store the path of the user-selected visual effect
 
 const runGenerator = process.argv.includes('--generate');
+const runHeadlessTest = process.argv.includes('--headless-test');
 
 if (process.argv.includes('--version'))
 {
@@ -266,13 +267,32 @@ app.whenReady().then(() =>
     console.log(`electron.js found at ${electronJsPath}`);
   }
 
-  createWindow();
-  console.log('Window creation initiated');
+  if (runHeadlessTest) {
+    console.log('--headless-test flag detected. Starting headless test mode.');
+    // Minimal setup for headless mode
+    // Initialize OSC Server if it can run headlessly and is needed for the test
+    // oscManager = new OSCManager(null); // Pass null for mainWindow if not needed
+    // oscManager.initialize();
+    // console.log('OSC Manager initialized in headless mode.');
 
-  // Call the test function if --generate flag is present
-  if (runGenerator) { 
-    console.log('--generate flag detected. Running generation process...');
-    testGenerativeManager();
+    // Add any other non-UI initializations needed for your test
+
+    console.log('Headless test mode started successfully.');
+    setTimeout(() => {
+      console.log('Headless test finished. Exiting.');
+      app.quit();
+    }, 5000); // Exit after 5 seconds
+  } else {
+    // Not headless test, so proceed with window creation and other modes
+    createWindow();
+    console.log('Window creation initiated.');
+
+    // Call the test function if --generate flag is present
+    if (runGenerator) { 
+      console.log('--generate flag detected. Running generation process...');
+      testGenerativeManager();
+    }
+    // Any other initializations that depend on the window or are not for headless mode can go here
   }
 }).catch(error =>
 {
@@ -350,7 +370,9 @@ app.on('will-quit', async () =>
     console.log('OSC server closed');
   }
 
-  logStream.end();
+  if (logStream && typeof logStream.end === 'function') { // Check if logStream is valid
+    logStream.end();
+  }
 });
 
 // IPC listener for OSC messages from p5.js sketches
