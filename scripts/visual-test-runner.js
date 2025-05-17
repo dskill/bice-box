@@ -8,7 +8,9 @@ console.log('Starting visual effect tests...');
 const electronPath = require('electron');
 const testScript = path.join(__dirname, '../tests/visual-effect-tests.js');
 
-const testProcess = spawn(electronPath, [testScript], {
+// When running in a root environment (e.g. CI containers) Electron requires the
+// --no-sandbox flag. Add it so the tests can run without privileges errors.
+const testProcess = spawn(electronPath, ['--no-sandbox', '--headless', testScript], {
   stdio: 'inherit'
 });
 

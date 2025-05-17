@@ -152,11 +152,12 @@ async function runTests() {
   const window = new BrowserWindow({
     width: 1024,
     height: 768,
-    show: true,  // Show the window while testing
+    show: false,  // run headlessly in CI
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
       webSecurity: false,
+      offscreen: true,
       additionalArguments: [`--app-path=${app.getAppPath()}`]
     }
   });
