@@ -9,9 +9,6 @@ export default function useSuperCollider() {
       return;
     }
 
-    let removeOutputListener;
-    let removeErrorListener;
-
     const handleSclangOutput = (message) => {
       //console.log('SuperCollider output:', message);
       // Handle the output as needed
@@ -22,12 +19,12 @@ export default function useSuperCollider() {
       // Handle the error as needed
     };
 
-    removeOutputListener = ipcRenderer.on('sclang-output', handleSclangOutput);
-    removeErrorListener = ipcRenderer.on('sclang-error', handleSclangError);
+    ipcRenderer.on('sclang-output', handleSclangOutput);
+    ipcRenderer.on('sclang-error', handleSclangError);
 
     return () => {
-      if (removeOutputListener) removeOutputListener();
-      if (removeErrorListener) removeErrorListener();
+      ipcRenderer.removeListener('sclang-output', handleSclangOutput);
+      ipcRenderer.removeListener('sclang-error', handleSclangError);
     };
   }, []);
 
