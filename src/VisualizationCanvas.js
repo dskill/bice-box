@@ -241,12 +241,12 @@ function VisualizationCanvas({
       if (currentShaderContent && window.ShaderToyLite) {
         console.log('Shader content found, creating canvas and loading ShaderToyLite sketch...');
 
-        if (!webGLCapabilities || !webGLCapabilities.webGL2) {
-          console.error("WebGL2 not supported, cannot run ShaderToyLite effect.");
-          errorRef.current = 'WebGL2 is required for this shader effect.';
-          onEffectLoaded();
-          return;
-        }
+        // if (!webGLCapabilities || !webGLCapabilities.webGL2) {
+        //   console.error("WebGL2 not supported, cannot run ShaderToyLite effect.");
+        //   errorRef.current = 'WebGL2 is required for this shader effect.';
+        //   onEffectLoaded();
+        //   return;
+        // }
 
         try {
           const shaderCanvas = document.createElement('canvas');
