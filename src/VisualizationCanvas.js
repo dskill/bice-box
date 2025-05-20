@@ -2,9 +2,20 @@ import React, { useRef, useEffect, useCallback, useState } from 'react';
 import p5 from 'p5';
 import WebGLDetector from './utils/webGLDetector';
 
-function VisualizationCanvas({ currentVisualContent, paramValuesRef, onEffectLoaded }) {
+// ShaderToyLite will be available globally via script tag in index.html
+// const ShaderToyLite = window.ShaderToyLite;
+
+function VisualizationCanvas({ 
+  currentVisualContent, 
+  currentShaderPath,    // New prop
+  currentShaderContent, // New prop
+  paramValuesRef, 
+  onEffectLoaded 
+}) {
   const canvasRef = useRef(null);
   const p5InstanceRef = useRef(null);
+  const shaderToyInstanceRef = useRef(null); // New ref for ShaderToyLite
+
   const waveform0DataRef = useRef([]);
   const waveform1DataRef = useRef([]);
   const errorRef = useRef(null);
@@ -94,25 +105,38 @@ function VisualizationCanvas({ currentVisualContent, paramValuesRef, onEffectLoa
     if (p5InstanceRef.current) {
       console.log('Cleaning up p5 instance');
       
-      // If using WebGL, lose the WebGL context
       if (p5InstanceRef.current.webglContext) {
         const gl = p5InstanceRef.current.webglContext;
-        gl.getExtension('WEBGL_lose_context').loseContext();
+        if (gl && gl.getExtension('WEBGL_lose_context')) { // Check if context and extension exist
+          gl.getExtension('WEBGL_lose_context').loseContext();
+        }
       }
       p5InstanceRef.current.remove();
       p5InstanceRef.current = null;
       p5InstanceCountRef.current -= 1;
       console.log(`P5 instance removed. Current count: ${p5InstanceCountRef.current}`);
     }
-    // Reset all data refs
-    waveform0DataRef.current = [];
-    waveform1DataRef.current = [];
-    fft0DataRef.current = [];
-    fft1DataRef.current = [];
-    rmsInputRef.current = 0;
-    rmsOutputRef.current = 0;
-    tunerDataRef.current = 0;
-    
+    // Reset relevant data refs if needed, or manage them based on active renderer
+  }, []);
+
+  const cleanupShaderToyInstance = useCallback(() => {
+    if (shaderToyInstanceRef.current) {
+      console.log('Cleaning up ShaderToyLite instance');
+      shaderToyInstanceRef.current.pause(); // Stop rendering loop
+      // ShaderToyLite.js doesn't have an explicit destroy method in its README.
+      // We rely on losing WebGL context and nullifying refs for cleanup.
+      // If it creates its own canvas internally and appends it, that would also need cleanup.
+      // However, it takes a canvas ID, so it should use the one we provide.
+      const toy = shaderToyInstanceRef.current;
+      if (toy.gl) {
+          const loseContextExt = toy.gl.getExtension('WEBGL_lose_context');
+          // Temporarily comment this out to test if it's causing issues for p5.js
+          // if (loseContextExt) {
+          //     loseContextExt.loseContext();
+          // }
+      }
+      shaderToyInstanceRef.current = null;
+    }
   }, []);
 
   const updateCustomMessage = useCallback((data) => {
@@ -185,15 +209,79 @@ function VisualizationCanvas({ currentVisualContent, paramValuesRef, onEffectLoa
   // Update useEffect to depend on currentVisualContent
   useEffect(() => {
     async function loadAndCreateSketch() {
-      // Check if we have valid visual content to load
-      if (currentVisualContent) {
-        console.log('Visual content changed, creating/updating sketch...');
+      cleanupP5Instance();
+      cleanupShaderToyInstance(); // This will also handle removing the shader canvas if it exists
+      errorRef.current = null;
 
-        cleanupP5Instance(); // Clean up previous instance first
+      if (!canvasRef.current) {
+        console.error("Canvas container ref (div) not available for rendering.");
+        errorRef.current = 'Canvas container not ready.';
+        onEffectLoaded();
+        return;
+      }
+
+      const containerElement = canvasRef.current; // This is our main div
+
+      // Clear previous canvas elements from the container
+      while (containerElement.firstChild) {
+        containerElement.removeChild(containerElement.firstChild);
+      }
+
+      if (currentShaderContent && window.ShaderToyLite) {
+        console.log('Shader content found, creating canvas and loading ShaderToyLite sketch...');
+
+        if (!webGLCapabilities || !webGLCapabilities.webGL2) {
+          console.error("WebGL2 not supported, cannot run ShaderToyLite effect.");
+          errorRef.current = 'WebGL2 is required for this shader effect.';
+          onEffectLoaded();
+          return;
+        }
 
         try {
-          // Use the currentVisualContent prop directly
-          console.log('Evaluating sketch content...');
+          const shaderCanvas = document.createElement('canvas');
+          shaderCanvas.id = 'bice-box-shader-canvas'; // Fixed ID for the shader canvas
+          
+          const rect = containerElement.getBoundingClientRect();
+          shaderCanvas.width = Math.floor(rect.width);
+          shaderCanvas.height = Math.floor(rect.height);
+          shaderCanvas.style.position = 'absolute'; // Ensure it fills the div correctly
+          shaderCanvas.style.top = '0';
+          shaderCanvas.style.left = '0';
+          shaderCanvas.style.width = '100%';
+          shaderCanvas.style.height = '100%';
+
+          containerElement.appendChild(shaderCanvas);
+          console.log('Dynamically created canvas for ShaderToyLite and appended to div.');
+          console.log('Shader canvas dimensions before ShaderToyLite init:', shaderCanvas.width, shaderCanvas.height);
+          
+          const toy = new window.ShaderToyLite(shaderCanvas.id); // Use ID of the new canvas
+          toy.setImage({ source: currentShaderContent });
+          toy.play();
+          shaderToyInstanceRef.current = toy;
+          // Store the canvas element itself if needed for cleanup, though ShaderToyLite uses ID.
+          // We'll rely on the general container clear for now.
+          console.log('New ShaderToyLite instance setup complete.');
+          onEffectLoaded();
+        } catch (err) {
+          console.error('Error creating ShaderToyLite sketch:', err);
+          errorRef.current = 'Failed to load ShaderToyLite visualization.';
+          cleanupShaderToyInstance(); 
+          onEffectLoaded();
+        }
+
+      } else if (currentVisualContent) {
+        console.log('P5 visual content found, p5 will create its canvas in the div...');
+        
+        // p5.js will append its own canvas to containerElement (the div)
+        // We don't need to set targetWidth/Height on the div for p5 if it creates its own canvas
+        // and correctly uses parent dimensions or window dimensions.
+        // However, the old logic for canvasElement.targetWidth might not apply directly to the div.
+        // p5.js, when given a div, typically sizes its canvas to the div's clientWidth/Height or uses p.windowWidth/Height.
+
+        try {
+          const rect = containerElement.getBoundingClientRect();
+          console.log('Container (div) dimensions before p5 init:', rect.width, rect.height);
+
           const sketchFunctionWrapper = new Function('module', 'exports', currentVisualContent);
           const exports = {};
           const module = { exports };
@@ -201,15 +289,23 @@ function VisualizationCanvas({ currentVisualContent, paramValuesRef, onEffectLoa
           const sketchDefinition = module.exports;
 
           if (typeof sketchDefinition !== 'function') {
-            throw new Error('Sketch content did not export a function.');
+            throw new Error('P5 sketch content did not export a function.');
           }
 
-          console.log('Creating new p5 instance...');
-          const newP5Instance = new p5(sketchDefinition, canvasRef.current);
+          console.log('Creating new p5 instance (will append to div)...');
+          // Pass the div (containerElement) to p5. It will create & append a canvas inside it.
+          const newP5Instance = new p5(sketchDefinition, containerElement); 
           p5InstanceCountRef.current += 1;
           console.log(`P5 instance created. Current count: ${p5InstanceCountRef.current}`);
+          
+          // The p5 canvas is now newP5Instance.canvas
+          // If p5 sketch uses createCanvas without args, it might default to small size.
+          // We need to ensure p5 sketch's createCanvas uses container dimensions.
+          // One way is to make them available on the containerElement for the sketch.
+          containerElement.targetWidth = Math.floor(rect.width);
+          containerElement.targetHeight = Math.floor(rect.height);
+          // And the sketch's setup would do: p.createCanvas(p.canvas.parentElement.targetWidth, p.canvas.parentElement.targetHeight);
 
-          // Attach data refs and params to the new instance
           newP5Instance.waveform0 = waveform0DataRef.current;
           newP5Instance.waveform1 = waveform1DataRef.current;
           newP5Instance.fft0 = fft0DataRef.current;
@@ -218,12 +314,10 @@ function VisualizationCanvas({ currentVisualContent, paramValuesRef, onEffectLoa
           newP5Instance.rmsOutput = rmsOutputRef.current;
           newP5Instance.tunerData = tunerDataRef.current;
           newP5Instance.customMessage = oscMessageRef.current;
-          newP5Instance.params = paramValuesRef.current; // Pass current params
-          // Expose WebGL capabilities and platform info to sketch
+          newP5Instance.params = paramValuesRef.current;
           newP5Instance.webGLCapabilities = webGLCapabilities;
           newP5Instance.isPlatformRaspberryPi = isPlatformRaspberryPi;
 
-          // Add the function to send OSC messages
           newP5Instance.sendOscToSc = (address, ...args) => {
             if (window.electron && window.electron.ipcRenderer) {
               window.electron.ipcRenderer.send('send-osc-to-sc', { address, args });
@@ -232,34 +326,56 @@ function VisualizationCanvas({ currentVisualContent, paramValuesRef, onEffectLoa
             }
           };
 
-          p5InstanceRef.current = newP5Instance; // Store the new instance
-          errorRef.current = null; // Clear any previous error
+          p5InstanceRef.current = newP5Instance;
           console.log('New p5 instance setup complete.');
-          onEffectLoaded(); // Notify parent component
+          onEffectLoaded();
 
         } catch (error) {
           console.error('Error creating p5 sketch from content:', error);
-          errorRef.current = 'Failed to load visualization.';
-          // Ensure cleanup happens even on error
-          cleanupP5Instance(); 
+          errorRef.current = 'Failed to load p5.js visualization.';
+          cleanupP5Instance();
+          onEffectLoaded();
         }
       } else {
-        // If no visual content, ensure cleanup
-        console.log('No visual content, ensuring canvas is clean.');
-        cleanupP5Instance();
+        console.log('No visual content (p5 or shader), ensuring container div is clean.');
+        onEffectLoaded(); 
       }
     }
 
     loadAndCreateSketch();
 
-    // Dependency array now includes currentVisualContent and cleanupP5Instance
-  }, [currentVisualContent, cleanupP5Instance, paramValuesRef, onEffectLoaded, webGLCapabilities, isPlatformRaspberryPi]);
+  }, [currentVisualContent, currentShaderContent, cleanupP5Instance, cleanupShaderToyInstance, paramValuesRef, onEffectLoaded, webGLCapabilities, isPlatformRaspberryPi]);
+
+  // The main canvas element. Ensure it has an ID for ShaderToyLite if needed, 
+  // or ShaderToyLite might need to be modified to accept the element directly.
+  // Assigning an ID directly here if it doesn't have one.
+  useEffect(() => {
+    if (canvasRef.current && !canvasRef.current.id) {
+        // canvasRef.current.id = 'bice-box-shader-canvas'; // Moved id assignment into loadAndCreateSketch
+    }
+  }, []);
 
   if (errorRef.current) {
-    return <div>Error: {errorRef.current}</div>;
+    return <div className="error-display">Error: {errorRef.current}</div>; // Use a class for styling errors
   }
 
-  return <div ref={canvasRef} style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%' }} />;
+  // Revert to using a div as the main ref container
+  return (
+    <div 
+        ref={canvasRef} 
+        style={{ 
+            position: 'fixed', 
+            top: 0, 
+            left: 0, 
+            width: '100%', 
+            height: '100%', 
+            backgroundColor: 'black' // Ensure background is black for visual consistency
+        }} 
+        // The id will be set on this div, ShaderToyLite/p5 might need adjustment
+        // if they expect the ID on the canvas element itself.
+        id="visualization-container" 
+    />
+  );
 }
 
 export default React.memo(VisualizationCanvas);
