@@ -2,26 +2,30 @@
 
 This document outlines the plan to integrate ShaderToy-style rendering into the Bice Box application using `ShaderToyLite.js`.
 
+**Status: Phases 1 and 2 largely COMPLETE. Phase 3 (UI/Workflow) partially complete. Shader Hot Reloading implemented.**
+
 ## Core Objectives
 
-1.  Enable the use of Shadertoy shaders (`.glsl` files) as an alternative to p5.js sketches for visuals.
-2.  Pass audio analysis data (waveforms, FFT, RMS) from SuperCollider to the shaders as uniforms and textures.
-3.  Maintain the existing p5.js rendering pipeline for effects that use it.
+1.  **COMPLETE** Enable the use of Shadertoy shaders (`.glsl` files) as an alternative to p5.js sketches for visuals.
+2.  **COMPLETE** Pass audio analysis data (waveforms, FFT, RMS) from SuperCollider to the shaders as uniforms and textures. (Waveform data as `iChannel0` is implemented; other data like FFT/RMS via textures/uniforms is pending further ShaderToyLite investigation or direct uniform setting if possible).
+3.  **COMPLETE** Maintain the existing p5.js rendering pipeline for effects that use it.
 
 ## Phase 1: Initial Integration and Setup
 
-### 1. Modify `effect.json` Format
+### 1. Modify `effect.json` Format - **COMPLETE**
    - Add a new optional field `shader` to the `effect.json` schema. This field will store the relative path to the GLSL shader file (e.g., `"shader": "visual/my_cool_shader.glsl"`).
-   - For Phase 1, `shader` can be a simple string path. However, it is envisioned to evolve into an object to accommodate future configurations like custom uniforms, fader mappings, and resolution scaling.
-   - The existing `visual` field will continue to be used for p5.js sketches.
+   - The existing `visual` field will continue to be used for p5.js sketches (future plan to rename to `p5`).
+   - **Implementation Summary:**
+     - `effect.json` now supports a `shader` string field for the GLSL file path.
+     - The more complex object structure for `shader` (with `renderResolutionScale`, `uniforms`) is noted as a future enhancement.
 
-   **Example `effect.json` (Phase 1 - Simple Path):**
+   **Example `effect.json` (Implemented):**
    ```json
    {
      "name": "ShaderTestEffect",
      "audio": "audio/some_audio.sc",
-     "shader": "visual/my_shader.glsl", // New field
-     "visual": null, // or "visual/fallback_sketch.js" if a p5 fallback is desired
+     "shader": "visual/my_shader.glsl",
+     "visual": null,
      "params": [],
      "curated": true
    }
@@ -48,126 +52,148 @@ This document outlines the plan to integrate ShaderToy-style rendering into the 
        ]
      },
      "visual": null,
-     "params": [], // Existing params for SuperCollider
+     "params": [],
      "curated": true
    }
    ```
 
-### 2. Update Data Loading Logic (`electron/superColliderManager.js`)
+### 2. Update Data Loading Logic (`electron/superColliderManager.js`) - **COMPLETE**
    - Modify `loadEffectFromFile` in `superColliderManager.js` to read the new `shader` field.
-   - It should be able to handle `shader` being a string (for the path directly) or an object (parsing `path` and other configurations like `uniforms` or `renderResolutionScale` in the future).
-   - If `shader` path is present (either directly as a string or as `shader.path`), load the content of the GLSL file. This can be done similarly to how `p5SketchContent` is loaded (e.g., into a new property like `shaderContent` on the effect object).
-   - The `synths` array and `currentEffect` object will now potentially hold `shaderContent` and the parsed shader configuration.
+   - If `shader` path is present, load the content of the GLSL file into `shaderContent` on the effect object.
+   - The `synths` array and `currentEffect` object now hold `shaderPath` and `shaderContent`.
+   - **Implementation Summary:**
+     - `loadEffectFromFile` now reads `effect.shader`, loads the `.glsl` file content, and adds `shaderPath` and `shaderContent` to the effect object. This is propagated by `loadEffectsList`.
+     - `reloadFullEffect` (triggered by `.json` file watcher) was also updated to load shader path/content.
 
-### 3. Propagate Shader Data to Renderer (`electron/main.js` -> `src/App.js`)
-   - Ensure that the `shader` path (or the full shader configuration object) and its content are sent to the renderer process when effects are loaded or updated (`effects-data` IPC message).
-   - `src/App.js` will need to manage state for the current shader configuration (e.g., `currentShaderConfig`) and content (`currentShaderContent`).
+### 3. Propagate Shader Data to Renderer (`electron/main.js` -> `src/App.js`) - **COMPLETE**
+   - Ensure that `shaderPath` and `shaderContent` are sent to the renderer process.
+   - `src/App.js` manages state for `currentShaderPath` and `currentShaderContent`.
+   - **Implementation Summary:**
+     - IPC pathways (`initial load`, `reload-all-effects`, `pull-effects-repo`) using `loadEffectsList` now propagate `shaderPath` and `shaderContent`.
+     - `App.js` added `currentShaderPath` and `currentShaderContent` state. Logic in `reloadEffectList`, `switchPreset`, and the `'effect-updated'` IPC handler was updated to manage this state, prioritizing shader data if present and clearing the other visual type. These are passed to `VisualizationMode`.
 
-### 4. Integrate `ShaderToyLite.js` into `src/VisualizationCanvas.js`
-   - **Include `ShaderToyLite.js`:** Add the library to the project. This might involve adding it as a dependency or including the script file directly.
-   - **Conditional Rendering Logic:**
-     - `VisualizationCanvas.js` will check if `currentShaderConfig` (and its `path` or `currentShaderContent`) is available for the current effect.
-     - If a shader is specified, it will initialize and use `ShaderToyLite.js` for rendering, potentially using `renderResolutionScale` from the config.
-     - If a p5.js sketch (`currentVisualContent`) is specified, it will use the existing p5.js rendering logic.
-     - If neither is specified, it should render a blank or default visual.
-   - **WebGL2 Context:**
-     - `ShaderToyLite.js` requires a WebGL2 context. Update `src/utils/webGLDetector.js` to explicitly check for WebGL2 support if it doesn't already.
-     - `VisualizationCanvas.js` should request a WebGL2 context when using `ShaderToyLite.js`.
-     - Implement graceful fallback or error display if WebGL2 is not available.
-   - **Instance Management:**
-     - Create and manage a `shaderToyInstanceRef` similar to `p5InstanceRef`.
-     - Implement proper creation (e.g., `new ShaderToyLite('canvasId', shaderContentString)`) and cleanup (e.g., `toy.destroy()`) of the `ShaderToyLite` instance when the effect changes or the component unmounts.
-   - **Basic Shader Test:** Start by rendering a very simple static Shadertoy shader (e.g., one that just displays a color or a simple pattern) to confirm the pipeline is working.
-   - **Manage the dependencies between buffers (e.g., Buffer B using Buffer A's output as `iChannel0`):**
-     - If the shader uses multiple buffer passes, ensure that the dependencies are correctly managed.
+### 4. Integrate `ShaderToyLite.js` into `src/VisualizationCanvas.js` - **COMPLETE**
+   - **Include `ShaderToyLite.js`:** **COMPLETE** (`public/index.html` adds `<script src="%PUBLIC_URL%/ShaderToyLite.js"></script>`).
+   - **Conditional Rendering Logic:** **COMPLETE**
+     - `VisualizationCanvas.js` renders using ShaderToyLite if `currentShaderContent` and `window.ShaderToyLite` exist, otherwise falls back to p5.js if `currentVisualContent` exists.
+   - **WebGL2 Context:** **COMPLETE**
+     - `src/utils/WebGLDetector.js` was refactored to prioritize WebGL2, then WebGL1, returning separate flags. `VisualizationCanvas` checks for WebGL2.
+   - **Instance Management:** **COMPLETE**
+     - Added `shaderToyInstanceRef` and `cleanupShaderToyInstance()`.
+     - Solved p5.js/ShaderToyLite conflict by having `VisualizationCanvas` render a main `div`. For ShaderToy, a `<canvas>` is dynamically created inside this `div` and given an ID. For p5.js, it appends its own canvas to this `div`. p5 sketches updated to use `p.canvas.parentElement.targetWidth/Height`.
+   - **Basic Shader Test:** **COMPLETE** (Initial shaders rendered successfully).
+   - **Manage the dependencies between buffers:** *PENDING (No multi-buffer shaders implemented yet).*
+   - **Implementation Summary & Debugging Journey:**
+     - Initial error: "WebGL2 not supported" - addressed by WebGLDetector update.
+     - `ShaderToyLite` init error: `TypeError: document.getElementById(...).getContext is not a function` - fixed by changing `VisualizationCanvas` to render a `<canvas>` directly, then refined to dynamically create the canvas for ShaderToyLite.
+     - Blank screen for p5.js: Fixed by explicitly setting `canvasRef.current.width` and `height` attributes before p5.js/ShaderToyLite init.
+     - p5.js narrow canvas: Addressed by setting `targetWidth/Height` on the `<canvas>` DOM element and having p5 sketches use these. This was further refined when `VisualizationCanvas` reverted to rendering a `div` and p5 sketches used `parentElement.targetWidth/Height`.
+     - p5.js not rendering after shader: Resolved by the `div` container strategy mentioned above, ensuring proper canvas re-initialization for each type.
 
 ## Phase 2: Passing Audio Data to Shaders
 
-This is the most complex part and involves making SuperCollider's audio analysis data available to the GLSL shaders.
-
-### 1. Numeric Data as Uniforms (RMS, Peak, etc.)
+### 1. Numeric Data as Uniforms (RMS, Peak, etc.) - *PARTIALLY ADDRESSED / PENDING*
    - **`src/VisualizationCanvas.js`:**
-     - When using `ShaderToyLite.js`, collect numeric audio data (e.g., `rmsInputRef.current`, `rmsOutputRef.current`).
-     - Use `ShaderToyLite.js`'s API (e.g., `toy.setUniform('iRMSInput', rmsInputRef.current)`) to pass these values to the shader.
+     - Collecting numeric audio data is already done for p5.js.
+     - The method to pass these as generic uniforms to `ShaderToyLite.js` needs to use the texture method or await direct uniform API if found/added (see Open Questions).
    - **Shader Side (GLSL):**
-     - Declare corresponding uniforms (e.g., `uniform float iRMSInput;`).
+     - Declare corresponding uniforms.
+   - **Current Status:** Waveform data is passed via `iChannel0`. Passing other numeric data like RMS/FFT magnitudes directly as non-standard uniforms to `ShaderToyLite.js` was unclear from its docs and not implemented yet. The primary method for custom data in `ShaderToyLite.js` seems to be textures.
 
-### 2. Waveform and FFT Data as Textures (`iChannelN`)
+### 2. Waveform and FFT Data as Textures (`iChannelN`) - **COMPLETE (for Waveform on `iChannel0`)**
    - **`src/VisualizationCanvas.js`:**
-     - **Texture Creation:** Create `WebGLTexture` objects (1D or 2D as appropriate for the data). `ShaderToyLite.js` expects RGBA Float32 textures for compatibility.
-       - Waveform data (`waveform0DataRef`, `waveform1DataRef`) can be packed into a texture. For example, a 1D texture where each pixel's R component holds a sample.
-       - FFT data (`fft0DataRef`, `fft1DataRef`) can be similarly packed.
-     - **Texture Updates:** On receiving new audio data from IPC:
-       - Update the `WebGLTexture` content using `gl.texSubImage2D`. This is more efficient than recreating the texture.
-     - **Linking to `ShaderToyLite.js`:**
-       - `ShaderToyLite.js` allows specifying textures for `iChannel0` to `iChannel3`.
-       - Investigate how to provide these externally created and updated textures to `ShaderToyLite.js`. The API `toy.setBufferA({ ..., iChannel0: 'someTexture' })` or `toy.setImage({ ..., iChannel0: myWebGLTexture })` needs to be used. It's likely you'll set up your textures and then tell `ShaderToyLite.js` to use them for specific `iChannel`s in the main image pass or buffer passes.
+     - **Texture Creation & Updates:** **COMPLETE** for `waveform0Data`.
+       - A 512x1 `R32F` WebGL texture (`waveformTextureRef`) is created.
+       - A `useEffect` hook, dependent on `waveform0Data` (changed from ref to state to trigger effect), updates this texture using `gl.texSubImage2D`.
+     - **Linking to `ShaderToyLite.js`:** **COMPLETE** for `iChannel0`.
+       - `ShaderToyLite.js` source was modified to expose `this.gl`.
+       - `ShaderToyLite.js` source was modified to allow `addTexture(texture, key)` and its `setShader` method was updated to recognize string keys for `iChannelN` (e.g., `config.iChannel0 = 'texture_key'`), linking them to textures added via `addTexture`.
+       - In `VisualizationCanvas.js`:
+         - `toy.addTexture(waveformTextureRef.current, 'iChannel0_waveform')` is called.
+         - `toy.setImage({ source: currentShaderContent, iChannel0: 'iChannel0_waveform' })` links the shader's `iChannel0` to this texture.
+     - `cleanupShaderToyInstance` now deletes `waveformTextureRef.current`.
    - **Shader Side (GLSL):**
-     - Access texture data using `texture(iChannel0, texCoord)` or `texelFetch(iChannel0, ivec2(coord), 0)` for direct texel access.
-     - `iChannelResolution[N]` uniforms should be available, representing the dimensions of the input textures.
+     - Shaders can access waveform data via `iChannel0`.
+   - **Implementation Summary:** Successfully implemented passing `waveform0Data` to shaders via `iChannel0` by creating, updating, and linking a WebGL texture.
 
-### 3. Standard Uniforms
-   - `ShaderToyLite.js` will handle standard Shadertoy uniforms like `iTime`, `iResolution`, `iFrame`, `iMouse` (if mouse input is eventually supported).
-   - Ensure `iResolution` is correctly set to the canvas dimensions.
+### 3. Standard Uniforms - **COMPLETE (via ShaderToyLite)**
+   - `ShaderToyLite.js` handles `iTime`, `iResolution`, `iFrame`, etc.
+   - Ensured `iResolution` is correctly set by `ShaderToyLite` based on its canvas dimensions.
 
 ## Phase 3: UI and Workflow Adjustments
 
-### 1. `src/App.js` and `src/VisualizationMode.js`
-   - Update state management in `App.js` to handle `currentShaderConfig` and `currentShaderContent`.
-   - Modify `switchPreset`, `handleVisualSelect` (if applicable to shaders), etc., to correctly set up either p5.js or ShaderToy rendering paths.
-   - `VisualizationMode.js` will pass the necessary shader-related props to `VisualizationCanvas.js`.
+### 1. `src/App.js` and `src/VisualizationMode.js` - **COMPLETE**
+   - State management in `App.js` for `currentShaderPath`, `currentShaderContent` is done.
+   - `switchPreset` and IPC handlers in `App.js` correctly manage shader/p5 state.
+   - `VisualizationMode.js` passes shader props to `VisualizationCanvas.js` and updated dev mode display.
 
-### 2. Effect Selection UI
-   - The UI might not need significant changes initially if an effect can only have *either* a p5 sketch or a shader.
-   - If an effect could have both (e.g., shader as primary, p5 as fallback), UI might need to indicate which is active.
+### 2. Effect Selection UI - *No changes yet, implicitly handled by effect data.*
+   - The UI currently relies on the loaded effect data. If an effect has `shaderContent`, it's used.
+   - No explicit UI to choose between shader/p5 if an effect hypothetically had both.
+
+## Phase 4: Shader Hot Reloading - **COMPLETE**
+
+### 1. Main Process (`electron/main.js`):
+   - `set-current-effect` IPC handler: Updated to set `activeVisualSourcePath` to `effect.shaderPath` if a shader is active.
+   - `reloadShaderEffect(glslFilePath)` function: Added. Reads the updated `.glsl` file. If it's the `activeVisualSourcePath` or part of the `currentPresetEffect`, it sends a `shader-effect-updated` IPC message with the new `shaderPath` and `shaderContent`. Also updates `shaderContent` in the main `synths` array.
+   - `reloadEffectForChangedFile` (file watcher callback): Added a case for `.glsl` files to call `reloadShaderEffect`.
+
+### 2. Renderer Process (`src/App.js`):
+   - `handleShaderEffectUpdated((event, { shaderPath, shaderContent }))` callback: Added to listen for `shader-effect-updated`. If the received `shaderPath` matches `currentShaderPath` state, it updates `setCurrentShaderContent`.
+   - Integrated into the main IPC listener `useEffect`.
+
+## Phase 5: IPC Argument Handling Refactor - **COMPLETE**
+
+### 1. `electron/preload.js`:
+   - The `on` method in `electron/preload.js` was changed from `(event, ...args) => func(...args)` to `(event, ...args) => func(event, ...args)`. This ensures the `event` object is consistently passed as the first argument to all IPC event handlers in the renderer.
+
+### 2. Renderer Components (`src/App.js`, `src/VisualizationCanvas.js`, `src/hooks/useSuperCollider.js`, `src/WifiSettings.js`, `src/EffectManagement.js`):
+   - **Issue:** The `preload.js` change caused many existing IPC handlers to break because they were expecting the data payload as the first argument, but now received the `event` object first. This led to errors like "Objects are not valid as a React child" or incorrect data processing.
+   - **Fix:** Systematically updated the signatures of all IPC event handlers (`ipcRenderer.on`, `ipcRenderer.once`) in the affected files to `(event, dataPayload)` or `(event, ...actualArgs)`. This involved careful review of all listeners to ensure they correctly destructured or accessed the actual data from the second argument onwards.
+
+## Phase 6: Console Spam Fix - **COMPLETE**
+
+### 1. `src/VisualizationCanvas.js`:
+   - **Issue:** Console was spammed with "Removing all event listeners" / "Setting up all event listeners" messages.
+   - **Cause:** The `useEffect` hook responsible for setting up IPC listeners had data update functions (like `updateWaveform0Data`) in its dependency array. These functions were being redefined on each render of `VisualizationCanvas`.
+   - **Fix:** Wrapped `updateWaveform0Data`, `updateWaveform1Data`, `updateFFT0Data`, `updateFFT1Data`, `updateAudioAnalysis`, `updateTunerData`, and `updateCustomMessage` in `useCallback` with appropriate dependency arrays (mostly empty or stable setters). This stabilized the references to these functions, preventing the `useEffect` for IPC listeners from re-running unnecessarily.
+
 
 ## Follow-up Work / Future Enhancements
 
 1.  **Multiple Buffer Support:**
-    *   Extend `effect.json` to support paths for `bufferA`, `bufferB`, `bufferC`, `bufferD` shader files (e.g., `shaderBufferA: "visual/bufferA.glsl"`).
-    *   Update `VisualizationCanvas.js` to use `ShaderToyLite.js`'s API for setting up multiple buffer passes (e.g., `toy.setBufferA({ source: bufferACodeString, iChannel0: ... })`).
-    *   Manage the dependencies between buffers (e.g., Buffer B using Buffer A's output as `iChannel0`).
+    *   Extend `effect.json` to support paths for `bufferA`, `bufferB`, `bufferC`, `bufferD` shader files.
+    *   Update `VisualizationCanvas.js` to use `ShaderToyLite.js`'s API for multiple buffer passes.
 
 2.  **Rename `effect.json` "visual" to "p5":**
-    *   For clarity, rename the `visual` field in `effect.json` to `p5` or `p5SketchPath`.
-    *   Update all code references (`superColliderManager.js`, `App.js`, etc.) to use the new field name. This is a breaking change for existing `effect.json` files and would require migration.
+    *   For clarity, rename the `visual` field to `p5` or `p5SketchPath`.
+    *   Update all code references. This is a breaking change.
 
 3.  **Custom `iChannel` Textures (User-provided images/videos):**
-    *   Allow users to specify static image files or potentially short video loops as inputs for `iChannelN`.
-    *   This would involve loading these media files and making them available as `WebGLTexture` objects.
+    *   Allow specification of media files for `iChannelN`.
 
 4.  **Improved Error Handling and Display:**
-    *   Provide more user-friendly display of GLSL compilation errors directly in the UI. `ShaderToyLite.js` may have mechanisms to report these.
-    *   Handle WebGL2 context loss or unavailability more gracefully.
+    *   User-friendly display of GLSL compilation errors.
+    *   Graceful WebGL2 context loss handling.
 
 5.  **Performance Profiling and Optimization:**
-    *   Especially on Raspberry Pi, profile the performance of shaders and the data pipeline.
-    *   Optimize texture updates and data transfer if bottlenecks are found.
+    *   Profile shaders and data pipeline, especially on Raspberry Pi.
 
 6.  **Shader Parameterization (Uniforms from `effect.json` `params`):**
-    *   Extend the current parameter system (`effect.json` `params` field and `ParamFader` UI) to control custom uniforms in Shadertoy shaders, as defined in the `shader.uniforms` array.
-    *   This would involve mapping these params to shader uniforms and updating them dynamically.
+    *   Extend `effect.json` `params` and `ParamFader` UI to control custom shader uniforms (see updated Open Question on `ShaderToyLite.js` uniform setting).
 
 7.  **Documentation:**
-    *   Document the new `shader` field in `effect.json`, including its simple (string) and advanced (object) forms.
-    *   Provide guidelines for creating compatible Shadertoy shaders, including available audio uniforms and `iChannel` conventions.
+    *   Update documentation for `effect.json` (`shader` field).
+    *   Guidelines for creating compatible shaders, detailing `iChannel0` usage for waveform.
 
 8.  **Per-Effect Render Resolution Control:**
-    *   Allow `effect.json` (via `shader.renderResolutionScale` or similar) to specify a render resolution or scale factor for shaders to manage performance, particularly on constrained devices.
-    *   `VisualizationCanvas.js` would need to apply this scaling when setting up the `ShaderToyLite.js` rendering context.
+    *   Implement `shader.renderResolutionScale` from `effect.json`.
 
 ## Open Questions / Areas for Investigation
 
-*   **Exact API for `ShaderToyLite.js` with external textures:** Confirm the precise method for passing dynamically updated `WebGLTexture` objects (containing audio data) to `ShaderToyLite.js` for use as `iChannel` inputs. The `toy.addTexture(texture, 'name')` and then referencing `'name'` in `setBufferX/setImage` (e.g., `iChannel0: 'name'`) seems to be the intended path.
-*   **`ShaderToyLite.js` error reporting:** How does it expose shader compilation errors or runtime issues? This needs to be tested during implementation.
-*   **Resource management for `ShaderToyLite.js`:** Ensure all WebGL resources (programs, shaders, textures, buffers) created by or for `ShaderToyLite.js` are correctly released when an effect is changed or the application closes (e.g., if it has a `toy.destroy()` method or similar).
-*   **Investigate `ShaderToyLite.js`'s capabilities for managing render target sizes independently of display canvas size, and its API for setting a wide range of uniform types.**
-    *   **Render Target Sizing:** `ShaderToyLite.js` renders at the resolution of the canvas it is initialized with. To achieve rendering at a resolution different from the main display canvas (e.g., for performance scaling), the application will need to: 
-        1. Create the canvas element passed to `ShaderToyLite` at the desired *render resolution*.
-        2. After `ShaderToyLite` renders to its canvas, the application will draw the content of this canvas onto the main *display canvas*, scaling it as needed. 
-        The library does not appear to have an internal mechanism for offscreen rendering at a different resolution than its initialized canvas.
-    *   **Uniform Setting for Custom Uniforms:**
-        *   `ShaderToyLite.js` directly supports and manages standard Shadertoy uniforms (e.g., `iTime`, `iResolution`, `iMouse`, `iFrame`, `iChannelN`, `iChannelResolution[N]`, `iDate`, `iSampleRate`) through its existing API for setting buffers, images, and common code.
-        *   The README does **not** explicitly document a generic high-level API like `toy.setUniform("customUniformName", value)` for arbitrary user-defined uniforms (e.g., `uniform float myCustomValue;`) that are not part of the standard Shadertoy set.
-        *   For custom data required by shaders (such as values from faders defined in `effect.json` -> `shader.uniforms` or other dynamic parameters like RMS): The primary documented method for inputting such data is to encode it into a texture (even a small 1xN texture for several float values) and pass this texture via an available `iChannelN` using `toy.addTexture()` and then referencing it in `toy.setImage()` or `toy.setBufferX()`. The shader would then sample this texture.
-        *   Further investigation during implementation will be needed to see if `ShaderToyLite.js` internally exposes its `WebGL2RenderingContext` or can be minimally and safely extended to allow setting custom float/vec uniforms directly using standard WebGL calls (`gl.getUniformLocation()`, `gl.uniformXfv()`). If not, texture-based input for custom uniforms will be the main approach. 
+*   **Exact API for `ShaderToyLite.js` with external textures:** **ANSWERED/IMPLEMENTED.** `toy.addTexture(texture, 'key')` and referencing `'key'` in `setImage({ iChannel0: 'key' })` works. `ShaderToyLite.js` source was modified to support this string key lookup and to expose `toy.gl`.
+*   **`ShaderToyLite.js` error reporting:** How does it expose shader compilation errors or runtime issues? *Still needs focused testing during development of more complex shaders.*
+*   **Resource management for `ShaderToyLite.js`:** **PARTIALLY ADDRESSED.** Cleanup includes `toy.pause()`, deleting our custom waveform texture, and relying on WebGL context loss. `ShaderToyLite.js` itself doesn't have an explicit `destroy()` method in its README. Canvas elements are removed from the DOM.
+*   **Investigate `ShaderToyLite.js\'s capabilities for managing render target sizes independently of display canvas size, and its API for setting a wide range of uniform types.**
+    *   **Render Target Sizing:** **CONFIRMED.** `ShaderToyLite.js` renders at the resolution of the canvas it's initialized with. Independent sizing requires an offscreen canvas managed by our application.
+    *   **Uniform Setting for Custom Uniforms:** **CONFIRMED.** The README does not show a generic `toy.setUniform("customName", value)` API. The primary method is encoding data into textures for `iChannelN`. Minimal extension to `ShaderToyLite.js` or direct use of its `gl` context might be needed for other custom uniforms if texture-based input is not suitable for all cases (e.g. simple floats, booleans). This investigation is key for "Shader Parameterization" follow-up. 
