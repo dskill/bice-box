@@ -9,12 +9,12 @@ export default function useSuperCollider() {
       return;
     }
 
-    const handleSclangOutput = (message) => {
+    const handleSclangOutput = (event, message) => {
       //console.log('SuperCollider output:', message);
       // Handle the output as needed
     };
 
-    const handleSclangError = (message) => {
+    const handleSclangError = (event, message) => {
       console.error('SuperCollider error:', message);
       // Handle the error as needed
     };

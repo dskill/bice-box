@@ -34,7 +34,7 @@ function VisualizationCanvas({
 
   const p5InstanceCountRef = useRef(0);
 
-  const updateWaveform0Data = (data) => {
+  const updateWaveform0Data = useCallback((event, data) => {
     if (Array.isArray(data)) {
       numUpdates.current++;
       setWaveform0Data(data);
@@ -44,9 +44,9 @@ function VisualizationCanvas({
     } else {
       console.warn('Received invalid waveform0 data:', data);
     }
-  };
+  }, [setWaveform0Data]);
 
-  const updateWaveform1Data = (data) => {
+  const updateWaveform1Data = useCallback((event, data) => {
     if (Array.isArray(data)) {
       numUpdates.current++;
       waveform1DataRef.current = data;
@@ -56,10 +56,10 @@ function VisualizationCanvas({
     } else {
       console.warn('Received invalid waveform1 data:', data);
     }
-  };
+  }, []);
 
   // Add new update functions for FFT data
-  const updateFFT0Data = (data) => {
+  const updateFFT0Data = useCallback((event, data) => {
     if (Array.isArray(data)) {
       numUpdates.current++;
       fft0DataRef.current = data;
@@ -69,9 +69,9 @@ function VisualizationCanvas({
     } else {
       console.warn('Received invalid FFT0 data:', data);
     }
-  };
+  }, []);
 
-  const updateFFT1Data = (data) => {
+  const updateFFT1Data = useCallback((event, data) => {
     if (Array.isArray(data)) {
       numUpdates.current++;
       fft1DataRef.current = data;
@@ -81,9 +81,9 @@ function VisualizationCanvas({
     } else {
       console.warn('Received invalid FFT1 data:', data);
     }
-  };
+  }, []);
 
-  const updateAudioAnalysis = useCallback((data) => {
+  const updateAudioAnalysis = useCallback((event, data) => {
     numUpdates.current++;
     rmsInputRef.current = data.rmsInput;
     rmsOutputRef.current = data.rmsOutput;
@@ -93,7 +93,7 @@ function VisualizationCanvas({
     }
   }, []);
 
-  const updateTunerData = useCallback((data) => {
+  const updateTunerData = useCallback((event, data) => {
    // console.log("tunderdata:", data.freq);
     numUpdates.current++;
     tunerDataRef.current = data;
@@ -150,7 +150,7 @@ function VisualizationCanvas({
     }
   }, []);
 
-  const updateCustomMessage = useCallback((data) => {
+  const updateCustomMessage = useCallback((event, data) => {
     numUpdates.current++;
     oscMessageRef.current = data;
     if (p5InstanceRef.current) {

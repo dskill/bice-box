@@ -31,13 +31,13 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
         console.log("Component mounted, electron object:", electron);
         if (electron && electron.ipcRenderer)
         {
-            const handleIpAddressReply = (address) =>
+            const handleIpAddressReply = (event, address) =>
             {
                 console.log("IP address received:", address);
                 setIpAddress(address);
             };
 
-            const handleVersionReply = (ver) =>
+            const handleVersionReply = (event, ver) =>
             {
                 console.log("Version received:", ver);
                 setVersion(ver);
@@ -77,14 +77,14 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
     {
         if (electron && electron.ipcRenderer)
         {
-            const handleAppUpdateStatus = (status) =>
+            const handleAppUpdateStatus = (event, status) =>
             {
                 setAppUpdateStatus(status);
                 setIsUpdatingApp(false);
             };
 
             electron.ipcRenderer.on('app-update-status', handleAppUpdateStatus);
-            electron.ipcRenderer.on('app-update-error', (error) =>
+            electron.ipcRenderer.on('app-update-error', (event, error) =>
             {
                 setErrorMessage(`App update failed: ${error}`);
                 setIsUpdatingApp(false);
@@ -103,7 +103,7 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
 
     useEffect(() => {
         if (electron && electron.ipcRenderer) {
-            const handleWifiStatus = (status) => {
+            const handleWifiStatus = (event, status) => {
                 setWifiStatus(status);
                 // Refresh IP when WiFi status changes
                 fetchIp();
@@ -124,7 +124,7 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
             electron.ipcRenderer.invoke('get-dev-mode').then(setDevMode);
 
             // Listen for changes
-            const handleModeChange = (newMode) => {
+            const handleModeChange = (event, newMode) => {
                 console.log('Dev mode changed:', newMode);
                 setDevMode(newMode);
             };
@@ -157,7 +157,7 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
                 reject(new Error("Timeout while waiting for IP address"));
             }, 5000);
 
-            electron.ipcRenderer.once('ip-address-reply', (address) =>
+            electron.ipcRenderer.once('ip-address-reply', (event, address) =>
             {
                 clearTimeout(timeoutId);
                 if (address)
@@ -198,7 +198,7 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
             return new Promise((resolve, reject) =>
             {
                 electron.ipcRenderer.send('get-audio-devices');
-                electron.ipcRenderer.once('audio-devices-reply', (devices) =>
+                electron.ipcRenderer.once('audio-devices-reply', (event, devices) =>
                 {
                     console.log("audio devices received:", devices);
                     if (Array.isArray(devices) && devices.length > 0)

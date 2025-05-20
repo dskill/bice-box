@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import VisualizationMode from './VisualizationMode';
 import EffectSelectScreen from './EffectSelectScreen';
 import './App.css';
@@ -84,7 +84,7 @@ function App() {
   }, []);
 
   useEffect(() => {
-    const handleEffectUpdate = (updatedEffect) => {
+    const handleEffectUpdate = (event, updatedEffect) => {
       console.log('Effect update received:', updatedEffect);
       
       if (!updatedEffect) {
@@ -150,7 +150,11 @@ function App() {
   // This useEffect might need adjustment based on how visual updates are handled
   useEffect(() => {
     if (electron) {
-      const handleVisualEffectUpdate = (payload) => { 
+      const handleVisualEffectUpdate = (event, payload) => {
+        if (!payload) {
+            console.warn('App.js: visual-effect-updated received no payload.');
+            return;
+        }
         const { p5SketchPath: updatedPath, p5SketchContent } = payload; 
 
         if (updatedPath && currentVisualSource && updatedPath.toLowerCase() === currentVisualSource.toLowerCase()) {
@@ -175,7 +179,7 @@ function App() {
   useEffect(() => {
     // Add this new effect for sc-ready
     if (electron) {
-      const handleScReady = () => {
+      const handleScReady = (event) => {
         console.log('SuperCollider is ready');
         // When SC is ready, ensure the current audio source is loaded
         if (currentAudioSource) {
@@ -209,15 +213,15 @@ function App() {
 
   useEffect(() => {
     if (electron) {
-        const handleScError = (errorData) => {
+        const handleScErrorCallback = (event, errorData) => {
           console.log("SC error received:", errorData);
             setScError(errorData);
         };
 
-        electron.ipcRenderer.on('sc-compilation-error', handleScError);
+        electron.ipcRenderer.on('sc-compilation-error', handleScErrorCallback);
 
         return () => {
-            electron.ipcRenderer.removeListener('sc-compilation-error', handleScError);
+            electron.ipcRenderer.removeListener('sc-compilation-error', handleScErrorCallback);
         };
     }
   }, []);
@@ -228,7 +232,7 @@ function App() {
       electron.ipcRenderer.invoke('get-dev-mode').then(setDevMode);
 
       // Listen for changes to dev mode
-      const handleDevModeChange = (newMode) => {
+      const handleDevModeChange = (event, newMode) => {
         console.log('Dev mode changed:', newMode);
         setDevMode(newMode);
       };
@@ -246,7 +250,7 @@ function App() {
       console.log("loadEffects function called");
       if (electron) {
         electron.ipcRenderer.send('reload-all-effects'); 
-        electron.ipcRenderer.once('effects-data', (data) => {
+        electron.ipcRenderer.once('effects-data', (event, data) => {
           console.log("Received effects data:", data);
           if (Array.isArray(data) && data.length > 0) {
             setSynths(data);
@@ -295,7 +299,7 @@ function App() {
           }
         });
 
-        electron.ipcRenderer.once('effects-error', (error) => {
+        electron.ipcRenderer.once('effects-error', (event, error) => {
           console.error('Error loading effects:', error);
           reject(new Error(error));
         });
@@ -555,6 +559,35 @@ function App() {
       }));
     }
   };
+
+  // Handler for 'shader-effect-updated' IPC messages
+  const handleShaderEffectUpdated = useCallback((event, data) => {
+    console.log(`App.js: Received shader-effect-updated. Raw data:`, data);
+    if (data && data.shaderPath !== undefined && data.shaderContent !== undefined) {
+      const { shaderPath, shaderContent } = data; // Destructure here after check
+      console.log(`App.js: Processing shader-effect-updated for ${shaderPath}`);
+      // Check if the updated shader is the currently active one
+      if (currentShaderPath === shaderPath) {
+        console.log('Updated shader is active, applying new content.');
+        setCurrentShaderContent(shaderContent);
+      } else {
+        console.log('Updated shader is not the active one. New content stored if its preset is reloaded.');
+      }
+    } else {
+      console.warn('App.js: Received shader-effect-updated with invalid or missing data payload.', data);
+    }
+  }, [currentShaderPath]); // Dependency: currentShaderPath
+
+  // Effect for general IPC listeners (like settings, wifi, etc.)
+  useEffect(() => {
+    // ... (existing listeners) ...
+    electron.ipcRenderer.on('shader-effect-updated', handleShaderEffectUpdated);
+    // ... (existing cleanup) ...
+    return () => {
+        // ... (existing removeAllListeners calls) ...
+        electron.ipcRenderer.removeAllListeners('shader-effect-updated');
+    };
+  }, [/*...all other handlers...,*/ handleShaderEffectUpdated ]); // Add to dependency array
 
   if (error) {
     return <div className="error-message">{error}</div>;

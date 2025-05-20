@@ -52,17 +52,17 @@ function WifiSettings({ onClose }) {
             window.electron.ipcRenderer.send('scan-wifi');
             
             // Store listener references
-            const networksListener = (networks) => {
+            const networksListener = (event, networks) => {
                 console.log('Received networks:', networks);
                 setNetworks(networks);
             };
             
-            const statusListener = (status) => {
+            const statusListener = (event, status) => {
                 setIsConnected(status.connected);
                 setCurrentNetwork(status.ssid);
             };
             
-            const connectionStatusListener = (status) => {
+            const connectionStatusListener = (event, status) => {
                 console.log('Connection status:', status);
                 if (status.status === 'waiting') {
                     setIsConnecting(true);

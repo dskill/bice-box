@@ -462,6 +462,9 @@ function reloadEffectForChangedFile(changedPath)
     case '.js':
       reloadVisualEffect(relativeChangedPath);
       break;
+    case '.glsl':
+      reloadShaderEffect(relativeChangedPath);
+      break;
     default:
       console.log(`Unhandled file type: ${extension}`);
   }
@@ -638,6 +641,67 @@ function reloadVisualEffect(jsFilePath)
   }
 }
 
+function reloadShaderEffect(glslFilePath) {
+    console.log(`Reloading shader effect (checking active): ${glslFilePath}`);
+    let reloadedViaActive = false;
+
+    if (activeVisualSourcePath && activeVisualSourcePath.toLowerCase() === glslFilePath.toLowerCase()) {
+        console.log(`Changed GLSL file ${glslFilePath} matches activeVisualSourcePath. Reloading.`);
+        try {
+            const fullShaderPath = path.join(getEffectsRepoPath(), glslFilePath);
+            const updatedShaderContent = fs.readFileSync(fullShaderPath, 'utf-8');
+            const payload = { // Prepare payload explicitly
+                shaderPath: glslFilePath,
+                shaderContent: updatedShaderContent
+            };
+            if (mainWindow && mainWindow.webContents) {
+                console.log('[Main Process] Sending shader-effect-updated with payload:', JSON.stringify(payload)); // Log the payload
+                mainWindow.webContents.send('shader-effect-updated', payload);
+                console.log(`Sent shader-effect-updated for active shader: ${glslFilePath}`);
+            }
+            reloadedViaActive = true;
+        } catch (error) {
+            console.error(`Failed to read updated GLSL shader for active source: ${glslFilePath}`, error);
+        }
+    } else {
+        console.log(`Changed GLSL file ${glslFilePath} does not match activeVisualSourcePath (${activeVisualSourcePath || 'None set'}).`);
+    }
+
+    // Also, always update the shaderContent in the main synths array for any effect that uses this shader.
+    // This ensures that if the effect is reloaded or switched to later, it gets the updated shader.
+    const affectedEffectInSynths = synths.find(synth => synth.shaderPath && synth.shaderPath.toLowerCase() === glslFilePath.toLowerCase());
+    if (affectedEffectInSynths) {
+        try {
+            const fullShaderPath = path.join(getEffectsRepoPath(), glslFilePath);
+            const updatedShaderContent = fs.readFileSync(fullShaderPath, 'utf-8');
+            affectedEffectInSynths.shaderContent = updatedShaderContent;
+            console.log(`Updated shaderContent in synths array for effect: ${affectedEffectInSynths.name}`);
+
+            // If this shader is part of the *current preset* (even if not the active visual source due to dev override)
+            // and it wasn't reloaded via activeVisualSourcePath, send an update.
+            // This ensures the preset, if re-selected or if it's what's actually driving the view, gets updated.
+            const currentPresetEffect = getCurrentEffect();
+            if (!reloadedViaActive && currentPresetEffect && currentPresetEffect.shaderPath && currentPresetEffect.shaderPath.toLowerCase() === glslFilePath.toLowerCase()) {
+                 const fullShaderPathForPreset = path.join(getEffectsRepoPath(), glslFilePath); // Ensure path is correct
+                 const updatedShaderContentForPreset = fs.readFileSync(fullShaderPathForPreset, 'utf-8'); // Re-read or ensure scope
+                 const presetPayload = { // Prepare payload explicitly
+                    shaderPath: glslFilePath,
+                    shaderContent: updatedShaderContentForPreset
+                 };
+                 if (mainWindow && mainWindow.webContents) {
+                    console.log('[Main Process] Sending shader-effect-updated (for preset) with payload:', JSON.stringify(presetPayload)); // Log the payload
+                    mainWindow.webContents.send('shader-effect-updated', presetPayload);
+                    console.log(`Sent shader-effect-updated for current preset shader: ${glslFilePath}`);
+                }
+            }
+        } catch (error) {
+            console.error(`Failed to read updated GLSL shader for synths array update: ${glslFilePath}`, error);
+        }
+    } else {
+        console.log(`No preset in synths array found using GLSL file: ${glslFilePath}`);
+    }
+}
+
 ipcMain.on('set-current-effect', (event, effectName) =>
 {
   console.log(`IPC: Received set-current-effect for: ${effectName}`);
@@ -645,10 +709,18 @@ ipcMain.on('set-current-effect', (event, effectName) =>
   if (effect)
   {
     setCurrentEffect(effect);
-    // When a full preset is set, also update the active audio/visual paths to match the preset
     activeAudioSourcePath = effect.scFilePath;
-    activeVisualSourcePath = effect.p5SketchPath;
-    console.log(`Active paths updated from preset ${effectName}: Audio - ${activeAudioSourcePath}, Visual - ${activeVisualSourcePath}`);
+    // Update activeVisualSourcePath based on whether it's a p5 or shader visual
+    if (effect.shaderPath) {
+        activeVisualSourcePath = effect.shaderPath;
+        console.log(`Active visual source (shader) path updated from preset ${effectName}: ${activeVisualSourcePath}`);
+    } else if (effect.p5SketchPath) {
+        activeVisualSourcePath = effect.p5SketchPath;
+        console.log(`Active visual source (p5) path updated from preset ${effectName}: ${activeVisualSourcePath}`);
+    } else {
+        activeVisualSourcePath = null; // No visual for this effect
+        console.log(`No visual source path in preset ${effectName}.`);
+    }
   } else
   {
     console.error(`Effect not found: ${effectName}`);
