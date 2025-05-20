@@ -1,4 +1,19 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
+
+/* ------------  WebGL-/GPU-related flags  ------------- */
+app.commandLine.appendSwitch('use-gl', 'egl');              // talk to Mesa directly
+app.commandLine.appendSwitch('ignore-gpu-blocklist');       // bypass Chromium's blacklist
+app.commandLine.appendSwitch('enable-features',
+  'DefaultPassthroughCommandDecoder,CanvasOopRasterization,VaapiVideoDecodeLinuxGL');
+
+app.commandLine.appendSwitch('enable-unsafe-es3-apis');     // still needed on some builds
+app.disableDomainBlockingFor3DAPIs();                       // stop Chrome disabling WebGL after a crash
+/* ----------------------------------------------------- */
+app.commandLine.appendSwitch('enable-logging');
+
+// Log GPU status immediately after setting flags
+console.log('GPU status at startup:', app.getGPUFeatureStatus());
+
 const path = require('path');
 const fs = require('fs');
 const util = require('util');
@@ -44,7 +59,6 @@ if (process.argv.includes('--version'))
 
 console.log('Electron main process starting...');
 
-app.commandLine.appendSwitch('enable-logging');
 
 // Ensure log directory exists
 const logDir = path.join(app.getPath('userData'), 'logs');
