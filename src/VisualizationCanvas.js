@@ -15,8 +15,9 @@ function VisualizationCanvas({
   const canvasRef = useRef(null);
   const p5InstanceRef = useRef(null);
   const shaderToyInstanceRef = useRef(null); // New ref for ShaderToyLite
+  const waveformTextureRef = useRef(null); // <-- New Ref for waveform texture
 
-  const waveform0DataRef = useRef([]);
+  const [waveform0Data, setWaveform0Data] = useState([]);
   const waveform1DataRef = useRef([]);
   const errorRef = useRef(null);
   const rmsInputRef = useRef(0);
@@ -36,7 +37,7 @@ function VisualizationCanvas({
   const updateWaveform0Data = (data) => {
     if (Array.isArray(data)) {
       numUpdates.current++;
-      waveform0DataRef.current = data;
+      setWaveform0Data(data);
       if (p5InstanceRef.current) {
         p5InstanceRef.current.waveform0 = data;
       }
@@ -122,16 +123,26 @@ function VisualizationCanvas({
   const cleanupShaderToyInstance = useCallback(() => {
     if (shaderToyInstanceRef.current) {
       console.log('Cleaning up ShaderToyLite instance');
-      shaderToyInstanceRef.current.pause(); // Stop rendering loop
+      shaderToyInstanceRef.current.pause(); 
+
+      // Clean up waveform texture
+      if (waveformTextureRef.current && shaderToyInstanceRef.current.gl) {
+        try {
+          const gl = shaderToyInstanceRef.current.gl;
+          gl.deleteTexture(waveformTextureRef.current);
+          console.log('Waveform texture deleted.');
+        } catch (e) {
+          console.error('Error deleting waveform texture:', e);
+        }
+        waveformTextureRef.current = null;
+      }
+      
       // ShaderToyLite.js doesn't have an explicit destroy method in its README.
       // We rely on losing WebGL context and nullifying refs for cleanup.
-      // If it creates its own canvas internally and appends it, that would also need cleanup.
-      // However, it takes a canvas ID, so it should use the one we provide.
       const toy = shaderToyInstanceRef.current;
       if (toy.gl) {
           const loseContextExt = toy.gl.getExtension('WEBGL_lose_context');
-          // Temporarily comment this out to test if it's causing issues for p5.js
-          // if (loseContextExt) {
+          // if (loseContextExt) { // Decided against this earlier as it caused issues
           //     loseContextExt.loseContext();
           // }
       }
@@ -255,7 +266,45 @@ function VisualizationCanvas({
           console.log('Shader canvas dimensions before ShaderToyLite init:', shaderCanvas.width, shaderCanvas.height);
           
           const toy = new window.ShaderToyLite(shaderCanvas.id); // Use ID of the new canvas
-          toy.setImage({ source: currentShaderContent });
+          
+          if (toy.gl) {
+            const gl = toy.gl;
+            const textureWidth = 512; 
+            const textureHeight = 1;
+
+            const existingTexture = waveformTextureRef.current;
+            if (existingTexture) {
+                gl.deleteTexture(existingTexture);
+            }
+
+            const newWaveformTexture = gl.createTexture();
+            gl.bindTexture(gl.TEXTURE_2D, newWaveformTexture);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.R32F, textureWidth, textureHeight, 0, gl.RED, gl.FLOAT, null);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+            
+            waveformTextureRef.current = newWaveformTexture;
+            console.log('Created waveform texture (R32F, 512x1).');
+
+            // Add the texture to ShaderToyLite with a specific key
+            const waveformTextureKey = 'iChannel0_waveform';
+            toy.addTexture(waveformTextureRef.current, waveformTextureKey);
+            console.log(`Added waveform texture to ShaderToyLite with key: ${waveformTextureKey}`);
+
+            // Set the main image shader and link iChannel0 to our texture's key
+            toy.setImage({
+                source: currentShaderContent,
+                iChannel0: waveformTextureKey 
+            });
+            console.log(`setImage called, iChannel0 configured with key: ${waveformTextureKey}`);
+            
+            gl.bindTexture(gl.TEXTURE_2D, null); // Unbind texture after setup
+          } else {
+            console.error("ShaderToyLite GL context not available for texture creation.");
+          }
+          
           toy.play();
           shaderToyInstanceRef.current = toy;
           // Store the canvas element itself if needed for cleanup, though ShaderToyLite uses ID.
@@ -306,7 +355,7 @@ function VisualizationCanvas({
           containerElement.targetHeight = Math.floor(rect.height);
           // And the sketch's setup would do: p.createCanvas(p.canvas.parentElement.targetWidth, p.canvas.parentElement.targetHeight);
 
-          newP5Instance.waveform0 = waveform0DataRef.current;
+          newP5Instance.waveform0 = waveform0Data;
           newP5Instance.waveform1 = waveform1DataRef.current;
           newP5Instance.fft0 = fft0DataRef.current;
           newP5Instance.fft1 = fft1DataRef.current;
@@ -345,6 +394,29 @@ function VisualizationCanvas({
     loadAndCreateSketch();
 
   }, [currentVisualContent, currentShaderContent, cleanupP5Instance, cleanupShaderToyInstance, paramValuesRef, onEffectLoaded, webGLCapabilities, isPlatformRaspberryPi]);
+
+  // Effect to update waveform texture when waveform0Data changes
+  useEffect(() => {
+    if (shaderToyInstanceRef.current && shaderToyInstanceRef.current.gl && waveformTextureRef.current && waveform0Data.length > 0) {
+      const gl = shaderToyInstanceRef.current.gl;
+      const texture = waveformTextureRef.current;
+      const textureWidth = 512; 
+      const textureHeight = 1;  
+
+      let float32WaveformData = new Float32Array(textureWidth);
+      for (let i = 0; i < textureWidth; i++) {
+        float32WaveformData[i] = i < waveform0Data.length ? waveform0Data[i] : 0.0;
+      }
+      
+      try {
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, textureWidth, textureHeight, gl.RED, gl.FLOAT, float32WaveformData);
+        gl.bindTexture(gl.TEXTURE_2D, null); 
+      } catch (error) {
+        console.error('Error updating waveform texture:', error);
+      }
+    }
+  }, [waveform0Data]);
 
   // The main canvas element. Ensure it has an ID for ShaderToyLite if needed, 
   // or ShaderToyLite might need to be modified to accept the element directly.

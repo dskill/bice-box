@@ -98,6 +98,7 @@ function ShaderToyLite(canvasId) {
     var program = {};   // webgl program
     var location = {}; // uniform location
     var flip = {};      // a b flip
+    var quadBuffer;     // <-- Declare quadBuffer here
     
     var setup = () => {
         gl.getExtension( 'OES_texture_float_linear');
@@ -245,6 +246,10 @@ function ShaderToyLite(canvasId) {
                 var s = config[`iChannel${i}`];
                 if (s == "A" || s == "B" || s == "C" || s == "D") {
                     ichannels[key][i] = s;
+                } else if (s && typeof s === 'string' && atexture[s] !== undefined) {
+                    ichannels[key][i] = s;
+                } else {
+                    ichannels[key][i] = undefined;
                 }
             }
         } else {
@@ -420,6 +425,8 @@ function ShaderToyLite(canvasId) {
             animate();
         }
     }
+    
+    this.gl = gl;
     
     setup();
 }
