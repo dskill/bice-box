@@ -54,11 +54,35 @@ function loadEffectsList(mainWindow, getEffectsRepoPath, getEffectsPath) {
 
 function loadEffectFromFile(filePath, getEffectsRepoPath) {
     const synthData = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    let p5SketchContent = null;
+    if (synthData.visual) { // Ensure synthData.visual exists before trying to load
+        p5SketchContent = loadP5SketchSync(synthData.visual, getEffectsRepoPath);
+    }
+
+    let shaderContent = null;
+    if (synthData.shader) { // Check for the new shader field
+        try {
+            const effectsRepoPath = getEffectsRepoPath(); // Get base path for effects
+            const fullShaderPath = path.join(effectsRepoPath, synthData.shader);
+            if (fs.existsSync(fullShaderPath)) {
+                shaderContent = fs.readFileSync(fullShaderPath, 'utf-8');
+                console.log(`Loaded shader content from: ${fullShaderPath}`);
+            } else {
+                console.warn(`Shader file not found: ${fullShaderPath}`);
+            }
+        } catch (error) {
+            console.error(`Error loading shader file ${synthData.shader}:`, error);
+            // shaderContent remains null
+        }
+    }
+
     return {
         name: synthData.name,
         scFilePath: synthData.audio,
         p5SketchPath: synthData.visual,
-        p5SketchContent: loadP5SketchSync(synthData.visual, getEffectsRepoPath),
+        p5SketchContent: p5SketchContent, // Use the loaded content
+        shaderPath: synthData.shader, // Store the path as well
+        shaderContent: shaderContent, // Store the loaded shader content
         params: synthData.params,
         curated: synthData.curated || false
     };

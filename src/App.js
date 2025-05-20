@@ -22,6 +22,8 @@ function App() {
   const [currentAudioSource, setCurrentAudioSource] = useState(null); // Stores scFilePath
   const [currentVisualSource, setCurrentVisualSource] = useState(null); // Stores p5SketchPath
   const [currentVisualContent, setCurrentVisualContent] = useState(''); // Stores loaded p5 sketch content
+  const [currentShaderPath, setCurrentShaderPath] = useState(null); // New state for shader path
+  const [currentShaderContent, setCurrentShaderContent] = useState(''); // New state for shader content
   const [error, setError] = useState(null);
   const [currentScreen, setCurrentScreen] = useState('visualization'); // 'visualization' or 'select' - Will be replaced
   const [showAudioSelector, setShowAudioSelector] = useState(false);
@@ -103,16 +105,31 @@ function App() {
         return updatedSynths;
       });
 
-      // If the updated effect is the currently loaded preset, update sources
+      // If the updated effect is the currently loaded preset, update sources and content
       setCurrentSynth(prevSynth => {
         if (prevSynth && prevSynth.name === updatedEffect.name) {
-          console.log('Updating current synth preset and sources:', updatedEffect);
+          console.log('Updating current synth preset and sources due to effect-updated IPC:', updatedEffect);
           setCurrentAudioSource(updatedEffect.scFilePath);
-          setCurrentVisualSource(updatedEffect.p5SketchPath);
-          // TODO: Potentially reload visual content if p5SketchPath changed
-          // or if p5SketchContent is part of updatedEffect
-          if (updatedEffect.p5SketchContent) {
-            setCurrentVisualContent(updatedEffect.p5SketchContent);
+          // Prioritize shader, then p5, then nothing
+          if (updatedEffect.shaderPath && updatedEffect.shaderContent) {
+            setCurrentShaderPath(updatedEffect.shaderPath);
+            setCurrentShaderContent(updatedEffect.shaderContent);
+            setCurrentVisualSource(null);
+            setCurrentVisualContent('');
+          } else if (updatedEffect.p5SketchPath) {
+            setCurrentVisualSource(updatedEffect.p5SketchPath);
+            setCurrentVisualContent(updatedEffect.p5SketchContent || '');
+            setCurrentShaderPath(null);
+            setCurrentShaderContent('');
+          } else {
+            setCurrentVisualSource(null);
+            setCurrentVisualContent('');
+            setCurrentShaderPath(null);
+            setCurrentShaderContent('');
+          }
+          // Also update params if they are part of updatedEffect and it's the current one
+          if (updatedEffect.params) {
+            setCurrentAudioParams(updatedEffect.params);
           }
           return updatedEffect;
         }
@@ -236,8 +253,27 @@ function App() {
             const firstSynth = data[0];
             setCurrentSynth(firstSynth);
             setCurrentAudioSource(firstSynth.scFilePath);
-            setCurrentVisualSource(firstSynth.p5SketchPath);
-            setCurrentVisualContent(firstSynth.p5SketchContent || '');
+            // Prioritize shader if available, otherwise use p5 visual
+            if (firstSynth.shaderPath && firstSynth.shaderContent) {
+              setCurrentShaderPath(firstSynth.shaderPath);
+              setCurrentShaderContent(firstSynth.shaderContent);
+              setCurrentVisualSource(null); // Ensure p5 visual is cleared if shader is active
+              setCurrentVisualContent('');
+              console.log("Initial state set with shader: ", firstSynth.shaderPath);
+            } else if (firstSynth.p5SketchPath) {
+              setCurrentVisualSource(firstSynth.p5SketchPath);
+              setCurrentVisualContent(firstSynth.p5SketchContent || '');
+              setCurrentShaderPath(null); // Ensure shader is cleared if p5 is active
+              setCurrentShaderContent('');
+              console.log("Initial state set with p5 visual: ", firstSynth.p5SketchPath);
+            } else {
+              // No visual or shader initially
+              setCurrentVisualSource(null);
+              setCurrentVisualContent('');
+              setCurrentShaderPath(null);
+              setCurrentShaderContent('');
+              console.log("Initial state set with no visual/shader.");
+            }
             setCurrentAudioParams(firstSynth.params || []);
             
             // Inform main process of initial active sources
@@ -290,15 +326,10 @@ function App() {
 
     console.log(`Switching to preset: ${presetName}`);
     setCurrentSynth(selectedPreset);
-    // Set the params based on the newly selected preset
     setCurrentAudioParams(selectedPreset.params || []);
     
     if (electron) {
       electron.ipcRenderer.send('set-current-effect', selectedPreset.name);
-      // set-current-effect handler in main.js now also sets activeAudioSourcePath and activeVisualSourcePath
-      // So, explicit calls here for audio/visual might be redundant if preset defines them,
-      // but crucial if it doesn't or for clarity of intent.
-      // Let main's set-current-effect handle preset-defined, and explicit ones for overrides.
     }
     
     // Update audio source and load it
@@ -306,47 +337,48 @@ function App() {
       setCurrentAudioSource(selectedPreset.scFilePath);
       if (electron) {
         electron.ipcRenderer.send('load-sc-file', selectedPreset.scFilePath);
-        electron.ipcRenderer.send('set-current-audio-source', selectedPreset.scFilePath); // Explicitly set for main
+        electron.ipcRenderer.send('set-current-audio-source', selectedPreset.scFilePath);
         if (Array.isArray(selectedPreset.params)) {
           selectedPreset.params.forEach(param => {
             if (param && typeof param.name === 'string' && param.value !== undefined) {
               // Use preset name for synthdef target
-              const scCode = `~${selectedPreset.name}.set(\${param.name}, ${param.value});`; 
+              const scCode = `~${selectedPreset.name}.set(\\$${param.name}, ${param.value});`; 
               electron.ipcRenderer.send('send-to-supercollider', scCode);
             }
           });
         }
       }
     } else {
-      setCurrentAudioSource(null); // No audio for this preset
-      // Potentially send a command to stop the previous audio? TBD.
+      setCurrentAudioSource(null); 
     }
 
-    // Update visual source and load its content
-    if (selectedPreset.p5SketchPath) {
+    // Update visual/shader source and load its content
+    // Prioritize shader if available
+    if (selectedPreset.shaderPath && selectedPreset.shaderContent) {
+      console.log(`Preset ${presetName} uses shader: ${selectedPreset.shaderPath}`);
+      setCurrentShaderPath(selectedPreset.shaderPath);
+      setCurrentShaderContent(selectedPreset.shaderContent);
+      setCurrentVisualSource(null); // Clear p5 visual path
+      setCurrentVisualContent('');    // Clear p5 visual content
+      // Inform main process that p5 is not the active visual for hot-reloading purposes
+      if (electron) electron.ipcRenderer.send('set-current-visual-source', null); 
+    } else if (selectedPreset.p5SketchPath) {
+      console.log(`Preset ${presetName} uses p5 sketch: ${selectedPreset.p5SketchPath}`);
       setCurrentVisualSource(selectedPreset.p5SketchPath);
-      if (electron) electron.ipcRenderer.send('set-current-visual-source', selectedPreset.p5SketchPath); // Explicitly set for main
-      try {
-        if (electron) {
-          // Use the preloaded content if available, otherwise load it
-          if (selectedPreset.p5SketchContent) {
-             console.log("Using preloaded visual content for", presetName);
-             setCurrentVisualContent(selectedPreset.p5SketchContent);
-          } else {
-             console.log("Loading visual content for", presetName);
-             const sketchContent = await electron.ipcRenderer.invoke('load-p5-sketch', selectedPreset.p5SketchPath);
-             setCurrentVisualContent(sketchContent);
-             // Optional: Update the synth object in state with the loaded content?
-          }
-        }
-      } catch (error) {
-        console.error('Error loading p5 sketch for preset:', error);
-        setCurrentVisualContent(''); // Clear visual on error
-        setError(`Failed to load visual: ${error.message}`);
-      }
+      setCurrentVisualContent(selectedPreset.p5SketchContent || ''); // Use preloaded if available
+      setCurrentShaderPath(null);   // Clear shader path
+      setCurrentShaderContent('');  // Clear shader content
+      if (electron) electron.ipcRenderer.send('set-current-visual-source', selectedPreset.p5SketchPath);
+      // No need to invoke load-p5-sketch here if p5SketchContent is already populated by main process
+      // If p5SketchContent can be missing for a valid p5SketchPath, then loading logic here would be needed.
     } else {
+      // No visual or shader specified for the preset
+      console.log(`Preset ${presetName} has no visual or shader specified.`);
       setCurrentVisualSource(null);
-      setCurrentVisualContent(''); // No visual for this preset
+      setCurrentVisualContent('');
+      setCurrentShaderPath(null);
+      setCurrentShaderContent('');
+      if (electron) electron.ipcRenderer.send('set-current-visual-source', null);
     }
   };
 
@@ -536,6 +568,8 @@ function App() {
         currentAudioSourcePath={currentAudioSource}
         currentVisualSourcePath={currentVisualSource}
         currentVisualContent={currentVisualContent} // Pass the loaded sketch content
+        currentShaderPath={currentShaderPath} // Pass new shader state
+        currentShaderContent={currentShaderContent} // Pass new shader state
         currentAudioParams={currentAudioParams} // Pass the audio params
         // currentSynth={currentSynth} // Remove if no longer needed by VisMode besides params
         // Remove next/previous handlers

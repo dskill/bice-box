@@ -482,15 +482,39 @@ function reloadFullEffect(jsonPath)
     {
       console.log(`Reading JSON file: ${jsonPath}`);
       const fileContent = fs.readFileSync(jsonPath, 'utf8');
-
       const newEffectData = JSON.parse(fileContent);
+
+      // Load p5 sketch content if visual path exists
+      let p5SketchContent = null;
+      if (newEffectData.visual) {
+        p5SketchContent = loadP5SketchSync(newEffectData.visual, getEffectsRepoPath);
+      }
+
+      // Load shader content if shader path exists
+      let shaderContent = null;
+      if (newEffectData.shader) {
+        try {
+            const effectsRepoPath = getEffectsRepoPath(); 
+            const fullShaderPath = path.join(effectsRepoPath, newEffectData.shader);
+            if (fs.existsSync(fullShaderPath)) {
+                shaderContent = fs.readFileSync(fullShaderPath, 'utf-8');
+                console.log(`ReloadFullEffect: Loaded shader content from: ${fullShaderPath}`);
+            } else {
+                console.warn(`ReloadFullEffect: Shader file not found: ${fullShaderPath}`);
+            }
+        } catch (error) {
+            console.error(`ReloadFullEffect: Error loading shader file ${newEffectData.shader}:`, error);
+        }
+      }
 
       // Update the effect in the synths array
       const updatedEffect = {
         name: newEffectData.name || effectNameFromFile,
         scFilePath: newEffectData.audio,
         p5SketchPath: newEffectData.visual,
-        p5SketchContent: loadP5SketchSync(newEffectData.visual, getEffectsRepoPath),
+        p5SketchContent: p5SketchContent, // Use the loaded p5 content
+        shaderPath: newEffectData.shader, // Add shader path
+        shaderContent: shaderContent,     // Add loaded shader content
         params: newEffectData.params || []
       };
       console.log(`Updated effect object:`, updatedEffect);

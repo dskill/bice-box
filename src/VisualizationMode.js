@@ -8,6 +8,8 @@ function VisualizationMode({
   currentAudioSourcePath, 
   currentVisualSourcePath, 
   currentVisualContent,
+  currentShaderPath,
+  currentShaderContent,
   currentAudioParams,
   onOpenAudioSelect, 
   onOpenVisualSelect,
@@ -48,6 +50,10 @@ function VisualizationMode({
     return name;
   };
 
+  const activeVisualName = currentShaderPath 
+    ? prettifySourceName(currentShaderPath) 
+    : prettifySourceName(currentVisualSourcePath);
+
   return (
     <div className="visualization-mode" style={{ touchAction: 'none' }}>
       {window.electron && (
@@ -83,7 +89,7 @@ function VisualizationMode({
               onClick={onOpenVisualSelect}
             >
               <span className="button-label">Visual:</span>
-              <span className="button-value">{prettifySourceName(currentVisualSourcePath)}</span>
+              <span className="button-value">{activeVisualName}</span>
             </button>
           </>
         )}
@@ -91,6 +97,8 @@ function VisualizationMode({
 
       <VisualizationCanvas 
         currentVisualContent={currentVisualContent}
+        currentShaderPath={currentShaderPath}
+        currentShaderContent={currentShaderContent}
         paramValuesRef={paramValuesRef} 
         onEffectLoaded={handleEffectLoaded}
       />
