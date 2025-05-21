@@ -4,7 +4,7 @@ const { app, BrowserWindow, ipcMain } = require('electron');
 /* ---- WebGL-2 on Raspberry Pi ---- */
 //app.commandLine.appendSwitch('use-gl', 'egl');          // or 'desktop' if X11/Mesa GL works better
 app.commandLine.appendSwitch('ignore-gpu-blocklist');   // Pi’s VC4 is black-listed
-//app.commandLine.appendSwitch('enable-unsafe-es3-apis'); // expose WebGL2 (ES3) paths
+app.commandLine.appendSwitch('enable-unsafe-es3-apis'); // expose WebGL2 (ES3) paths
 /* --------------------------------- */
 
 const path = require('path');
