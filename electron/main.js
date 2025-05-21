@@ -1,4 +1,15 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
+
+/* ------------  WebGL-/GPU-related flags  ------------- */
+app.commandLine.appendSwitch('use-gl', 'desktop');            // Try Desktop GL backend (via ANGLE or directly)
+app.commandLine.appendSwitch('ignore-gpu-blocklist');       // bypass Chromium's blacklist
+app.commandLine.appendSwitch('enable-features',
+  'DefaultPassthroughCommandDecoder,CanvasOopRasterization,VaapiVideoDecodeLinuxGL');
+
+app.commandLine.appendSwitch('enable-unsafe-es3-apis');     // still needed on some builds
+app.disableDomainBlockingFor3DAPIs();                       // stop Chrome disabling WebGL after a crash
+/* ----------------------------------------------------- */
+
 const path = require('path');
 const fs = require('fs');
 const util = require('util');
