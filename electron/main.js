@@ -2,8 +2,8 @@ const { app, BrowserWindow, ipcMain } = require('electron');
 
 /* ------------  WebGL-/GPU-related flags  ------------- */
 /* ---- WebGL-2 on Raspberry Pi ---- */
-app.commandLine.appendSwitch('use-gl', 'desktop');          // or 'desktop' if X11/Mesa GL works better
-app.commandLine.appendSwitch('ignore-gpu-blocklist');   // Pi’s VC4 is black-listed
+app.commandLine.appendSwitch('use-gl', 'egl');          // or 'desktop' if X11/Mesa GL works better
+app.commandLine.appendSwitch('ignore-gpu-blocklist');   // Pi's VC4 is black-listed
 app.commandLine.appendSwitch('enable-unsafe-es3-apis'); // expose WebGL2 (ES3) paths
 /* --------------------------------- */
 
@@ -53,6 +53,7 @@ if (process.argv.includes('--version'))
 console.log('Electron main process starting...');
 
 app.commandLine.appendSwitch('enable-logging');
+app.commandLine.appendSwitch('ozone-platform', 'wayland');
 
 // Ensure log directory exists
 const logDir = path.join(app.getPath('userData'), 'logs');
