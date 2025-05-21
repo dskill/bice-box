@@ -111,7 +111,7 @@
     "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
     "concurrently": "^8.2.2",
     "cross-env": "^7.0.3",
-    "electron": "^33.2.0",
+    "electron": "^36.2.1",
     "electron-builder": "^25.1.8",
     "electron-reloader": "^1.2.3",
     "wait-on": "^8.0.0"
