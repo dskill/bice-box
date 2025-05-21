@@ -12,7 +12,7 @@ app.disableDomainBlockingFor3DAPIs();                       // stop Chrome disab
 app.commandLine.appendSwitch('enable-logging');
 
 // Log GPU status immediately after setting flags
-console.log('GPU status at startup:', app.getGPUFeatureStatus());
+// console.log('GPU status at startup:', app.getGPUFeatureStatus()); // This will be logged later if not exiting due to --version
 
 const path = require('path');
 const fs = require('fs');
@@ -25,6 +25,21 @@ const openaiApiKey = process.env.OPENAI_API_KEY;
 const OSCManager = require('./oscManager');
 const packageJson = require('../package.json');
 const appVersion = packageJson.version;
+
+// IMPORTANT: The following block checks for the --version flag.
+// It MUST execute before any other console output and use originalConsoleLog.
+// It also MUST exit immediately after printing the version.
+// Modifying this logic will break the install.sh script's version checking.
+// Handle --version flag immediately
+if (process.argv.includes('--version'))
+{
+  originalConsoleLog(`v${packageJson.version}`); // Use originalConsoleLog to bypass file logging for this
+  process.exit(0);
+}
+
+// Log GPU status (if not exited due to --version)
+console.log('GPU status at startup:', app.getGPUFeatureStatus());
+
 const axios = require('axios');
 const {
   synths,
@@ -50,12 +65,6 @@ let activeVisualSourcePath = null; // To store the path of the user-selected vis
 
 const runGenerator = process.argv.includes('--generate');
 const runHeadlessTest = process.argv.includes('--headless-test');
-
-if (process.argv.includes('--version'))
-{
-  console.log(`v${packageJson.version}`);
-  process.exit(0);
-}
 
 console.log('Electron main process starting...');
 
