@@ -279,14 +279,15 @@ function VisualizationCanvas({
 
             const newWaveformTexture = gl.createTexture();
             gl.bindTexture(gl.TEXTURE_2D, newWaveformTexture);
-            gl.texImage2D(gl.TEXTURE_2D, 0, gl.R32F, textureWidth, textureHeight, 0, gl.RED, gl.FLOAT, null);
+            // Changed to RGBA8 format
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, textureWidth, textureHeight, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
             
             waveformTextureRef.current = newWaveformTexture;
-            console.log('Created waveform texture (R32F, 512x1).');
+            console.log('Created waveform texture (RGBA8, 512x1).');
 
             // Add the texture to ShaderToyLite with a specific key
             const waveformTextureKey = 'iChannel0_waveform';
@@ -403,14 +404,23 @@ function VisualizationCanvas({
       const textureWidth = 512; 
       const textureHeight = 1;  
 
-      let float32WaveformData = new Float32Array(textureWidth);
+      // Prepare Uint8Array for RGBA texture
+      let uint8WaveformData = new Uint8Array(textureWidth * 4); // 4 components: R, G, B, A
       for (let i = 0; i < textureWidth; i++) {
-        float32WaveformData[i] = i < waveform0Data.length ? waveform0Data[i] : 0.0;
+        // Normalize waveform data (assuming it's -1 to 1) to 0-255 for 8-bit texture
+        const normalizedSample = waveform0Data[i] !== undefined ? (waveform0Data[i] * 0.5 + 0.5) * 255 : 128; // Default to mid-gray if undefined
+        const val = Math.max(0, Math.min(255, Math.round(normalizedSample))); // Clamp and round
+
+        uint8WaveformData[i * 4 + 0] = val; // R
+        uint8WaveformData[i * 4 + 1] = val; // G
+        uint8WaveformData[i * 4 + 2] = val; // B
+        uint8WaveformData[i * 4 + 3] = 255; // A (opaque)
       }
       
       try {
         gl.bindTexture(gl.TEXTURE_2D, texture);
-        gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, textureWidth, textureHeight, gl.RED, gl.FLOAT, float32WaveformData);
+        // Update with RGBA and UNSIGNED_BYTE
+        gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, textureWidth, textureHeight, gl.RGBA, gl.UNSIGNED_BYTE, uint8WaveformData);
         gl.bindTexture(gl.TEXTURE_2D, null); 
       } catch (error) {
         console.error('Error updating waveform texture:', error);
