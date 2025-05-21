@@ -5,7 +5,7 @@ const { app, BrowserWindow, ipcMain } = require('electron');
 app.commandLine.appendSwitch('use-gl', 'egl');          // or 'desktop' if X11/Mesa GL works better
 app.commandLine.appendSwitch('ignore-gpu-blocklist');   // Pi’s VC4 is black-listed
 app.commandLine.appendSwitch('enable-unsafe-es3-apis'); // expose WebGL2 (ES3) path
-app.commandLine.appendSwitch('ozone-platform', 'wayland');
+//app.commandLine.appendSwitch('ozone-platform', 'wayland'); // white screen on pi...
 
 /* --------------------------------- */
 
