@@ -45,6 +45,7 @@ let activeVisualSourcePath = null; // To store the path of the user-selected vis
 
 const runGenerator = process.argv.includes('--generate');
 const runHeadlessTest = process.argv.includes('--headless-test');
+const runGpuCheck = process.argv.includes('--gpu-check'); // Added gpu-check flag
 
 if (process.argv.includes('--version'))
 {
@@ -138,7 +139,7 @@ function createWindow()
   let windowOptions = {
     width: 800,
     height: 480,
-    fullscreen: isLinux,
+    fullscreen: isLinux && !runGpuCheck, // Disable fullscreen if gpu-check is active
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -146,8 +147,8 @@ function createWindow()
       worldSafeExecuteJavaScript: true,
       preload: path.join(__dirname, 'preload.js')
     },
-    frame: true,
-    kiosk: isLinux,
+    frame: !isLinux || runGpuCheck, // Ensure frame is true if not Linux or if gpu-check is active
+    kiosk: isLinux && !runGpuCheck, // Disable kiosk if gpu-check is active
     backgroundColor: '#000000',
     show: false
   };
@@ -159,10 +160,14 @@ function createWindow()
     mainWindow = new BrowserWindow(windowOptions);
     console.log('BrowserWindow created successfully');
 
-    const loadUrl = isDev ? 'http://localhost:3000' : `file://${path.join(__dirname, '../build/index.html')}`;
-    console.log('Loading URL:', loadUrl);
-
-    mainWindow.loadURL(loadUrl);
+    if (runGpuCheck) {
+      console.log('Loading chrome://gpu');
+      mainWindow.loadURL('chrome://gpu');
+    } else {
+      const loadUrl = isDev ? 'http://localhost:3000' : `file://${path.join(__dirname, '../build/index.html')}`;
+      console.log('Loading URL:', loadUrl);
+      mainWindow.loadURL(loadUrl);
+    }
     console.log('URL loaded');
 
     mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) =>
@@ -178,13 +183,13 @@ function createWindow()
     mainWindow.webContents.on('dom-ready', () =>
     {
       console.log('DOM is ready');
-      if (isLinux)
+      if (isLinux && !runGpuCheck) // Only hide cursor if not in gpu-check mode
       {
         mainWindow.webContents.insertCSS('* { cursor: none !important; }');
       }
     });
 
-    if (isDev)
+    if (isDev && !runGpuCheck) // Don't open devtools if gpu-check is active
     {
       console.log('Opening DevTools');
       mainWindow.webContents.openDevTools();
@@ -292,6 +297,10 @@ app.whenReady().then(() =>
       console.log('Headless test finished. Exiting.');
       app.quit();
     }, 5000); // Exit after 5 seconds
+  } else if (runGpuCheck) { // Add this condition for gpu-check mode
+    console.log('--gpu-check flag detected. Starting GPU check mode.');
+    createWindow(); // Create the window configured for chrome://gpu
+    console.log('GPU check mode: Window creation initiated.');
   } else {
     // Not headless test, so proceed with window creation and other modes
     createWindow();
