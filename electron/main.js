@@ -3,10 +3,10 @@ const { app, BrowserWindow, ipcMain } = require('electron');
 /* ------------  WebGL-/GPU-related flags  ------------- */
 /* ---- WebGL-2 on Raspberry Pi ---- */
 
-app.commandLine.appendSwitch('use-gl', 'angle');          // Use ANGLE for GL implementation
-app.commandLine.appendSwitch('use-angle', 'gles');         // Tell ANGLE to use native GLES backend
-app.commandLine.appendSwitch('ignore-gpu-blocklist');   // Pi's VC4 is black-listed
-app.commandLine.appendSwitch('enable-unsafe-es3-apis'); // expose WebGL2 (ES3) path
+//app.commandLine.appendSwitch('use-gl', 'angle');          // Use ANGLE for GL implementation
+//app.commandLine.appendSwitch('use-angle', 'gles');         // Tell ANGLE to use native GLES backend
+//app.commandLine.appendSwitch('ignore-gpu-blocklist');   // Pi's VC4 is black-listed
+//app.commandLine.appendSwitch('enable-unsafe-es3-apis'); // expose WebGL2 (ES3) path
 //app.commandLine.appendSwitch('ozone-platform', 'wayland'); // white screen on pi...
 
 /* --------------------------------- */
