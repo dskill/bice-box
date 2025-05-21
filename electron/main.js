@@ -1,7 +1,7 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 
 /* ------------  WebGL-/GPU-related flags  ------------- */
-app.commandLine.appendSwitch('use-gl', 'angle');              // Try ANGLE backend
+app.commandLine.appendSwitch('use-gl', 'desktop');            // Try Desktop GL backend (via ANGLE or directly)
 app.commandLine.appendSwitch('ignore-gpu-blocklist');       // bypass Chromium's blacklist
 app.commandLine.appendSwitch('enable-features',
   'DefaultPassthroughCommandDecoder,CanvasOopRasterization,VaapiVideoDecodeLinuxGL');
