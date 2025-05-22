@@ -451,9 +451,9 @@ function App() {
             .catch(error => reject(error));
         });
 
-        electron.ipcRenderer.once('pull-effects-repo-error', (error) => {
-          console.error('Error pulling effects repo:', error);
-          reject(new Error(error));
+        electron.ipcRenderer.once('pull-effects-repo-error', (event, errorMessage) => {
+          console.error('Error pulling effects repo from main:', errorMessage); 
+          reject(new Error(errorMessage));
         });
       } else {
         console.error('ipcRenderer is not available');
