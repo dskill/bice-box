@@ -779,6 +779,11 @@ ipcMain.on('pull-effects-repo', async (event) =>
 
   try
   {
+    console.log('[pull-effects-repo] Pruning remote origin...');
+    const pruneResult = await execPromise('git remote prune origin', { cwd: effectsRepoPath, shell: true });
+    console.log('[pull-effects-repo] Prune stdout:', pruneResult.stdout);
+    console.log('[pull-effects-repo] Prune stderr:', pruneResult.stderr);
+
     console.log('[pull-effects-repo] Fetching from origin...');
     const fetchResult = await execPromise('git fetch origin', { cwd: effectsRepoPath, shell: true });
     console.log('[pull-effects-repo] Fetch stdout:', fetchResult.stdout);
@@ -843,6 +848,11 @@ ipcMain.on('check-effects-repo', async (event) =>
       cwd: effectsRepoPath,
       shell: true
     };
+
+    console.log('[check-effects-repo] Pruning remote origin...');
+    const pruneResult = await execPromise('git remote prune origin', execOptions);
+    console.log('[check-effects-repo] Prune stdout:', pruneResult.stdout);
+    console.log('[check-effects-repo] Prune stderr:', pruneResult.stderr);
 
     console.log('[check-effects-repo] Fetching from origin...');
     await execPromise('git fetch origin', execOptions);

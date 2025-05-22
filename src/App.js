@@ -524,38 +524,53 @@ function App() {
     }));
     
     try {
-      const response = await new Promise((resolve, reject) => {
+      // The actual data from main.js will be the second argument to the listener
+      const statusPayload = await new Promise((resolve, reject) => {
         electron.ipcRenderer.send('check-effects-repo');
         
         const timeout = setTimeout(() => {
-          reject(new Error('Request timed out'));
-        }, 10000);
+          // Clean up listeners to prevent memory leaks if timeout occurs
+          electron.ipcRenderer.removeAllListeners('effects-repo-status');
+          electron.ipcRenderer.removeAllListeners('effects-repo-error');
+          reject(new Error('Request to check effects repo timed out'));
+        }, 10000); // 10 second timeout
 
-        electron.ipcRenderer.once('effects-repo-status', (response) => {
+        electron.ipcRenderer.once('effects-repo-status', (event, data) => {
           clearTimeout(timeout);
-          console.log('Received repo status:', response);
-          resolve(response.status || response);
+          electron.ipcRenderer.removeAllListeners('effects-repo-error'); // Clean up other listener
+          console.log('App.js: Received effects-repo-status with data:', data);
+          if (typeof data === 'object' && data !== null && typeof data.hasUpdates === 'boolean') {
+            resolve(data); // Resolve with the actual data object { hasUpdates: ... }
+          } else {
+            console.warn('App.js: Invalid data received for effects-repo-status', data);
+            reject(new Error('Invalid data received for effects repo status'));
+          }
         });
         
-        electron.ipcRenderer.once('effects-repo-error', (error) => {
+        electron.ipcRenderer.once('effects-repo-error', (event, errorDetails) => {
           clearTimeout(timeout);
-          reject(error);
+          electron.ipcRenderer.removeAllListeners('effects-repo-status'); // Clean up other listener
+          console.error('App.js: Received effects-repo-error with details:', errorDetails);
+          // errorDetails is expected to be { error: errorMessage, needsAttention: true }
+          reject(errorDetails); 
         });
       });
 
-      console.log('Setting effects repo status with:', response);
+      console.log('App.js: Promise resolved with statusPayload:', statusPayload);
       setEffectsRepoStatus({
-        hasUpdates: Boolean(response.hasUpdates),
-        lastChecked: response.lastChecked || new Date(),
+        hasUpdates: Boolean(statusPayload.hasUpdates), // Now statusPayload should be the {hasUpdates: ...} object
+        lastChecked: new Date(), // Set lastChecked to now
         isChecking: false,
         error: null
       });
-    } catch (error) {
-      console.error('Error checking effects repo:', error);
+    } catch (errorObject) { // Renamed to errorObject to avoid confusion
+      console.error('App.js: Error in checkEffectsRepoStatus catch block:', errorObject);
       setEffectsRepoStatus(prev => ({
         ...prev,
         isChecking: false,
-        error: error.message || 'Failed to check for updates'
+        // If errorObject is from effects-repo-error, it has an 'error' property with the message
+        // Otherwise, it might be the timeout Error object, which has a 'message' property
+        error: errorObject.error || errorObject.message || 'Failed to check for updates'
       }));
     }
   };
