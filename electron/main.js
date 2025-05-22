@@ -3,10 +3,15 @@ const { app, BrowserWindow, ipcMain } = require('electron');
 /* ------------  WebGL-/GPU-related flags  ------------- */
 /* ---- WebGL-2 on Raspberry Pi ---- */
 
+// Determine if we're in development mode
+const isDev = process.env.NODE_ENV === 'development';
+
+if (!isDev) {
   app.commandLine.appendSwitch('use-gl', 'angle');          // Use ANGLE for GL implementation
   app.commandLine.appendSwitch('use-angle', 'gles');         // Tell ANGLE to use native GLES backend
   app.commandLine.appendSwitch('ignore-gpu-blocklist');   // Pi's VC4 is black-listed
   app.commandLine.appendSwitch('enable-unsafe-es3-apis'); // expose WebGL2 (ES3) path
+}
 
 /* --------------------------------- */
 
@@ -111,9 +116,6 @@ process.on('unhandledRejection', (reason, promise) =>
 });
 
 console.log('Logging initialized');
-
-// Determine if we're in development mode
-const isDev = process.env.NODE_ENV === 'development';
 
 // Enable live reload for Electron
 if (isDev)
@@ -773,64 +775,113 @@ ipcMain.on('update-effect-params', (event, { effectName, params }) =>
 ipcMain.on('pull-effects-repo', async (event) =>
 {
   const effectsRepoPath = getEffectsRepoPath();
+  console.log(`[pull-effects-repo] Starting pull for repository at: ${effectsRepoPath}`);
 
   try
   {
-    const { stdout: pullOutput } = await execPromise('git pull', { cwd: effectsRepoPath });
-    console.log('Git pull output:', pullOutput);
+    console.log('[pull-effects-repo] Fetching from origin...');
+    const fetchResult = await execPromise('git fetch origin', { cwd: effectsRepoPath, shell: true });
+    console.log('[pull-effects-repo] Fetch stdout:', fetchResult.stdout);
+    console.log('[pull-effects-repo] Fetch stderr:', fetchResult.stderr);
+
+    console.log('[pull-effects-repo] Determining current branch...');
+    let currentBranch = 'main'; // Default to main
+    try {
+      const branchResult = await execPromise('git rev-parse --abbrev-ref HEAD', { cwd: effectsRepoPath, shell: true });
+      if (branchResult.stdout && branchResult.stdout.trim() !== 'HEAD') {
+        currentBranch = branchResult.stdout.trim();
+      }
+      console.log(`[pull-effects-repo] Current branch determined as: ${currentBranch}`);
+    } catch (branchError) {
+      console.warn(`[pull-effects-repo] Could not determine current branch, defaulting to 'main'. Error:`, branchError.stderr || branchError.error);
+    }
+
+    console.log(`[pull-effects-repo] Pulling from origin/${currentBranch}...`);
+    const pullResult = await execPromise(`git pull origin ${currentBranch}`, { cwd: effectsRepoPath, shell: true });
+    console.log('[pull-effects-repo] Git pull stdout:', pullResult.stdout);
+    console.log('[pull-effects-repo] Git pull stderr:', pullResult.stderr);
 
     // After successful pull, reload effects and update status
+    console.log('[pull-effects-repo] Reloading effects list...');
     const loadedSynths = loadEffectsList(mainWindow, getEffectsRepoPath, getEffectsPath);
     const validSynths = loadedSynths.filter(synth => synth && synth.name); // Ensure consistent filtering
     if (mainWindow && mainWindow.webContents) {
         mainWindow.webContents.send('effects-data', validSynths);
-        console.log('Global effects-data broadcast after git pull and effects reload.');
+        console.log('[pull-effects-repo] Global effects-data broadcast after git pull and effects reload.');
     }
 
     // Check status again after pull
-    const { stdout: statusOutput } = await execPromise('git status -uno', { cwd: effectsRepoPath });
-    const statusText = statusOutput ? statusOutput.toString() : '';
-    const hasUpdates = statusText.includes('behind');
+    console.log('[pull-effects-repo] Checking git status after pull...');
+    const statusResult = await execPromise('git status -uno', { cwd: effectsRepoPath, shell: true });
+    const statusText = statusResult.stdout ? statusResult.stdout.toString() : '';
+    console.log('[pull-effects-repo] Git status output:', statusText);
+    const hasUpdates = statusText.includes('Your branch is behind') || statusText.includes('behind'); // Made the check more robust
 
     event.reply('effects-repo-status', { hasUpdates });
-    event.reply('pull-effects-repo-success', pullOutput.toString());
+    event.reply('pull-effects-repo-success', pullResult.stdout.toString());
+    console.log('[pull-effects-repo] Pull process completed successfully.');
+
   } catch (error)
   {
-    console.error('Error pulling effects repo:', error);
-    event.reply('pull-effects-repo-error', error.message || 'Unknown error pulling repo');
+    console.error('[pull-effects-repo] Error during pull process:', error);
+    let errorMessage = 'Unknown error pulling repo.';
+    if (error.error && error.error.message) errorMessage = error.error.message;
+    if (error.stderr) errorMessage += `\nGit stderr: ${error.stderr}`;
+    if (error.stdout) errorMessage += `\nGit stdout: ${error.stdout}`;
+    event.reply('pull-effects-repo-error', errorMessage);
   }
 });
 
 ipcMain.on('check-effects-repo', async (event) =>
 {
   const effectsRepoPath = getEffectsRepoPath();
-  console.log('Checking effects repo at:', effectsRepoPath);
+  console.log('[check-effects-repo] Checking effects repo at:', effectsRepoPath);
 
   try
   {
-    // Use the shell option to execute git commands through the system shell
     const execOptions = {
       cwd: effectsRepoPath,
-      shell: true  // This is the key change
+      shell: true
     };
 
-    // Fetch latest
+    console.log('[check-effects-repo] Fetching from origin...');
     await execPromise('git fetch origin', execOptions);
 
-    // Compare local and remote commits
-    const localHead = (await execPromise('git rev-parse HEAD', execOptions)).stdout.trim();
-    const remoteHead = (await execPromise('git rev-parse origin/main', execOptions)).stdout.trim();
+    console.log('[check-effects-repo] Determining current branch...');
+    let currentBranch = 'main'; // Default to main
+    try {
+      const branchResult = await execPromise('git rev-parse --abbrev-ref HEAD', execOptions);
+      if (branchResult.stdout && branchResult.stdout.trim() !== 'HEAD') {
+        currentBranch = branchResult.stdout.trim();
+      }
+      console.log(`[check-effects-repo] Current branch determined as: ${currentBranch}`);
+    } catch (branchError) {
+      console.warn(`[check-effects-repo] Could not determine current branch, defaulting to 'main'. Error:`, branchError.stderr || branchError.error);
+    }
+
+    console.log(`[check-effects-repo] Getting local commit for ${currentBranch}...`);
+    const localHeadResult = await execPromise(`git rev-parse ${currentBranch}`, execOptions);
+    const localHead = localHeadResult.stdout.trim();
+
+    console.log(`[check-effects-repo] Getting remote commit for origin/${currentBranch}...`);
+    const remoteHeadResult = await execPromise(`git rev-parse origin/${currentBranch}`, execOptions);
+    const remoteHead = remoteHeadResult.stdout.trim();
 
     const hasUpdates = localHead !== remoteHead;
 
-    console.log('Git status check complete:', { localHead, remoteHead, hasUpdates });
+    console.log('[check-effects-repo] Git status check complete:', { currentBranch, localHead, remoteHead, hasUpdates });
     event.reply('effects-repo-status', { hasUpdates });
 
   } catch (error)
   {
-    console.error('Error checking effects repo:', error);
+    console.error('[check-effects-repo] Error checking effects repo:', error);
+    let errorMessage = 'Error checking repo status.';
+    if (error.error && error.error.message) errorMessage = error.error.message;
+    if (error.stderr) errorMessage += `\nGit stderr: ${error.stderr}`;
+    if (error.stdout) errorMessage += `\nGit stdout: ${error.stdout}`;
+    
     event.reply('effects-repo-error', {
-      error: error.message,
+      error: errorMessage,
       needsAttention: true
     });
   }
@@ -844,10 +895,10 @@ function execPromise(command, options)
     {
       if (error)
       {
-        reject(error);
+        reject({ error, stdout: stdout.toString(), stderr: stderr.toString() });
       } else
       {
-        resolve({ stdout, stderr });
+        resolve({ stdout: stdout.toString(), stderr: stderr.toString() });
       }
     });
   });
