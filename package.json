@@ -2,7 +2,7 @@
   "name": "bice-box",
   "main": "electron/main.js",
   "homepage": ".",
-  "version": "0.1.71",
+  "version": "0.1.72",
   "private": true,
   "dependencies": {
     "@google/genai": "^0.13.0",
