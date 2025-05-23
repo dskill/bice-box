@@ -65,6 +65,12 @@ class OSCManager
                     this.mainWindow.webContents.send(fftEventName, fftData);
                     break;
 
+                case '/combined_data':
+                    const combinedData = oscMsg.args.map(arg => arg.value);
+                    // Combined data contains 1024 samples: first 512 are waveform, next 512 are FFT magnitudes (pre-computed)
+                    this.mainWindow.webContents.send('combined-data', combinedData);
+                    break;
+
                 case '/tuner_data':
                     const freq = oscMsg.args[0].value;
                     const hasFreq = oscMsg.args[1].value;

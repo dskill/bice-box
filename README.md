@@ -85,3 +85,29 @@ To publish a new release:
     ```
 
 This revised process ensures that the annotated tag you create locally is pushed to the remote *before* the `release:publish` script (which uses `electron-builder`) runs. The `electron-builder` tool should then use this existing tag when creating the GitHub release, thereby avoiding conflicts that might arise from differing local and remote tag objects for the same version. This should make subsequent `git pull` operations smoother without tag clobbering issues.
+
+## Interactive SuperCollider (sclang) Testing
+
+For direct testing of SuperCollider scripts (`.sc` files), you can use an interactive `sclang` session:
+
+1.  **Start `sclang`**:
+    Open your terminal and type:
+    ```bash
+    sclang
+    ```
+
+2.  **Load Initialization Script**:
+    Once `sclang` has started, load your main initialization file. This file typically boots the server and sets up your environment (OSC, buffers, etc.).
+    ```supercollider
+    "~/bice-box-effects/utilities/init.sc".standardizePath.load;
+    ```
+    Wait for the server to boot and for the `postln` messages from `init.sc` to indicate completion (e.g., "Server booted successfully.").
+
+3.  **Load an Effect Script**:
+    After the initialization is complete, you can load any specific audio effect or utility script. For example, to load `test_sin_wave.sc`:
+    ```supercollider
+    "~/bice-box-effects/audio/test_sin_wave.sc".standardizePath.load;
+    ```
+    This will define and potentially run the synth or code within that file. Check the `postln` messages from the effect script for confirmation.
+
+This interactive approach is useful for debugging individual SuperCollider files and understanding their behavior outside of the full Electron application.

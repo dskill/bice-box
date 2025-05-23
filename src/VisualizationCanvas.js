@@ -27,6 +27,8 @@ function VisualizationCanvas({
   const fft0DataRef = useRef([]);
   const fft1DataRef = useRef([]);
   const oscMessageRef = useRef([]);
+  // Add new ref for combined data (waveform + FFT)
+  const combinedDataRef = useRef([]);
   const [webGLCapabilities, setWebGLCapabilities] = useState(null);
   const [isPlatformRaspberryPi, setIsPlatformRaspberryPi] = useState(false);
 
@@ -158,6 +160,30 @@ function VisualizationCanvas({
     }
   }, []);
 
+  // Add new update function for combined data
+  const updateCombinedData = useCallback((event, data) => {
+    if (Array.isArray(data) && data.length === 1024) {
+      numUpdates.current++;
+      combinedDataRef.current = data;
+      
+      // Split the combined data: first 512 samples are waveform, next 512 are FFT
+      const waveformData = data.slice(0, 512);
+      const fftData = data.slice(512, 1024);
+      
+      // Update individual data refs as well for backward compatibility
+      setWaveform0Data(waveformData);
+      fft0DataRef.current = fftData;
+      
+      if (p5InstanceRef.current) {
+        p5InstanceRef.current.combinedData = data;
+        p5InstanceRef.current.waveform0 = waveformData;
+        p5InstanceRef.current.fft0 = fftData;
+      }
+    } else {
+      console.warn('Received invalid combined data:', data);
+    }
+  }, [setWaveform0Data]);
+
   // Detect WebGL capabilities on mount
   useEffect(() => {
     // Check WebGL capabilities
@@ -193,6 +219,7 @@ function VisualizationCanvas({
     window.electron.ipcRenderer.on('fft0-data', updateFFT0Data);
     window.electron.ipcRenderer.on('fft1-data', updateFFT1Data);
     window.electron.ipcRenderer.on('custom-message', updateCustomMessage);
+    window.electron.ipcRenderer.on('combined-data', updateCombinedData);
 
     return () => {
       console.log('Removing all event listeners');
@@ -203,8 +230,9 @@ function VisualizationCanvas({
       window.electron.ipcRenderer.removeAllListeners('fft0-data');
       window.electron.ipcRenderer.removeAllListeners('fft1-data');
       window.electron.ipcRenderer.removeAllListeners('custom-message');
+      window.electron.ipcRenderer.removeAllListeners('combined-data');
     };
-  }, [updateWaveform0Data, updateWaveform1Data, updateAudioAnalysis, updateTunerData, updateFFT0Data, updateFFT1Data, updateCustomMessage]);
+  }, [updateWaveform0Data, updateWaveform1Data, updateAudioAnalysis, updateTunerData, updateFFT0Data, updateFFT1Data, updateCustomMessage, updateCombinedData]);
 
   /*
   useEffect(() => {
@@ -270,7 +298,7 @@ function VisualizationCanvas({
           if (toy.gl) {
             const gl = toy.gl;
             const textureWidth = 512; 
-            const textureHeight = 1;
+            const textureHeight = 2; // Changed to 2 rows for Shadertoy compatibility
 
             const existingTexture = waveformTextureRef.current;
             if (existingTexture) {
@@ -279,7 +307,7 @@ function VisualizationCanvas({
 
             const newWaveformTexture = gl.createTexture();
             gl.bindTexture(gl.TEXTURE_2D, newWaveformTexture);
-            // Changed to RGBA8 format
+            // Changed to RGBA8 format for 512x2 texture
             gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, textureWidth, textureHeight, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
@@ -287,7 +315,7 @@ function VisualizationCanvas({
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
             
             waveformTextureRef.current = newWaveformTexture;
-            console.log('Created waveform texture (RGBA8, 512x1).');
+            console.log('Created audio texture (RGBA8, 512x2) for Shadertoy compatibility.');
 
             // Add the texture to ShaderToyLite with a specific key
             const waveformTextureKey = 'iChannel0_waveform';
@@ -364,6 +392,7 @@ function VisualizationCanvas({
           newP5Instance.rmsOutput = rmsOutputRef.current;
           newP5Instance.tunerData = tunerDataRef.current;
           newP5Instance.customMessage = oscMessageRef.current;
+          newP5Instance.combinedData = combinedDataRef.current;
           newP5Instance.params = paramValuesRef.current;
           newP5Instance.webGLCapabilities = webGLCapabilities;
           newP5Instance.isPlatformRaspberryPi = isPlatformRaspberryPi;
@@ -396,37 +425,87 @@ function VisualizationCanvas({
 
   }, [currentVisualContent, currentShaderContent, cleanupP5Instance, cleanupShaderToyInstance, paramValuesRef, onEffectLoaded, webGLCapabilities, isPlatformRaspberryPi]);
 
-  // Effect to update waveform texture when waveform0Data changes
+  // Effect to update audio texture when combined data or waveform data changes
   useEffect(() => {
-    if (shaderToyInstanceRef.current && shaderToyInstanceRef.current.gl && waveformTextureRef.current && waveform0Data.length > 0) {
+    if (shaderToyInstanceRef.current && shaderToyInstanceRef.current.gl && waveformTextureRef.current) {
       const gl = shaderToyInstanceRef.current.gl;
       const texture = waveformTextureRef.current;
       const textureWidth = 512; 
-      const textureHeight = 1;  
+      const textureHeight = 2; // 2 rows: FFT (row 0) and waveform (row 1)
 
-      // Prepare Uint8Array for RGBA texture
-      let uint8WaveformData = new Uint8Array(textureWidth * 4); // 4 components: R, G, B, A
+      // Prepare Uint8Array for RGBA texture (512x2x4 = 4096 bytes)
+      let uint8AudioData = new Uint8Array(textureWidth * textureHeight * 4);
+      
+      // Use combined data if available, otherwise fall back to individual arrays
+      let fftData = [];
+      let waveformData = [];
+      
+      if (combinedDataRef.current.length === 1024) {
+        // Use combined data: first 512 are waveform, next 512 are FFT
+        waveformData = combinedDataRef.current.slice(0, 512);
+        fftData = combinedDataRef.current.slice(512, 1024);
+      } else {
+        // Fall back to individual data arrays
+        fftData = fft0DataRef.current.length > 0 ? fft0DataRef.current : [];
+        waveformData = waveform0Data.length > 0 ? waveform0Data : [];
+      }
+
+      // Debug logging (only log occasionally to avoid spam)
+      if (Math.random() < 0.01) { // Log ~1% of the time
+        console.log('FFT texture update:', {
+          fftDataLength: fftData.length,
+          waveformDataLength: waveformData.length,
+          fftDataType: 'pre-computed magnitudes',
+          firstFewFFTValues: fftData.slice(0, 8)
+        });
+      }
+
+      // Fill row 0 with FFT data (frequency spectrum)
+      // FFT data now contains pre-computed magnitudes from SuperCollider (no longer complex pairs)
       for (let i = 0; i < textureWidth; i++) {
-        // Normalize waveform data (assuming it's -1 to 1) to 0-255 for 8-bit texture
-        const normalizedSample = waveform0Data[i] !== undefined ? (waveform0Data[i] * 0.5 + 0.5) * 255 : 128; // Default to mid-gray if undefined
-        const val = Math.max(0, Math.min(255, Math.round(normalizedSample))); // Clamp and round
+        let fftMagnitude = 0;
+        
+        if (i < fftData.length && fftData.length > 0) {
+          // FFT data now contains pre-computed magnitudes with logarithmic scaling applied
+          fftMagnitude = fftData[i] || 0;
+        }
+        
+        // Normalize to 0-255 range for 8-bit texture
+        // The data is already logarithmically scaled, so we just need to normalize
+        // the FFT Data ranges above 1 a bit, so we have are just 100 as a magic number
+        // to try and get the data into the 0:255 range
+        const normalizedFFT = Math.max(0, Math.min(255, Math.round(fftMagnitude * 100)));
+        
+        const row0Index = i * 4; // Row 0, pixel i
+        uint8AudioData[row0Index + 0] = normalizedFFT; // R
+        uint8AudioData[row0Index + 1] = normalizedFFT; // G
+        uint8AudioData[row0Index + 2] = normalizedFFT; // B
+        uint8AudioData[row0Index + 3] = 255; // A (opaque)
+      }
 
-        uint8WaveformData[i * 4 + 0] = val; // R
-        uint8WaveformData[i * 4 + 1] = val; // G
-        uint8WaveformData[i * 4 + 2] = val; // B
-        uint8WaveformData[i * 4 + 3] = 255; // A (opaque)
+      // Fill row 1 with waveform data (time domain)
+      for (let i = 0; i < textureWidth; i++) {
+        const waveformValue = waveformData[i] !== undefined ? waveformData[i] : 0;
+        // Normalize waveform data (assuming it's -1 to 1) to 0-255 for 8-bit texture
+        const normalizedWaveform = Math.max(0, Math.min(255, Math.round((waveformValue * 0.5 + 0.5) * 255)));
+        
+        const row1Index = (textureWidth + i) * 4; // Row 1, pixel i
+        uint8AudioData[row1Index + 0] = normalizedWaveform; // R
+        uint8AudioData[row1Index + 1] = normalizedWaveform; // G
+        uint8AudioData[row1Index + 2] = normalizedWaveform; // B
+        uint8AudioData[row1Index + 3] = 255; // A (opaque)
       }
       
       try {
         gl.bindTexture(gl.TEXTURE_2D, texture);
-        // Update with RGBA and UNSIGNED_BYTE
-        gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, textureWidth, textureHeight, gl.RGBA, gl.UNSIGNED_BYTE, uint8WaveformData);
+        // Update the entire 512x2 texture
+        gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, textureWidth, textureHeight, gl.RGBA, gl.UNSIGNED_BYTE, uint8AudioData);
         gl.bindTexture(gl.TEXTURE_2D, null); 
       } catch (error) {
-        console.error('Error updating waveform texture:', error);
+        console.error('Error updating audio texture:', error);
       }
     }
-  }, [waveform0Data]);
+  }, [waveform0Data, combinedDataRef.current]);
 
   // The main canvas element. Ensure it has an ID for ShaderToyLite if needed, 
   // or ShaderToyLite might need to be modified to accept the element directly.
