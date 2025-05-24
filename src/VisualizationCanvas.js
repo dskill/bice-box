@@ -29,6 +29,8 @@ function VisualizationCanvas({
   const oscMessageRef = useRef([]);
   // Add new ref for combined data (waveform + FFT)
   const combinedDataRef = useRef([]);
+  const combinedRMSInputRef = useRef(0);
+  const combinedRMSOutputRef = useRef(0);
   const [webGLCapabilities, setWebGLCapabilities] = useState(null);
   const [isPlatformRaspberryPi, setIsPlatformRaspberryPi] = useState(false);
 
@@ -162,27 +164,43 @@ function VisualizationCanvas({
 
   // Add new update function for combined data
   const updateCombinedData = useCallback((event, data) => {
-    if (Array.isArray(data) && data.length === 1024) {
+    const rmsMultiplier = 1.0;
+    // Ensure data is an array and has the expected new length
+    if (Array.isArray(data) && data.length === 1026) { // Adjusted length
       numUpdates.current++;
-      combinedDataRef.current = data;
-      
-      // Split the combined data: first 512 samples are waveform, next 512 are FFT
+      combinedDataRef.current = data; // Store the full 1026 array
+
+      // Extract waveform, FFT, and new RMS values
       const waveformData = data.slice(0, 512);
       const fftData = data.slice(512, 1024);
-      
-      // Update individual data refs as well for backward compatibility
-      setWaveform0Data(waveformData);
+      const rmsInput = data[1024] * rmsMultiplier;
+      const rmsOutput = data[1025] * rmsMultiplier;
+
+      combinedRMSInputRef.current = rmsInput;
+      combinedRMSOutputRef.current = rmsOutput;
+
+      // Update individual data refs for backward compatibility or other uses
+      setWaveform0Data(waveformData); // This updates state, causing re-renders if used in JSX
       fft0DataRef.current = fftData;
-      
+
       if (p5InstanceRef.current) {
-        p5InstanceRef.current.combinedData = data;
+        p5InstanceRef.current.combinedData = data; // Full data
         p5InstanceRef.current.waveform0 = waveformData;
         p5InstanceRef.current.fft0 = fftData;
+        p5InstanceRef.current.combinedRMSInput = rmsInput; // Pass new RMS values
+        p5InstanceRef.current.combinedRMSOutput = rmsOutput; // Pass new RMS values
+      }
+
+      if (shaderToyInstanceRef.current) {
+        // Call the new methods to set RMS uniforms for ShaderToy
+        shaderToyInstanceRef.current.setRMSInput(rmsInput);
+        shaderToyInstanceRef.current.setRMSOutput(rmsOutput);
       }
     } else {
-      console.warn('Received invalid combined data:', data);
+      // Update warning for incorrect data length
+      console.warn('Received invalid combined data (expected 1026 floats):', data);
     }
-  }, [setWaveform0Data]);
+  }, [setWaveform0Data]); // setWaveform0Data is a dependency
 
   // Detect WebGL capabilities on mount
   useEffect(() => {
@@ -394,6 +412,8 @@ function VisualizationCanvas({
           newP5Instance.tunerData = tunerDataRef.current;
           newP5Instance.customMessage = oscMessageRef.current;
           newP5Instance.combinedData = combinedDataRef.current;
+          newP5Instance.combinedRMSInput = combinedRMSInputRef.current;
+          newP5Instance.combinedRMSOutput = combinedRMSOutputRef.current;
           newP5Instance.params = paramValuesRef.current;
           newP5Instance.webGLCapabilities = webGLCapabilities;
           newP5Instance.isPlatformRaspberryPi = isPlatformRaspberryPi;
@@ -441,23 +461,27 @@ function VisualizationCanvas({
       let fftData = [];
       let waveformData = [];
       
-      if (combinedDataRef.current.length === 1024) {
-        // Use combined data: first 512 are waveform, next 512 are FFT
+      // Use the full combinedDataRef which might be 1026 long
+      if (combinedDataRef.current.length >= 1024) { 
+        // Waveform and FFT data are always in the first 1024 elements
         waveformData = combinedDataRef.current.slice(0, 512);
         fftData = combinedDataRef.current.slice(512, 1024);
       } else {
-        // Fall back to individual data arrays
+        // Fall back to individual data arrays if combinedData isn't populated yet or is too short
         fftData = fft0DataRef.current.length > 0 ? fft0DataRef.current : [];
         waveformData = waveform0Data.length > 0 ? waveform0Data : [];
       }
 
       // Debug logging (only log occasionally to avoid spam)
       if (Math.random() < 0.01) { // Log ~1% of the time
-        console.log('FFT texture update:', {
+        console.log('Audio texture update:', {
           fftDataLength: fftData.length,
           waveformDataLength: waveformData.length,
           fftDataType: 'pre-computed magnitudes',
-          firstFewFFTValues: fftData.slice(0, 8)
+          firstFewFFTValues: fftData.slice(0, 8),
+          firstFewWaveformValues: waveformData.slice(0, 8),
+          rmsInput: combinedRMSInputRef.current,
+          rmsOutput: combinedRMSOutputRef.current
         });
       }
 

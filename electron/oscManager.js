@@ -67,7 +67,7 @@ class OSCManager
 
                 case '/combined_data':
                     const combinedData = oscMsg.args.map(arg => arg.value);
-                    // Combined data contains 1024 samples: first 512 are waveform, next 512 are FFT magnitudes (pre-computed)
+                    // Combined data now contains 1026 samples: first 512 are waveform, next 512 are FFT, then RMS input, then RMS output.
                     this.mainWindow.webContents.send('combined-data', combinedData);
                     break;
 

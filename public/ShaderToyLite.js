@@ -23,6 +23,8 @@ function ShaderToyLite(canvasId) {
     uniform sampler2D iChannel3;             // input channel 3
     uniform vec4      iDate;                 // (year, month, day, unixtime in seconds)
     uniform float     iSampleRate;           // sound sample rate (i.e., 44100)
+    uniform float     iRMSInput;             // input RMS value
+    uniform float     iRMSOutput;            // output RMS value
     out vec4          frag_out_color;
     void mainImage( out vec4 c, in vec2 f );
     void main( void )
@@ -83,6 +85,8 @@ function ShaderToyLite(canvasId) {
     // uniforms
     var iFrame = 0;
     var iMouse = {x: 0, y: 0, clickX: 0, clickY: 0};
+    var iRMSInputValue = 0.0;
+    var iRMSOutputValue = 0.0;
     
     // shader common source 
     var common = "";
@@ -220,6 +224,8 @@ function ShaderToyLite(canvasId) {
         location[key]["iMouse"]             = gl.getUniformLocation(program, "iMouse");
         location[key]["iDate"]              = gl.getUniformLocation(program, "iDate");
         location[key]["iSampleRate"]        = gl.getUniformLocation(program, "iSampleRate");
+        location[key]["iRMSInput"] = gl.getUniformLocation(program, "iRMSInput");
+        location[key]["iRMSOutput"] = gl.getUniformLocation(program, "iRMSOutput");
         location[key]["vertexInPosition"]   = gl.getAttribLocation(program, "vertexInPosition");
     
         return program;
@@ -325,6 +331,12 @@ function ShaderToyLite(canvasId) {
                 gl.uniform4f( location[key]["iMouse"], iMouse.x, iMouse.y, iMouse.clickX, iMouse.clickY);
                 gl.uniform4f( location[key]["iDate"], iDate[0], iDate[1], iDate[2], iDate[3]);
                 gl.uniform1f( location[key]["iSampleRate"], 44100);
+                if (location[key]["iRMSInput"]) {
+                    gl.uniform1f(location[key]["iRMSInput"], iRMSInputValue);
+                }
+                if (location[key]["iRMSOutput"]) {
+                    gl.uniform1f(location[key]["iRMSOutput"], iRMSOutputValue);
+                }
     
                 // viewport
                 gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
@@ -427,6 +439,14 @@ function ShaderToyLite(canvasId) {
     }
     
     this.gl = gl;
+
+    this.setRMSInput = (value) => {
+        iRMSInputValue = typeof value === 'number' ? value : 0.0;
+    };
+
+    this.setRMSOutput = (value) => {
+        iRMSOutputValue = typeof value === 'number' ? value : 0.0;
+    };
     
     setup();
 }
