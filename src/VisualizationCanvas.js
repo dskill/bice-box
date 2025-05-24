@@ -281,8 +281,9 @@ function VisualizationCanvas({
           shaderCanvas.id = 'bice-box-shader-canvas'; // Fixed ID for the shader canvas
           
           const rect = containerElement.getBoundingClientRect();
-          shaderCanvas.width = Math.floor(rect.width);
-          shaderCanvas.height = Math.floor(rect.height);
+          const resolutionScale = 0.75; // Hardcoded here
+          shaderCanvas.width = Math.floor(rect.width * resolutionScale);
+          shaderCanvas.height = Math.floor(rect.height * resolutionScale);
           shaderCanvas.style.position = 'absolute'; // Ensure it fills the div correctly
           shaderCanvas.style.top = '0';
           shaderCanvas.style.left = '0';

@@ -27,6 +27,5 @@ export let globalState = {
     globalState.avgWaveformIntensity = value;
     globalState.avgWaveformIntensitySmooth = globalState.avgWaveformIntensitySmooth * 0.6 + value * 0.4;
   }
-
-
+  
   
