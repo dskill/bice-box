@@ -65,6 +65,30 @@ function App() {
     return filtered;
   }, [synths]);
 
+  const handleScReady = useCallback((event) => {
+    console.log('SuperCollider is ready');
+    // When SC is ready, ensure the current audio source is loaded
+    if (currentAudioSource) {
+      console.log(`SC ready, activating current audio source: ${currentAudioSource}`);
+      electron.ipcRenderer.send('load-sc-file', currentAudioSource);
+      // Also apply params from the original preset if it exists
+       if (currentSynth && currentSynth.scFilePath === currentAudioSource && Array.isArray(currentSynth.params)) {
+          currentSynth.params.forEach(param => {
+              if (param && typeof param.name === 'string' && param.value !== undefined) {
+                  const scCode = `~effect.set(\${param.name}, ${param.value});`;
+                  electron.ipcRenderer.send('send-to-supercollider', scCode);
+              }
+          });
+       }
+    } else if (currentSynth && currentSynth.scFilePath) {
+        // Fallback to loading the preset's audio if no override is set
+         console.log(`SC ready, activating preset audio source: ${currentSynth.scFilePath}`);
+         electron.ipcRenderer.send('load-sc-file', currentSynth.scFilePath);
+    } else {
+      console.log('SC ready, but no current audio source to activate');
+    }
+  }, [currentAudioSource, currentSynth, electron]); // Added electron to dependencies
+
   useEffect(() => {
     // Initial effects load and repo check
     Promise.all([
@@ -92,7 +116,7 @@ function App() {
         return;
       }
 
-      if (typeof updatedEffect !== 'object' || typeof updatedEffect.name !== 'string') {
+      if (typeof updatedEffect !== 'object' || updatedEffect === null || typeof updatedEffect.name !== 'string') {
         console.error('Invalid effect update received:', updatedEffect);
         return;
       }
@@ -138,93 +162,74 @@ function App() {
     };
 
     if (electron) {
-      console.log('Adding effect-updated listener');
-      const removeListener = electron.ipcRenderer.on('effect-updated', handleEffectUpdate);
+      console.log('Adding effect-updated listener for App.js');
+      electron.ipcRenderer.on('effect-updated', handleEffectUpdate);
       return () => {
-        console.log('Removing effect-updated listener');
-        removeListener();
+        console.log('Removing effect-updated listener from App.js');
+        electron.ipcRenderer.removeListener('effect-updated', handleEffectUpdate);
       };
     }
   }, []);
 
+  const handleVisualEffectUpdate = useCallback((event, payload) => {
+    if (!payload) {
+        console.warn('App.js: visual-effect-updated received no payload.');
+        return;
+    }
+    const { p5SketchPath: updatedPath, p5SketchContent } = payload; 
+
+    if (updatedPath && currentVisualSource && updatedPath.toLowerCase() === currentVisualSource.toLowerCase()) {
+      console.log(`Visual content updated for active visual source: ${currentVisualSource} (path from event: ${updatedPath})`);
+      setCurrentVisualContent(p5SketchContent);
+    } else {
+      // This condition might be hit if the fallback in main.js sent an update for a preset's visual
+      // that isn't the currently *active* visual source but is part of the current preset.
+      // Or if the paths simply don't match for other reasons.
+      console.log(`Ignoring visual update. Active visual source: ${currentVisualSource}, Updated sketch path: ${updatedPath}`);
+    }
+  }, [currentVisualSource, setCurrentVisualContent]);
+
+  const handleScErrorCallback = useCallback((event, errorData) => {
+    console.log("SC error received:", errorData);
+    setScError(errorData);
+  }, [setScError]);
+
+  const handleDevModeChange = useCallback((event, newMode) => {
+    console.log('Dev mode changed:', newMode);
+    setDevMode(newMode);
+  }, [setDevMode]);
+
   // This useEffect might need adjustment based on how visual updates are handled
   useEffect(() => {
     if (electron) {
-      const handleVisualEffectUpdate = (event, payload) => {
-        if (!payload) {
-            console.warn('App.js: visual-effect-updated received no payload.');
-            return;
-        }
-        const { p5SketchPath: updatedPath, p5SketchContent } = payload; 
-
-        if (updatedPath && currentVisualSource && updatedPath.toLowerCase() === currentVisualSource.toLowerCase()) {
-          console.log(`Visual content updated for active visual source: ${currentVisualSource} (path from event: ${updatedPath})`);
-          setCurrentVisualContent(p5SketchContent);
-        } else {
-          // This condition might be hit if the fallback in main.js sent an update for a preset's visual
-          // that isn't the currently *active* visual source but is part of the current preset.
-          // Or if the paths simply don't match for other reasons.
-          console.log(`Ignoring visual update. Active visual source: ${currentVisualSource}, Updated sketch path: ${updatedPath}`);
-        }
-      };
-
       electron.ipcRenderer.on('visual-effect-updated', handleVisualEffectUpdate);
 
       return () => {
         electron.ipcRenderer.removeListener('visual-effect-updated', handleVisualEffectUpdate);
       };
     }
-  }, [currentVisualSource, synths]); // Depend on currentVisualSource
+  }, [currentVisualSource, synths, handleVisualEffectUpdate, electron]); // Depend on currentVisualSource, synths, and the new handler + electron
 
   useEffect(() => {
     // Add this new effect for sc-ready
     if (electron) {
-      const handleScReady = (event) => {
-        console.log('SuperCollider is ready');
-        // When SC is ready, ensure the current audio source is loaded
-        if (currentAudioSource) {
-          console.log(`SC ready, activating current audio source: ${currentAudioSource}`);
-          electron.ipcRenderer.send('load-sc-file', currentAudioSource);
-          // Also apply params from the original preset if it exists
-           if (currentSynth && currentSynth.scFilePath === currentAudioSource && Array.isArray(currentSynth.params)) {
-              currentSynth.params.forEach(param => {
-                  if (param && typeof param.name === 'string' && param.value !== undefined) {
-                      const scCode = `~effect.set(\\${param.name}, ${param.value});`;
-                      electron.ipcRenderer.send('send-to-supercollider', scCode);
-                  }
-              });
-           }
-        } else if (currentSynth && currentSynth.scFilePath) {
-            // Fallback to loading the preset's audio if no override is set
-             console.log(`SC ready, activating preset audio source: ${currentSynth.scFilePath}`);
-             electron.ipcRenderer.send('load-sc-file', currentSynth.scFilePath);
-        } else {
-          console.log('SC ready, but no current audio source to activate');
-        }
-      };
-
       electron.ipcRenderer.on('sc-ready', handleScReady);
 
       return () => {
         electron.ipcRenderer.removeListener('sc-ready', handleScReady);
       };
     }
-  }, [currentAudioSource, currentSynth]); // Depend on currentAudioSource and currentSynth
+  }, [currentAudioSource, currentSynth, handleScReady, electron]); // Added handleScReady and electron to dependencies
 
   useEffect(() => {
     if (electron) {
-        const handleScErrorCallback = (event, errorData) => {
-          console.log("SC error received:", errorData);
-            setScError(errorData);
-        };
-
         electron.ipcRenderer.on('sc-compilation-error', handleScErrorCallback);
 
         return () => {
             electron.ipcRenderer.removeListener('sc-compilation-error', handleScErrorCallback);
         };
     }
-  }, []);
+  }, [handleScErrorCallback, electron]); // Added handleScErrorCallback and electron
 
   useEffect(() => {
     if (electron && electron.ipcRenderer) {
@@ -232,18 +237,13 @@ function App() {
       electron.ipcRenderer.invoke('get-dev-mode').then(setDevMode);
 
       // Listen for changes to dev mode
-      const handleDevModeChange = (event, newMode) => {
-        console.log('Dev mode changed:', newMode);
-        setDevMode(newMode);
-      };
-
       electron.ipcRenderer.on('dev-mode-changed', handleDevModeChange);
 
       return () => {
         electron.ipcRenderer.removeListener('dev-mode-changed', handleDevModeChange);
       };
     }
-  }, []);
+  }, [handleDevModeChange, electron, setDevMode]); // Added handleDevModeChange, electron, and setDevMode (as invoke uses it)
 
   const reloadEffectList = () => {
     return new Promise((resolve, reject) => {
@@ -659,18 +659,15 @@ function App() {
     } else {
       console.warn('App.js: Received shader-effect-updated with invalid or missing data payload.', data);
     }
-  }, [currentShaderPath]); // Dependency: currentShaderPath
+  }, [currentShaderPath, setCurrentShaderContent]); // Dependency: currentShaderPath, setCurrentShaderContent
 
   // Effect for general IPC listeners (like settings, wifi, etc.)
   useEffect(() => {
-    // ... (existing listeners) ...
     electron.ipcRenderer.on('shader-effect-updated', handleShaderEffectUpdated);
-    // ... (existing cleanup) ...
     return () => {
-        // ... (existing removeAllListeners calls) ...
         electron.ipcRenderer.removeAllListeners('shader-effect-updated');
     };
-  }, [/*...all other handlers...,*/ handleShaderEffectUpdated ]); // Add to dependency array
+  }, [handleShaderEffectUpdated, electron]); // Add electron to dependency array
 
   if (error) {
     return <div className="error-message">{error}</div>;
