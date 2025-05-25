@@ -29,18 +29,9 @@ function VisualizationMode({
 
   const handleParamChange = (paramName, value) => {
     paramValuesRef.current[paramName] = value;
-    if (window.electron && currentAudioSourcePath) {
-      const derivedSynthDefName = currentAudioSourcePath.split('/').pop().split('.')[0];
-      if (derivedSynthDefName) {
-        const scCode = `~${derivedSynthDefName}.set(\${paramName}, ${value});`;
-        console.log(`Sending SC: ${scCode}`);
-        window.electron.ipcRenderer.send('send-to-supercollider', scCode);
-      } else {
-        console.warn(`Could not derive SynthDef name from: ${currentAudioSourcePath}`);
-      }
-    } else {
-      console.warn('Cannot send param change: No current audio source path');
-    }
+    // The SuperCollider send previously here has been removed.
+    // ParamFader.js is already handling the send to ~effect.set
+    // console.log(`ParamFader changed '${paramName}' to ${value}. VisualizationMode acknowledging.`);
   };
 
   const prettifySourceName = (sourcePath) => {

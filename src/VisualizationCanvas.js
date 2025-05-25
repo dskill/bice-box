@@ -5,6 +5,10 @@ import WebGLDetector from './utils/webGLDetector';
 // ShaderToyLite will be available globally via script tag in index.html
 // const ShaderToyLite = window.ShaderToyLite;
 
+// TODO: we decided to only visualize output FFT and output waveform, 
+// so we need to clean up FFT1 and waveform1.  the problem is these are not used
+// consisnently in the p5.js visualizers, so we'll have to clean those up when we remove these.
+
 function VisualizationCanvas({ 
   currentVisualContent, 
   currentShaderPath,    // New prop
@@ -29,8 +33,6 @@ function VisualizationCanvas({
   const oscMessageRef = useRef([]);
   // Add new ref for combined data (waveform + FFT)
   const combinedDataRef = useRef([]);
-  const combinedRMSInputRef = useRef(0);
-  const combinedRMSOutputRef = useRef(0);
   const [webGLCapabilities, setWebGLCapabilities] = useState(null);
   const [isPlatformRaspberryPi, setIsPlatformRaspberryPi] = useState(false);
 
@@ -176,8 +178,8 @@ function VisualizationCanvas({
       const rmsInput = data[2048] * rmsMultiplier;
       const rmsOutput = data[2049] * rmsMultiplier;
 
-      combinedRMSInputRef.current = rmsInput;
-      combinedRMSOutputRef.current = rmsOutput;
+      rmsInputRef.current = rmsInput;
+      rmsOutputRef.current = rmsOutput;
 
       // Update individual data refs for backward compatibility or other uses
       setWaveform0Data(waveformData); // This updates state, causing re-renders if used in JSX
@@ -186,7 +188,9 @@ function VisualizationCanvas({
       if (p5InstanceRef.current) {
         p5InstanceRef.current.combinedData = data; // Full data
         p5InstanceRef.current.waveform0 = waveformData;
+        p5InstanceRef.current.waveform1 = waveformData;
         p5InstanceRef.current.fft0 = fftData;
+        p5InstanceRef.current.fft1 = fftData; 
         p5InstanceRef.current.combinedRMSInput = rmsInput; // Pass new RMS values
         p5InstanceRef.current.combinedRMSOutput = rmsOutput; // Pass new RMS values
       }
@@ -412,8 +416,6 @@ function VisualizationCanvas({
           newP5Instance.tunerData = tunerDataRef.current;
           newP5Instance.customMessage = oscMessageRef.current;
           newP5Instance.combinedData = combinedDataRef.current;
-          newP5Instance.combinedRMSInput = combinedRMSInputRef.current;
-          newP5Instance.combinedRMSOutput = combinedRMSOutputRef.current;
           newP5Instance.params = paramValuesRef.current;
           newP5Instance.webGLCapabilities = webGLCapabilities;
           newP5Instance.isPlatformRaspberryPi = isPlatformRaspberryPi;
@@ -480,8 +482,8 @@ function VisualizationCanvas({
           fftDataType: 'pre-computed magnitudes',
           firstFewFFTValues: fftData.slice(0, 8),
           firstFewWaveformValues: waveformData.slice(0, 8),
-          rmsInput: combinedRMSInputRef.current,
-          rmsOutput: combinedRMSOutputRef.current
+          rmsInput: rmsInputRef.current,
+          rmsOutput: rmsOutputRef.current
         });
       }
 

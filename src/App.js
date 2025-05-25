@@ -189,7 +189,7 @@ function App() {
            if (currentSynth && currentSynth.scFilePath === currentAudioSource && Array.isArray(currentSynth.params)) {
               currentSynth.params.forEach(param => {
                   if (param && typeof param.name === 'string' && param.value !== undefined) {
-                      const scCode = `~${currentSynth.name}.set(\${param.name}, ${param.value});`;
+                      const scCode = `~${currentSynth.name}.set(\\${param.name}, ${param.value});`;
                       electron.ipcRenderer.send('send-to-supercollider', scCode);
                   }
               });
