@@ -166,15 +166,15 @@ function VisualizationCanvas({
   const updateCombinedData = useCallback((event, data) => {
     const rmsMultiplier = 1.0;
     // Ensure data is an array and has the expected new length
-    if (Array.isArray(data) && data.length === 1026) { // Adjusted length
+    if (Array.isArray(data) && data.length === 2050) { // Adjusted length: 1024 (waveform) + 1024 (FFT) + 2 (RMS)
       numUpdates.current++;
-      combinedDataRef.current = data; // Store the full 1026 array
+      combinedDataRef.current = data; // Store the full 2050 array
 
       // Extract waveform, FFT, and new RMS values
-      const waveformData = data.slice(0, 512);
-      const fftData = data.slice(512, 1024);
-      const rmsInput = data[1024] * rmsMultiplier;
-      const rmsOutput = data[1025] * rmsMultiplier;
+      const waveformData = data.slice(0, 1024); // 1024 samples
+      const fftData = data.slice(1024, 2048);    // 1024 samples
+      const rmsInput = data[2048] * rmsMultiplier;
+      const rmsOutput = data[2049] * rmsMultiplier;
 
       combinedRMSInputRef.current = rmsInput;
       combinedRMSOutputRef.current = rmsOutput;
@@ -198,7 +198,7 @@ function VisualizationCanvas({
       }
     } else {
       // Update warning for incorrect data length
-      console.warn('Received invalid combined data (expected 1026 floats):', data);
+      console.warn('Received invalid combined data (expected 2050 floats):', data);
     }
   }, [setWaveform0Data]); // setWaveform0Data is a dependency
 
@@ -316,7 +316,7 @@ function VisualizationCanvas({
           
           if (toy.gl) {
             const gl = toy.gl;
-            const textureWidth = 512; 
+            const textureWidth = 1024; // Increased from 512
             const textureHeight = 2; // Changed to 2 rows for Shadertoy compatibility
 
             const existingTexture = waveformTextureRef.current;
@@ -326,7 +326,7 @@ function VisualizationCanvas({
 
             const newWaveformTexture = gl.createTexture();
             gl.bindTexture(gl.TEXTURE_2D, newWaveformTexture);
-            // Changed to RGBA8 format for 512x2 texture
+            // Changed to RGBA8 format for 1024x2 texture
             gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, textureWidth, textureHeight, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
@@ -334,7 +334,7 @@ function VisualizationCanvas({
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
             
             waveformTextureRef.current = newWaveformTexture;
-            console.log('Created audio texture (RGBA8, 512x2) for Shadertoy compatibility.');
+            console.log('Created audio texture (RGBA8, 1024x2) for Shadertoy compatibility.');
 
             // Add the texture to ShaderToyLite with a specific key
             const waveformTextureKey = 'iChannel0_waveform';
@@ -451,21 +451,21 @@ function VisualizationCanvas({
     if (shaderToyInstanceRef.current && shaderToyInstanceRef.current.gl && waveformTextureRef.current) {
       const gl = shaderToyInstanceRef.current.gl;
       const texture = waveformTextureRef.current;
-      const textureWidth = 512; 
+      const textureWidth = 1024; // Increased from 512
       const textureHeight = 2; // 2 rows: FFT (row 0) and waveform (row 1)
 
-      // Prepare Uint8Array for RGBA texture (512x2x4 = 4096 bytes)
+      // Prepare Uint8Array for RGBA texture (1024x2x4 = 8192 bytes)
       let uint8AudioData = new Uint8Array(textureWidth * textureHeight * 4);
       
       // Use combined data if available, otherwise fall back to individual arrays
       let fftData = [];
       let waveformData = [];
       
-      // Use the full combinedDataRef which might be 1026 long
-      if (combinedDataRef.current.length >= 1024) { 
-        // Waveform and FFT data are always in the first 1024 elements
-        waveformData = combinedDataRef.current.slice(0, 512);
-        fftData = combinedDataRef.current.slice(512, 1024);
+      // Use the full combinedDataRef which might be 2050 long
+      if (combinedDataRef.current.length >= 2048) { // Check for at least 1024 waveform + 1024 FFT
+        // Waveform and FFT data are always in the first 2048 elements
+        waveformData = combinedDataRef.current.slice(0, 1024);
+        fftData = combinedDataRef.current.slice(1024, 2048);
       } else {
         // Fall back to individual data arrays if combinedData isn't populated yet or is too short
         fftData = fft0DataRef.current.length > 0 ? fft0DataRef.current : [];
@@ -523,7 +523,7 @@ function VisualizationCanvas({
       
       try {
         gl.bindTexture(gl.TEXTURE_2D, texture);
-        // Update the entire 512x2 texture
+        // Update the entire 1024x2 texture
         gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, textureWidth, textureHeight, gl.RGBA, gl.UNSIGNED_BYTE, uint8AudioData);
         gl.bindTexture(gl.TEXTURE_2D, null); 
       } catch (error) {
