@@ -197,8 +197,8 @@ function VisualizationCanvas({
         p5InstanceRef.current.waveform1 = waveformData;
         p5InstanceRef.current.fft0 = fftData;
         p5InstanceRef.current.fft1 = fftData; 
-        p5InstanceRef.current.combinedRMSInput = rmsInput; // Pass new RMS values
-        p5InstanceRef.current.combinedRMSOutput = rmsOutput; // Pass new RMS values
+        p5InstanceRef.current.rmsInput = rmsInput; // Pass new RMS values
+        p5InstanceRef.current.rmsOutput = rmsOutput; // Pass new RMS values
       }
 
       if (shaderToyInstanceRef.current) {
