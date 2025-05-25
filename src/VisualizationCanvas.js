@@ -14,7 +14,8 @@ function VisualizationCanvas({
   currentShaderPath,    // New prop
   currentShaderContent, // New prop
   paramValuesRef, 
-  onEffectLoaded 
+  onEffectLoaded,
+  devMode // <-- New prop for dev mode
 }) {
   const canvasRef = useRef(null);
   const p5InstanceRef = useRef(null);
@@ -39,6 +40,11 @@ function VisualizationCanvas({
   const numUpdates = useRef(0);
 
   const p5InstanceCountRef = useRef(0);
+
+  // FPS Counter state and refs
+  const [fps, setFps] = useState(0);
+  const fpsUpdateIntervalRef = useRef(null);
+  const animationFrameIdRef = useRef(null);
 
   const updateWaveform0Data = useCallback((event, data) => {
     if (Array.isArray(data)) {
@@ -534,6 +540,75 @@ function VisualizationCanvas({
     }
   }, [waveform0Data, combinedDataRef.current]);
 
+  // Effect for FPS calculation
+  useEffect(() => {
+    const cleanupFPS = () => {
+      if (fpsUpdateIntervalRef.current) {
+        clearInterval(fpsUpdateIntervalRef.current);
+        fpsUpdateIntervalRef.current = null;
+      }
+      if (animationFrameIdRef.current) {
+        cancelAnimationFrame(animationFrameIdRef.current);
+        animationFrameIdRef.current = null;
+      }
+      setFps(0);
+    };
+
+    if (!devMode) {
+      cleanupFPS();
+      return;
+    }
+
+    // Check which renderer is active after a brief delay to allow instance refs to be set
+    // This is a bit of a workaround for refs not being direct dependencies.
+    // The main effect for sketch creation already depends on currentVisualContent/currentShaderContent.
+    const timerId = setTimeout(() => {
+        if (p5InstanceRef.current) {
+            console.log("FPS counter: p5 mode enabled");
+            fpsUpdateIntervalRef.current = setInterval(() => {
+              if (p5InstanceRef.current) {
+                setFps(p5InstanceRef.current.frameRate());
+              }
+            }, 500); // Update FPS display twice a second
+        } else if (shaderToyInstanceRef.current) {
+            console.log("FPS counter: ShaderToy mode enabled");
+            let lastFpsCalcTime = performance.now();
+            let frameCountSinceLastCalc = 0;
+    
+            const tick = (currentTime) => {
+              frameCountSinceLastCalc++;
+              const elapsed = currentTime - lastFpsCalcTime;
+    
+              if (elapsed >= 1000) { // Calculate FPS every second
+                const currentFps = (frameCountSinceLastCalc * 1000) / elapsed;
+                setFps(currentFps);
+                frameCountSinceLastCalc = 0;
+                lastFpsCalcTime = currentTime;
+              }
+              
+              // Continue the loop ONLY if shaderToy is still the active one and devMode is on
+              if (shaderToyInstanceRef.current && devMode) {
+                 animationFrameIdRef.current = requestAnimationFrame(tick);
+              } else {
+                if (animationFrameIdRef.current) {
+                    cancelAnimationFrame(animationFrameIdRef.current);
+                    animationFrameIdRef.current = null;
+                }
+                setFps(0); 
+              }
+            };
+            animationFrameIdRef.current = requestAnimationFrame(tick);
+        } else {
+            cleanupFPS(); // No active renderer
+        }
+    }, 100); // Small delay
+
+    return () => {
+        clearTimeout(timerId); // Clear the timeout on cleanup
+        cleanupFPS();
+    };
+  }, [devMode, currentVisualContent, currentShaderContent]);
+
   // The main canvas element. Ensure it has an ID for ShaderToyLite if needed, 
   // or ShaderToyLite might need to be modified to accept the element directly.
   // Assigning an ID directly here if it doesn't have one.
@@ -562,7 +637,25 @@ function VisualizationCanvas({
         // The id will be set on this div, ShaderToyLite/p5 might need adjustment
         // if they expect the ID on the canvas element itself.
         id="visualization-container" 
-    />
+    >
+        {devMode && (
+          <div style={{
+            position: 'absolute',
+            bottom: '10px',
+            left: '10px',
+            color: 'white',
+            backgroundColor: 'rgba(0,0,0,0.7)',
+            padding: '5px 10px',
+            zIndex: 10000, // Ensure it's on top of everything
+            fontSize: '12px',
+            fontFamily: 'monospace',
+            borderRadius: '3px',
+            pointerEvents: 'none' // So it doesn't interfere with canvas interactions
+          }}>
+            FPS: {fps.toFixed(1)}
+          </div>
+        )}
+    </div>
   );
 }
 

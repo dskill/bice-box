@@ -92,16 +92,20 @@ function VisualizationMode({
         currentShaderContent={currentShaderContent}
         paramValuesRef={paramValuesRef} 
         onEffectLoaded={handleEffectLoaded}
+        devMode={devMode}
       />
-      <div className="visualization-controls">
-        <div className="knobs-container">
-          {currentAudioParams && currentAudioParams.map((param, index) => (
-            <ParamFader
-              key={`${currentAudioSourcePath}-${param.name}`}
-              param={{ ...param, index }}
-              onParamChange={handleParamChange}
-            />
-          ))}
+      {isLoadingEffect && <div className="loading-overlay">Loading Effect...</div>}
+      <div className="effect-nav-buttons-container">
+        <div className="visualization-controls">
+          <div className="knobs-container">
+            {currentAudioParams && currentAudioParams.map((param, index) => (
+              <ParamFader
+                key={`${currentAudioSourcePath}-${param.name}`}
+                param={{ ...param, index }}
+                onParamChange={handleParamChange}
+              />
+            ))}
+          </div>
         </div>
       </div>
     </div>
