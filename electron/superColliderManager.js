@@ -182,8 +182,16 @@ function initializeSuperCollider(mainWindow, getEffectsRepoPath, loadEffectsCall
 
     sclang.stdout.on('data', (data) => {
         const output = data.toString();
-        console.log(`SC stdout: ${output.trim()}`);
-        mainWindow.webContents.send('sclang-output', output);
+        const trimmedOutput = output.trim();
+
+        // Filter out param changes
+        const isParamChange = trimmedOutput.startsWith('-> Synth(') ||
+                              trimmedOutput === 'sc3>';
+
+        if (!isParamChange) {
+            console.log(`SC stdout: ${trimmedOutput}`);
+            mainWindow.webContents.send('sclang-output', output); // Send original output if not noisy
+        }
 
         if (output.includes('Server booted successfully.')) {
             console.log('SuperCollider server is running');
