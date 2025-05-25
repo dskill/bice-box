@@ -613,9 +613,9 @@ function VisualizationCanvas({
   // or ShaderToyLite might need to be modified to accept the element directly.
   // Assigning an ID directly here if it doesn't have one.
   useEffect(() => {
-    if (canvasRef.current && !canvasRef.current.id) {
+    // if (canvasRef.current && !canvasRef.current.id) { // canvasRef is the container for p5/shader
         // canvasRef.current.id = 'bice-box-shader-canvas'; // Moved id assignment into loadAndCreateSketch
-    }
+    // }
   }, []);
 
   if (errorRef.current) {
@@ -624,37 +624,40 @@ function VisualizationCanvas({
 
   // Revert to using a div as the main ref container
   return (
-    <div 
-        ref={canvasRef} 
-        style={{ 
-            position: 'fixed', 
-            top: 0, 
-            left: 0, 
-            width: '100%', 
-            height: '100%', 
-            backgroundColor: 'black' // Ensure background is black for visual consistency
-        }} 
-        // The id will be set on this div, ShaderToyLite/p5 might need adjustment
-        // if they expect the ID on the canvas element itself.
-        id="visualization-container" 
-    >
-        {devMode && (
-          <div style={{
-            position: 'absolute',
-            bottom: '10px',
-            left: '10px',
-            color: 'white',
-            backgroundColor: 'rgba(0,0,0,0.7)',
-            padding: '5px 10px',
-            zIndex: 10000, // Ensure it's on top of everything
-            fontSize: '12px',
-            fontFamily: 'monospace',
-            borderRadius: '3px',
-            pointerEvents: 'none' // So it doesn't interfere with canvas interactions
-          }}>
-            FPS: {fps.toFixed(1)}
-          </div>
-        )}
+    <div style={{ // New outer wrapper
+      position: 'fixed', 
+      top: 0, 
+      left: 0, 
+      width: '100%', 
+      height: '100%', 
+      backgroundColor: 'black' 
+    }}>
+      <div 
+          ref={canvasRef} // This ref points to the container for p5/ShaderToy sketches
+          style={{ 
+              width: '100%', 
+              height: '100%', 
+              // backgroundColor: 'black' // Moved to outer container
+          }} 
+          id="visualization-container" // This ID might be used by p5/ShaderToy logic or styles
+      />
+      {devMode && (
+        <div style={{
+          position: 'absolute',
+          bottom: '10px', // User preference from attached diff
+          left: '10px',
+          color: 'white',
+          backgroundColor: 'rgba(0,0,0,0.7)',
+          padding: '5px 10px',
+          zIndex: 10000, 
+          fontSize: '12px', // User preference from attached diff
+          fontFamily: 'monospace',
+          borderRadius: '3px',
+          pointerEvents: 'none'
+        }}>
+          FPS: {fps.toFixed(1)}
+        </div>
+      )}
     </div>
   );
 }
