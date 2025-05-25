@@ -26,7 +26,7 @@ function EffectSelectScreen({
 
   const getPathForItem = (item) => {
     if (type === 'audio') return item.scFilePath;
-    if (type === 'visual') return item.p5SketchPath;
+    if (type === 'visual') return item.path;
     if (type === 'preset') return item.name; // Use name as identifier for presets
     return null; // Should not happen
   };
@@ -43,7 +43,7 @@ function EffectSelectScreen({
             <div className="effect-tile-wrapper" key={type === 'preset' ? item.name : itemPath}> 
               <button
                 className={`effect-tile ${isActive ? 'active' : ''}`}
-                onClick={() => onSelect(itemPath)} // Pass the path or name to onSelect
+                onClick={() => onSelect(type === 'visual' ? item : itemPath)}
                 disabled={!itemPath} // Disable if path is missing (shouldn't happen with derived lists)
               >
                 {/* Display the name from the item */}

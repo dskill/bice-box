@@ -1263,33 +1263,55 @@ ipcMain.on('toggle-dev-mode', (event) => {
 
 // --- Function to Scan for Visualizers ---
 function getAvailableVisualizers(effectsRepoPath) {
-  const visualsDir = path.join(effectsRepoPath, 'visual');
-  console.log(`Scanning for visualizers in: ${visualsDir}`);
+  const visualizers = [];
+  const p5VisualsDir = path.join(effectsRepoPath, 'visual');
+  const shaderVisualsDir = path.join(effectsRepoPath, 'shaders'); // Added shaders
+
+  console.log(`Scanning for P5 visualizers in: ${p5VisualsDir}`);
   try {
-    if (!fs.existsSync(visualsDir)) {
-      console.warn(`Visuals directory not found: ${visualsDir}`);
-      return [];
+    if (fs.existsSync(p5VisualsDir)) {
+      const files = fs.readdirSync(p5VisualsDir);
+      files
+        .filter(file => path.extname(file).toLowerCase() === '.js')
+        .forEach(file => {
+          const name = path.basename(file, '.js').replace(/_/g, ' ');
+          visualizers.push({
+            name: name,
+            type: 'p5', // Added type
+            path: path.join('visual', file) // Kept original path structure for p5
+          });
+        });
+    } else {
+      console.warn(`P5 Visuals directory not found: ${p5VisualsDir}`);
     }
-    const files = fs.readdirSync(visualsDir);
-    const visualizers = files
-      .filter(file => path.extname(file).toLowerCase() === '.js')
-      .map(file => {
-        const name = path.basename(file, '.js').replace(/_/g, ' ');
-        // Capitalize first letter of each word (optional)
-        // const prettyName = name.replace(/\b\w/g, l => l.toUpperCase());
-        return {
-          name: name, // Use the cleaned-up name
-          p5SketchPath: path.join('visual', file) // Path relative to effects repo root
-        };
-      })
-      .sort((a, b) => a.name.localeCompare(b.name)); // Sort alphabetically
-      
-    console.log(`Found ${visualizers.length} visualizers:`, visualizers.map(v => v.name));
-    return visualizers;
   } catch (error) {
-    console.error(`Error scanning visualizers directory ${visualsDir}:`, error);
-    return []; // Return empty list on error
+    console.error(`Error scanning P5 visualizers directory ${p5VisualsDir}:`, error);
   }
+
+  console.log(`Scanning for Shader visualizers in: ${shaderVisualsDir}`);
+  try {
+    if (fs.existsSync(shaderVisualsDir)) {
+      const files = fs.readdirSync(shaderVisualsDir);
+      files
+        .filter(file => path.extname(file).toLowerCase() === '.glsl') // Check for .glsl
+        .forEach(file => {
+          const name = path.basename(file, '.glsl').replace(/_/g, ' ');
+          visualizers.push({
+            name: name,
+            type: 'shader', // Added type
+            path: path.join('shaders', file) // Path relative to effects repo root
+          });
+        });
+    } else {
+      console.warn(`Shader Visuals directory not found: ${shaderVisualsDir}`);
+    }
+  } catch (error) {
+    console.error(`Error scanning Shader visualizers directory ${shaderVisualsDir}:`, error);
+  }
+
+  visualizers.sort((a, b) => a.name.localeCompare(b.name)); // Sort alphabetically
+  console.log(`Found ${visualizers.length} total visualizers (P5 and Shaders):`, visualizers.map(v => `${v.name} (${v.type})`));
+  return visualizers;
 }
 
 // --- IPC Handlers ---
@@ -1298,6 +1320,24 @@ function getAvailableVisualizers(effectsRepoPath) {
 ipcMain.handle('get-visualizers', async (event) => {
   const effectsRepoPath = getEffectsRepoPath();
   return getAvailableVisualizers(effectsRepoPath);
+});
+
+// Add this IPC handler for loading shader content
+ipcMain.handle('load-shader-content', async (event, shaderPath) => {
+  try {
+    const effectsRepoPath = getEffectsRepoPath();
+    const fullPath = path.join(effectsRepoPath, shaderPath); // shaderPath is relative
+
+    if (!fs.existsSync(fullPath)) {
+      console.error(`Shader file not found: ${fullPath}`);
+      throw new Error(`Shader file not found: ${shaderPath}`);
+    }
+    const content = fs.readFileSync(fullPath, 'utf-8');
+    return content;
+  } catch (error) {
+    console.error(`Error loading shader content for ${shaderPath}:`, error);
+    throw error; // Propagate error to renderer
+  }
 });
 
 ipcMain.on('get-specific-effect', (event, effectName) => {

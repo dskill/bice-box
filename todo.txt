@@ -1,9 +1,0 @@
-
-//lower pri
-- fix electron reloader
-- DOCUMENTATION of 3 repos and how they all work together
-- Document how to image SD cards
-- capture cad drawing
-- lots of code refactoring for clarity/simplicity
-
--this uses super collider, so we need to add the right license file before any distribution

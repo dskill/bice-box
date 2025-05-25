@@ -365,7 +365,7 @@ function App() {
       setCurrentVisualSource(null); // Clear p5 visual path
       setCurrentVisualContent('');    // Clear p5 visual content
       // Inform main process that p5 is not the active visual for hot-reloading purposes
-      if (electron) electron.ipcRenderer.send('set-current-visual-source', null); 
+      if (electron) electron.ipcRenderer.send('set-current-visual-source', selectedPreset.shaderPath); 
     } else if (selectedPreset.p5SketchPath) {
       console.log(`Preset ${presetName} uses p5 sketch: ${selectedPreset.p5SketchPath}`);
       setCurrentVisualSource(selectedPreset.p5SketchPath);
@@ -413,26 +413,52 @@ function App() {
     setShowAudioSelector(false);
   };
 
-  const handleVisualSelect = async (p5SketchPath) => {
-    if (!p5SketchPath) {
-      console.log('Visual selection cancelled or invalid path');
+  const handleVisualSelect = async (selectedVisual) => { // Expects the full visual object
+    if (!selectedVisual || !selectedVisual.path || !selectedVisual.type) {
+      console.log('Visual selection cancelled or invalid item');
       setShowVisualSelector(false);
       return;
     }
-    console.log(`Selecting visual source: ${p5SketchPath}`);
-    setCurrentVisualSource(p5SketchPath);
-    if (electron) electron.ipcRenderer.send('set-current-visual-source', p5SketchPath); // Inform main process
-    try {
-      if (electron) {
-        console.log(`Loading visual content for: ${p5SketchPath}`);
-        const sketchContent = await electron.ipcRenderer.invoke('load-p5-sketch', p5SketchPath);
-        setCurrentVisualContent(sketchContent);
-        console.log(`Visual content loaded successfully.`);
+
+    const { path: visualPath, type: visualType } = selectedVisual;
+    console.log(`Selecting visual source: ${visualPath} (type: ${visualType})`);
+
+    if (electron) {
+      try {
+        if (visualType === 'p5') {
+          console.log(`Loading p5 sketch content for: ${visualPath}`);
+          const sketchContent = await electron.ipcRenderer.invoke('load-p5-sketch', visualPath);
+          setCurrentVisualSource(visualPath);
+          setCurrentVisualContent(sketchContent);
+          setCurrentShaderPath(null); // Clear shader if p5 is selected
+          setCurrentShaderContent('');
+          electron.ipcRenderer.send('set-current-visual-source', visualPath); // For hot-reloading p5
+          console.log(`P5 sketch content loaded successfully.`);
+        } else if (visualType === 'shader') {
+          console.log(`Loading shader content for: ${visualPath}`);
+          const shaderContent = await electron.ipcRenderer.invoke('load-shader-content', visualPath);
+          setCurrentShaderPath(visualPath);
+          setCurrentShaderContent(shaderContent);
+          setCurrentVisualSource(null); // Clear p5 if shader is selected
+          setCurrentVisualContent('');
+          electron.ipcRenderer.send('set-current-visual-source', visualPath); // For hot-reloading shader
+          console.log(`Shader content loaded successfully.`);
+        } else {
+          console.warn(`Unknown visual type: ${visualType}`);
+          setError(`Unknown visual type: ${visualType}`);
+        }
+      } catch (error) {
+        console.error(`Error loading selected ${visualType} visual:`, error);
+        // Clear relevant visual state on error
+        if (visualType === 'p5') {
+          setCurrentVisualSource(null);
+          setCurrentVisualContent('');
+        } else if (visualType === 'shader') {
+          setCurrentShaderPath(null);
+          setCurrentShaderContent('');
+        }
+        setError(`Failed to load visual: ${error.message}`);
       }
-    } catch (error) {
-      console.error('Error loading selected p5 sketch:', error);
-      setCurrentVisualContent(''); // Clear visual on error
-      setError(`Failed to load visual: ${error.message}`);
     }
     setShowVisualSelector(false);
   };
