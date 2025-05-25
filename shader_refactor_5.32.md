@@ -7,14 +7,14 @@ This document outlines a plan to restructure shader file management within the B
 The new structure will involve three main components for each shader:
 
 1.  **Effect JSON (`effects/effect_name.json`):**
-    *   Currently, this file might directly link to a `.glsl` file (e.g., `"shader": "shaders/test.glsl"`).
+    *   Currently, this file might directly link to a `.glsl` file (e.g., `"shader": "shaders/oscilloscope.glsl"`).
     *   This will be changed to link to a new shader metadata file.
     *   Example: `"shaderMetaPath": "shaders/test_shader_meta.json"`
 
 2.  **Shader Metadata JSON (`shaders/shader_name_meta.json`):**
     *   This new file type will reside in the `bice-box-effects/shaders/` directory.
     *   It will contain:
-        *   A reference to the actual GLSL code file (e.g., `"glslFile": "test.glsl"` - path relative to the `shaders` directory or the metadata file itself).
+        *   A reference to the actual GLSL code file (e.g., `"glslFile": "oscilloscope.glsl"` - path relative to the `shaders` directory or the metadata file itself).
         *   Descriptive metadata: shader name, author, description.
         *   Definitions for shader-specific uniforms (parameters): including name, GLSL type, default value, range (min/max), and potentially UI hints (e.g., "slider", "colorpicker").
         *   Future extensibility points: definitions for multiple render passes, target render resolution scaling, input texture bindings, etc.
@@ -144,7 +144,7 @@ The new structure will involve three main components for each shader:
 1.  **Update `crackle_reverb.json`:**
     *   Change its `shader` field to `shaderMetaPath`.
     *   Create `bice-box-effects/shaders/test_shader_meta.json` (or a more descriptively named file like `oscilloscope_shader_meta.json`).
-    *   Populate this metadata file with details for `test.glsl`.
+    *   Populate this metadata file with details for `oscilloscope.glsl`.
 2.  **Implement Core Logic Changes:**
     *   Modify `superColliderManager.js` (`loadEffectFromFile`).
     *   Modify `electron/main.js` (hot reloading, IPC messages, `set-current-effect` logic).
