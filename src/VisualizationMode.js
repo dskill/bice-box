@@ -16,6 +16,7 @@ function VisualizationMode({
   onOpenPresetSelect,
   reloadEffectList, 
   pullEffectsRepo, 
+  hardReloadCurrentEffect,
   effectsRepoStatus, 
   onCheckEffectsRepo,
   devMode
@@ -52,6 +53,7 @@ function VisualizationMode({
           <EffectManagement 
             reloadEffectList={reloadEffectList} 
             pullEffectsRepo={pullEffectsRepo}
+            hardReloadCurrentEffect={hardReloadCurrentEffect}
             effectsRepoStatus={effectsRepoStatus}
             onCheckEffectsRepo={onCheckEffectsRepo}
           />

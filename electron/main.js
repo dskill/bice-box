@@ -37,6 +37,7 @@ const {
   loadEffectsList,
   loadP5SketchSync,
   loadScFile,
+  loadEffectFromFile,
 } = require('./superColliderManager');
 const generativeEffectManager = require('./generativeEffectManager');
 const wifi = require('node-wifi');
@@ -1297,4 +1298,62 @@ function getAvailableVisualizers(effectsRepoPath) {
 ipcMain.handle('get-visualizers', async (event) => {
   const effectsRepoPath = getEffectsRepoPath();
   return getAvailableVisualizers(effectsRepoPath);
+});
+
+ipcMain.on('get-specific-effect', (event, effectName) => {
+  console.log(`IPC: Received get-specific-effect for: ${effectName}`);
+  try {
+    const effectsPath = getEffectsPath(); // ~/bice-box-effects/effects
+    
+    // Transform the effectName to match typical file naming conventions (lowercase, underscore for spaces)
+    const expectedJsonFileName = effectName.toLowerCase().replace(/ /g, '_') + '.json';
+    const effectJsonPath = path.join(effectsPath, expectedJsonFileName);
+
+    console.log(`Attempting to load effect from: ${effectJsonPath}`); // Log the path being attempted
+
+    if (!fs.existsSync(effectJsonPath)) {
+      console.error(`Effect JSON file not found: ${effectJsonPath}. Original name: "${effectName}"`);
+      event.reply('specific-effect-data', { error: `Effect JSON not found at ${effectJsonPath}`, name: effectName });
+      return;
+    }
+
+    const freshlyLoadedEffect = loadEffectFromFile(effectJsonPath, getEffectsRepoPath);
+
+    if (freshlyLoadedEffect) {
+      // Update the effect in the main synths array
+      const effectIndex = synths.findIndex(synth => synth.name === effectName);
+      if (effectIndex !== -1) {
+        synths[effectIndex] = freshlyLoadedEffect;
+        console.log(`Updated effect ${effectName} in main synths array.`);
+
+        // If the reloaded effect is the currently active one, update its SC file etc.
+        const currentActiveEffect = getCurrentEffect();
+        if (currentActiveEffect && currentActiveEffect.name === effectName) {
+            setCurrentEffect(freshlyLoadedEffect); // Update currentEffect in superColliderManager
+             if (freshlyLoadedEffect.scFilePath) {
+                loadScFile(freshlyLoadedEffect.scFilePath, getEffectsRepoPath, mainWindow);
+            }
+        }
+        
+        // Notify renderer process about the updated effect (optional, but good for consistency)
+        // This uses the existing 'effect-updated' channel which App.js listens to.
+        if (mainWindow && mainWindow.webContents) {
+          mainWindow.webContents.send('effect-updated', freshlyLoadedEffect);
+        }
+
+      } else {
+        // This case should ideally not happen if the effect was in the list before.
+        // If it's a brand new effect that wasn't in the list, 'Reload All Effects' is more appropriate.
+        console.warn(`Effect ${effectName} was not found in the existing synths array. Adding it.`);
+        synths.push(freshlyLoadedEffect);
+         // Potentially send 'effects-updated' with the full list or handle as a new effect.
+      }
+      event.reply('specific-effect-data', freshlyLoadedEffect);
+    } else {
+      throw new Error('Failed to load effect data.');
+    }
+  } catch (error) {
+    console.error(`Error reloading specific effect ${effectName}:`, error);
+    event.reply('specific-effect-data', { error: error.message, name: effectName });
+  }
 });

@@ -8,7 +8,7 @@ import ReactDOM from 'react-dom';
 
 const electron = window.electron;
 
-function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, switchSynth, effectsRepoStatus, onCheckEffectsRepo })
+function EffectManagement({ reloadEffectList, pullEffectsRepo, hardReloadCurrentEffect, currentSynth, switchSynth, effectsRepoStatus, onCheckEffectsRepo })
 {
     const [inputAudioDevices, setInputAudioDevices] = useState([]);
     const [outputAudioDevices, setOutputAudioDevices] = useState([]);
@@ -322,14 +322,13 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
             });
     };
 
-    const handleReloadCurrentEffect = () =>
-    {
-        if (currentSynth && currentSynth.name)
-        {
-            switchSynth(currentSynth.name);
-        } else
-        {
-            setErrorMessage('No current effect selected to reload');
+    const triggerHardReloadCurrentEffect = () => {
+        if (hardReloadCurrentEffect) {
+            hardReloadCurrentEffect()
+                .then(() => console.log('Current effect hard reloaded successfully.'))
+                .catch(err => setErrorMessage(err.message || 'Failed to hard reload current effect.'));
+        } else {
+            setErrorMessage('Hard reload functionality not available.');
         }
     };
 
@@ -545,7 +544,7 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
                     {devMode && (
                         <>
                             <Button label={"Reload All Effects"} onClick={reloadEffectList} />
-                            <Button label={"Reload Current Effect"} onClick={handleReloadCurrentEffect} />
+                            <Button label={"Reload Current Effect"} onClick={triggerHardReloadCurrentEffect} />
                             <Button label={"Reboot Server"} onClick={rebootServer} />
                         </>
                     )}

@@ -439,25 +439,93 @@ function App() {
 
   const pullEffectsRepo = () => {
     return new Promise((resolve, reject) => {
-      console.log('Update Effects button clicked');
-      if (electron && electron.ipcRenderer) {
-        console.log('Sending pull-effects-repo message to main process');
+      if (electron) {
         electron.ipcRenderer.send('pull-effects-repo');
-        
-        electron.ipcRenderer.once('pull-effects-repo-success', () => {
-          console.log('Effects repo pulled successfully');
+        electron.ipcRenderer.once('pull-effects-repo-success', (event, message) => {
+          console.log('Effects repo pulled successfully:', message);
+          // After successful pull, reload the effects list
           reloadEffectList()
-            .then(() => resolve())
-            .catch(error => reject(error));
+            .then(resolve)
+            .catch(reject);
         });
-
-        electron.ipcRenderer.once('pull-effects-repo-error', (event, errorMessage) => {
-          console.error('Error pulling effects repo from main:', errorMessage); 
-          reject(new Error(errorMessage));
+        electron.ipcRenderer.once('pull-effects-repo-error', (event, error) => {
+          console.error('Error pulling effects repo:', error);
+          setError(`Failed to pull effects repo: ${error}`); 
+          reject(new Error(error));
         });
       } else {
-        console.error('ipcRenderer is not available');
-        reject(new Error('ipcRenderer is not available'));
+        console.warn('Electron is not available for pullEffectsRepo');
+        reject(new Error("Electron not available"));
+      }
+    });
+  };
+
+  const hardReloadCurrentEffect = () => {
+    if (!currentSynth || !currentSynth.name) {
+      console.warn('No current synth selected to hard reload.');
+      return Promise.reject(new Error('No current synth to reload'));
+    }
+    const effectName = currentSynth.name;
+    console.log(`Hard reloading current effect: ${effectName}`);
+    return new Promise((resolve, reject) => {
+      if (electron) {
+        electron.ipcRenderer.send('get-specific-effect', effectName);
+        electron.ipcRenderer.once('specific-effect-data', (event, updatedEffect) => {
+          if (updatedEffect && updatedEffect.error) {
+            console.error(`Error reloading specific effect ${effectName}:`, updatedEffect.error);
+            setError(`Failed to reload ${effectName}: ${updatedEffect.error}`);
+            reject(new Error(updatedEffect.error));
+            return;
+          }
+          if (updatedEffect && updatedEffect.name) {
+            console.log('Received updated specific effect data:', updatedEffect);
+            // Update the main synths list
+            setSynths(prevSynths => 
+              prevSynths.map(s => s.name === updatedEffect.name ? updatedEffect : s)
+            );
+            // Update the current synth and its associated states
+            setCurrentSynth(updatedEffect);
+            setCurrentAudioSource(updatedEffect.scFilePath);
+            if (updatedEffect.shaderPath && updatedEffect.shaderContent) {
+              setCurrentShaderPath(updatedEffect.shaderPath);
+              setCurrentShaderContent(updatedEffect.shaderContent);
+              setCurrentVisualSource(null);
+              setCurrentVisualContent('');
+            } else if (updatedEffect.p5SketchPath) {
+              setCurrentVisualSource(updatedEffect.p5SketchPath);
+              setCurrentVisualContent(updatedEffect.p5SketchContent || '');
+              setCurrentShaderPath(null);
+              setCurrentShaderContent('');
+            } else {
+              setCurrentVisualSource(null);
+              setCurrentVisualContent('');
+              setCurrentShaderPath(null);
+              setCurrentShaderContent('');
+            }
+            setCurrentAudioParams(updatedEffect.params || []);
+            
+            // Inform main process of the reloaded current effect (if necessary, already handled by get-specific-effect handler)
+            // electron.ipcRenderer.send('set-current-effect', updatedEffect.name); 
+            // SC file is reloaded by main process if it's the active one
+
+            console.log("Hard reload complete for:", updatedEffect.name);
+            resolve(updatedEffect);
+          } else {
+            const errorMessage = "Received invalid or empty data for specific effect reload";
+            console.warn(errorMessage, updatedEffect);
+            setError(errorMessage);
+            reject(new Error(errorMessage));
+          }
+        });
+        // Add a timeout
+        const timeoutId = setTimeout(() => {
+          reject(new Error(`Timeout waiting for specific-effect-data for ${effectName}`))
+        }, 5000);
+        electron.ipcRenderer.once('specific-effect-data', () => clearTimeout(timeoutId)); // Clear timeout on reply
+
+      } else {
+        console.warn('Electron is not available for hardReloadCurrentEffect');
+        reject(new Error("Electron not available"));
       }
     });
   };
@@ -625,6 +693,7 @@ function App() {
         // previousSynth={previousSynth}
         reloadEffectList={reloadEffectList}
         pullEffectsRepo={pullEffectsRepo}
+        hardReloadCurrentEffect={hardReloadCurrentEffect} // Pass down the new function
         // Pass handlers to open selectors
         onOpenPresetSelect={openPresetSelect}
         onOpenAudioSelect={openAudioSelect} 
