@@ -181,9 +181,11 @@ function initializeSuperCollider(mainWindow, getEffectsRepoPath, loadEffectsCall
     }
 
     sclang.stdout.on('data', (data) => {
-        mainWindow.webContents.send('sclang-output', data.toString());
+        const output = data.toString();
+        console.log(`SC stdout: ${output.trim()}`);
+        mainWindow.webContents.send('sclang-output', output);
 
-        if (data.toString().includes('Server booted successfully.')) {
+        if (output.includes('Server booted successfully.')) {
             console.log('SuperCollider server is running');
             if (!serverBooted) {
                 serverBooted = true; // Set the flag to prevent multiple notifications
@@ -195,8 +197,9 @@ function initializeSuperCollider(mainWindow, getEffectsRepoPath, loadEffectsCall
     });
 
     sclang.stderr.on('data', (data) => {
-        console.error(`SC stderr: ${data}`);
-        mainWindow.webContents.send('sclang-error', data.toString());
+        const errorOutput = data.toString();
+        console.error(`SC stderr: ${errorOutput.trim()}`);
+        mainWindow.webContents.send('sclang-error', errorOutput);
     });
 
     sclang.on('close', (code) => {
