@@ -137,7 +137,8 @@ function VisualizationCanvas({
       console.log('Cleaning up ShaderToyLite instance');
       shaderToyInstanceRef.current.pause(); 
 
-      // Clean up waveform texture
+      // Clean up waveform texture - NO LONGER NEEDED HERE, ShaderToyLite manages its iAudioTexture
+      /*
       if (waveformTextureRef.current && shaderToyInstanceRef.current.gl) {
         try {
           const gl = shaderToyInstanceRef.current.gl;
@@ -148,6 +149,7 @@ function VisualizationCanvas({
         }
         waveformTextureRef.current = null;
       }
+      */
       
       // ShaderToyLite.js doesn't have an explicit destroy method in its README.
       // We rely on losing WebGL context and nullifying refs for cleanup.
@@ -325,42 +327,79 @@ function VisualizationCanvas({
           const toy = new window.ShaderToyLite(shaderCanvas.id); // Use ID of the new canvas
           
           if (toy.gl) {
-            const gl = toy.gl;
-            const textureWidth = 1024; // Increased from 512
-            const textureHeight = 2; // Changed to 2 rows for Shadertoy compatibility
+            // const gl = toy.gl; // gl is available on toy.gl directly
+            // The iAudioTexture is now created and managed internally by ShaderToyLite.js
+            // No need to create or add it here.
 
-            const existingTexture = waveformTextureRef.current;
-            if (existingTexture) {
-                gl.deleteTexture(existingTexture);
+            // Set the main image shader (single pass) or the image pass of a multi-pass shader.
+            // iAudioTexture is globally available to all shaders within ShaderToyLite.
+            if (typeof currentShaderContent === 'string') { // Single GLSL file
+                toy.setImage({
+                    source: currentShaderContent
+                    // No iChannel0 mapping for audio needed here, iAudioTexture is global
+                });
+                console.log(`setImage called for single pass shader.`);
+            } else if (typeof currentShaderContent === 'object' && currentShaderContent !== null) { // Multi-pass config
+                // Set common functions if available
+                if (currentShaderContent.common) {
+                    toy.setCommon(currentShaderContent.common);
+                    console.log('Set common shader functions');
+                }
+                
+                // Set buffer passes with self-referencing
+                if (currentShaderContent.bufferA) {
+                    console.log('BufferA source code:', currentShaderContent.bufferA.substring(0, 100) + '...');
+                    const bufferAConfig = { 
+                        source: currentShaderContent.bufferA
+                        // Remove iChannel0 mapping for now to test
+                    };
+                    console.log('Calling toy.setBufferA with config:', bufferAConfig);
+                    toy.setBufferA(bufferAConfig);
+                    console.log('Set BufferA pass (no channels) - completed');
+                } else {
+                    console.log('No BufferA content found in currentShaderContent');
+                }
+                if (currentShaderContent.bufferB) {
+                    toy.setBufferB({ 
+                        source: currentShaderContent.bufferB, 
+                        iChannel0: "self" // BufferB references its own previous frame
+                    });
+                    console.log('Set BufferB pass');
+                }
+                if (currentShaderContent.bufferC) {
+                    toy.setBufferC({ 
+                        source: currentShaderContent.bufferC, 
+                        iChannel0: "self" // BufferC references its own previous frame
+                    });
+                    console.log('Set BufferC pass');
+                }
+                if (currentShaderContent.bufferD) {
+                    toy.setBufferD({ 
+                        source: currentShaderContent.bufferD, 
+                        iChannel0: "self" // BufferD references its own previous frame
+                    });
+                    console.log('Set BufferD pass');
+                }
+                
+                // Set image pass with automatic channel mapping to available buffers
+                if (currentShaderContent.image) {
+                    const imageConfig = { source: currentShaderContent.image };
+                    
+                    // Auto-map channels to available buffers (ShaderToy convention)
+                    // Use single letters as expected by ShaderToyLite.js
+                    if (currentShaderContent.bufferA) imageConfig.iChannel0 = "A";
+                    if (currentShaderContent.bufferB) imageConfig.iChannel1 = "B";
+                    if (currentShaderContent.bufferC) imageConfig.iChannel2 = "C";
+                    if (currentShaderContent.bufferD) imageConfig.iChannel3 = "D";
+                    
+                    toy.setImage(imageConfig);
+                    console.log('Set Image pass with channels:', Object.keys(imageConfig).filter(k => k.startsWith('iChannel')));
+                }
+                
+                console.log(`ShaderToyLite configured for multi-pass shader with passes: ${Object.keys(currentShaderContent).join(', ')}`);
             }
-
-            const newWaveformTexture = gl.createTexture();
-            gl.bindTexture(gl.TEXTURE_2D, newWaveformTexture);
-            // Changed to RGBA8 format for 1024x2 texture
-            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, textureWidth, textureHeight, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-            
-            waveformTextureRef.current = newWaveformTexture;
-            console.log('Created audio texture (RGBA8, 1024x2) for Shadertoy compatibility.');
-
-            // Add the texture to ShaderToyLite with a specific key
-            const waveformTextureKey = 'iChannel0_waveform';
-            toy.addTexture(waveformTextureRef.current, waveformTextureKey);
-            console.log(`Added waveform texture to ShaderToyLite with key: ${waveformTextureKey}`);
-
-            // Set the main image shader and link iChannel0 to our texture's key
-            toy.setImage({
-                source: currentShaderContent,
-                iChannel0: waveformTextureKey 
-            });
-            console.log(`setImage called, iChannel0 configured with key: ${waveformTextureKey}`);
-            
-            gl.bindTexture(gl.TEXTURE_2D, null); // Unbind texture after setup
           } else {
-            console.error("ShaderToyLite GL context not available for texture creation.");
+            console.error("ShaderToyLite GL context not available after instantiation.");
           }
           
           toy.play();
@@ -456,10 +495,10 @@ function VisualizationCanvas({
 
   // Effect to update audio texture when combined data or waveform data changes
   useEffect(() => {
-    if (shaderToyInstanceRef.current && shaderToyInstanceRef.current.gl && waveformTextureRef.current) {
-      const gl = shaderToyInstanceRef.current.gl;
-      const texture = waveformTextureRef.current;
-      const textureWidth = 1024; // Increased from 512
+    if (shaderToyInstanceRef.current && shaderToyInstanceRef.current.gl) {
+      // const gl = shaderToyInstanceRef.current.gl; // Not needed directly
+      // const texture = waveformTextureRef.current; // REMOVED
+      const textureWidth = 1024; 
       const textureHeight = 2; // 2 rows: FFT (row 0) and waveform (row 1)
 
       // Prepare Uint8Array for RGBA texture (1024x2x4 = 8192 bytes)
@@ -530,10 +569,15 @@ function VisualizationCanvas({
       }
       
       try {
-        gl.bindTexture(gl.TEXTURE_2D, texture);
-        // Update the entire 1024x2 texture
-        gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, textureWidth, textureHeight, gl.RGBA, gl.UNSIGNED_BYTE, uint8AudioData);
-        gl.bindTexture(gl.TEXTURE_2D, null); 
+        // Call the new updateAudioTexture method on ShaderToyLite instance
+        if (shaderToyInstanceRef.current.updateAudioTexture) {
+            shaderToyInstanceRef.current.updateAudioTexture(uint8AudioData, textureWidth, textureHeight);
+        } else {
+            console.warn("shaderToyInstanceRef.current.updateAudioTexture is not defined");
+        }
+        // gl.bindTexture(gl.TEXTURE_2D, texture); // REMOVED
+        // gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, textureWidth, textureHeight, gl.RGBA, gl.UNSIGNED_BYTE, uint8AudioData); // REMOVED
+        // gl.bindTexture(gl.TEXTURE_2D, null); // REMOVED
       } catch (error) {
         console.error('Error updating audio texture:', error);
       }

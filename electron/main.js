@@ -667,62 +667,128 @@ function reloadVisualEffect(jsFilePath)
 function reloadShaderEffect(glslFilePath) {
     console.log(`Reloading shader effect (checking active): ${glslFilePath}`);
     let reloadedViaActive = false;
+    const effectsRepoPath = getEffectsRepoPath();
+    const fullChangedGlslPath = path.join(effectsRepoPath, glslFilePath);
 
-    if (activeVisualSourcePath && activeVisualSourcePath.toLowerCase() === glslFilePath.toLowerCase()) {
-        console.log(`Changed GLSL file ${glslFilePath} matches activeVisualSourcePath. Reloading.`);
-        try {
-            const fullShaderPath = path.join(getEffectsRepoPath(), glslFilePath);
-            const updatedShaderContent = fs.readFileSync(fullShaderPath, 'utf-8');
-            const payload = { // Prepare payload explicitly
-                shaderPath: glslFilePath,
-                shaderContent: updatedShaderContent
-            };
-            if (mainWindow && mainWindow.webContents) {
-                console.log('[Main Process] Sending shader-effect-updated with payload:', JSON.stringify(payload)); // Log the payload
-                mainWindow.webContents.send('shader-effect-updated', payload);
-                console.log(`Sent shader-effect-updated for active shader: ${glslFilePath}`);
-            }
-            reloadedViaActive = true;
-        } catch (error) {
-            console.error(`Failed to read updated GLSL shader for active source: ${glslFilePath}`, error);
+    // Extract potential base name from the changed GLSL file
+    // e.g., "shaders/oscilloscope_bufferA.glsl" -> "oscilloscope"
+    const fileName = path.basename(glslFilePath, '.glsl');
+    const shaderDir = path.dirname(glslFilePath);
+    let potentialBaseName = null;
+    let passType = null;
+    
+    // Check if this is a multi-pass shader file (has underscore suffix)
+    const multiPassSuffixes = ['_common', '_bufferA', '_bufferB', '_bufferC', '_bufferD', '_image'];
+    for (const suffix of multiPassSuffixes) {
+        if (fileName.endsWith(suffix)) {
+            potentialBaseName = fileName.substring(0, fileName.length - suffix.length);
+            passType = suffix.substring(1); // Remove the underscore
+            break;
         }
-    } else {
-        console.log(`Changed GLSL file ${glslFilePath} does not match activeVisualSourcePath (${activeVisualSourcePath || 'None set'}).`);
     }
 
-    // Also, always update the shaderContent in the main synths array for any effect that uses this shader.
-    // This ensures that if the effect is reloaded or switched to later, it gets the updated shader.
-    const affectedEffectInSynths = synths.find(synth => synth.shaderPath && synth.shaderPath.toLowerCase() === glslFilePath.toLowerCase());
-    if (affectedEffectInSynths) {
-        try {
-            const fullShaderPath = path.join(getEffectsRepoPath(), glslFilePath);
-            const updatedShaderContent = fs.readFileSync(fullShaderPath, 'utf-8');
-            affectedEffectInSynths.shaderContent = updatedShaderContent;
-            console.log(`Updated shaderContent in synths array for effect: ${affectedEffectInSynths.name}`);
-
-            // If this shader is part of the *current preset* (even if not the active visual source due to dev override)
-            // and it wasn't reloaded via activeVisualSourcePath, send an update.
-            // This ensures the preset, if re-selected or if it's what's actually driving the view, gets updated.
-            const currentPresetEffect = getCurrentEffect();
-            if (!reloadedViaActive && currentPresetEffect && currentPresetEffect.shaderPath && currentPresetEffect.shaderPath.toLowerCase() === glslFilePath.toLowerCase()) {
-                 const fullShaderPathForPreset = path.join(getEffectsRepoPath(), glslFilePath); // Ensure path is correct
-                 const updatedShaderContentForPreset = fs.readFileSync(fullShaderPathForPreset, 'utf-8'); // Re-read or ensure scope
-                 const presetPayload = { // Prepare payload explicitly
-                    shaderPath: glslFilePath,
-                    shaderContent: updatedShaderContentForPreset
-                 };
-                 if (mainWindow && mainWindow.webContents) {
-                    console.log('[Main Process] Sending shader-effect-updated (for preset) with payload:', JSON.stringify(presetPayload)); // Log the payload
-                    mainWindow.webContents.send('shader-effect-updated', presetPayload);
-                    console.log(`Sent shader-effect-updated for current preset shader: ${glslFilePath}`);
+    // Check if the changed GLSL is the activeVisualSourcePath
+    if (activeVisualSourcePath) {
+        const fullActiveVisualSourcePath = path.join(effectsRepoPath, activeVisualSourcePath);
+        
+        if (activeVisualSourcePath.toLowerCase().endsWith('.glsl') && fullActiveVisualSourcePath.toLowerCase() === fullChangedGlslPath.toLowerCase()) {
+            // Active visual is a single GLSL file, and it's the one that changed.
+            console.log(`Changed GLSL file ${glslFilePath} matches active single-pass visual. Reloading.`);
+            try {
+                const updatedShaderContent = fs.readFileSync(fullChangedGlslPath, 'utf-8');
+                if (mainWindow && mainWindow.webContents) {
+                    mainWindow.webContents.send('shader-effect-updated', {
+                        shaderPath: glslFilePath,
+                        shaderContent: updatedShaderContent
+                    });
+                    console.log(`Sent shader-effect-updated for active single-pass shader: ${glslFilePath}`);
+                }
+                reloadedViaActive = true;
+            } catch (error) {
+                console.error(`Failed to read updated GLSL shader for active source: ${glslFilePath}`, error);
+            }
+        } else if (!activeVisualSourcePath.toLowerCase().endsWith('.glsl') && potentialBaseName) {
+            // Active visual is a multi-pass base name, check if this GLSL file belongs to it
+            const activeBaseName = path.basename(activeVisualSourcePath);
+            if (activeBaseName === potentialBaseName) {
+                console.log(`Changed GLSL file ${glslFilePath} is part of active multi-pass shader ${activeVisualSourcePath} (pass: ${passType}). Reloading.`);
+                try {
+                    // Reload the entire multi-pass shader
+                    const { loadMultiPassShader } = require('./superColliderManager');
+                    const updatedMultiPassConfig = loadMultiPassShader(activeVisualSourcePath, effectsRepoPath);
+                    
+                    if (mainWindow && mainWindow.webContents) {
+                        mainWindow.webContents.send('shader-effect-updated', {
+                            shaderPath: activeVisualSourcePath, // Base name
+                            shaderContent: updatedMultiPassConfig // Entire multi-pass object
+                        });
+                        console.log(`Sent shader-effect-updated for active multi-pass shader: ${activeVisualSourcePath}`);
+                    }
+                    reloadedViaActive = true;
+                } catch (error) {
+                    console.error(`Failed to reload multi-pass shader ${activeVisualSourcePath}:`, error);
                 }
             }
-        } catch (error) {
-            console.error(`Failed to read updated GLSL shader for synths array update: ${glslFilePath}`, error);
         }
-    } else {
-        console.log(`No preset in synths array found using GLSL file: ${glslFilePath}`);
     }
+
+    // Fallback: Update shaderContent in the main synths array for any effect that uses this GLSL.
+    synths.forEach(synth => {
+        if (!synth.shaderPath) return;
+
+        const fullSynthShaderPath = path.join(effectsRepoPath, synth.shaderPath);
+
+        if (synth.shaderPath.toLowerCase().endsWith('.glsl') && fullSynthShaderPath.toLowerCase() === fullChangedGlslPath.toLowerCase()) {
+            // This synth uses the changed GLSL as a single-pass shader.
+            if (!reloadedViaActive || synth.shaderPath.toLowerCase() !== activeVisualSourcePath?.toLowerCase()) {
+                console.log(`Updating shaderContent in synths array for single-pass effect: ${synth.name} using ${glslFilePath}`);
+                try {
+                    const updatedContent = fs.readFileSync(fullChangedGlslPath, 'utf-8');
+                    synth.shaderContent = updatedContent;
+                    
+                    const currentPresetEffect = getCurrentEffect();
+                    if (currentPresetEffect && currentPresetEffect.name === synth.name) {
+                         if (mainWindow && mainWindow.webContents) {
+                            mainWindow.webContents.send('shader-effect-updated', {
+                                shaderPath: synth.shaderPath,
+                                shaderContent: updatedContent
+                            });
+                            console.log(`Sent shader-effect-updated for preset (single-pass): ${synth.shaderPath}`);
+                        }
+                    }
+                } catch (error) {
+                    console.error(`Failed to read updated GLSL for synths array (single-pass ${synth.name}): ${glslFilePath}`, error);
+                }
+            }
+        } else if (!synth.shaderPath.toLowerCase().endsWith('.glsl') && potentialBaseName) {
+            // This synth uses a multi-pass base name, check if the changed GLSL belongs to it
+            const synthBaseName = path.basename(synth.shaderPath);
+            if (synthBaseName === potentialBaseName) {
+                if (!reloadedViaActive || synth.shaderPath.toLowerCase() !== activeVisualSourcePath?.toLowerCase()) {
+                    console.log(`Updating shaderContent in synths array for multi-pass effect: ${synth.name}, pass: ${passType} from ${glslFilePath}`);
+                    try {
+                        // Reload the entire multi-pass shader
+                        const { loadMultiPassShader } = require('./superColliderManager');
+                        const updatedMultiPassConfig = loadMultiPassShader(synth.shaderPath, effectsRepoPath);
+                        synth.shaderContent = updatedMultiPassConfig;
+                        
+                        const currentPresetEffect = getCurrentEffect();
+                        if (currentPresetEffect && currentPresetEffect.name === synth.name) {
+                            if (mainWindow && mainWindow.webContents) {
+                                mainWindow.webContents.send('shader-effect-updated', {
+                                    shaderPath: synth.shaderPath,
+                                    shaderContent: updatedMultiPassConfig
+                                });
+                                console.log(`Sent shader-effect-updated for preset (multi-pass): ${synth.shaderPath}`);
+                            }
+                        }
+                    } catch (error) {
+                        console.error(`Failed to reload multi-pass shader for synths array (${synth.name}):`, error);
+                    }
+                }
+            }
+        }
+    });
 }
 
 ipcMain.on('set-current-effect', (event, effectName) =>

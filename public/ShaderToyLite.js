@@ -25,6 +25,7 @@ function ShaderToyLite(canvasId) {
     uniform float     iSampleRate;           // sound sample rate (i.e., 44100)
     uniform float     iRMSInput;             // input RMS value
     uniform float     iRMSOutput;            // output RMS value
+    uniform sampler2D iAudioTexture;         // New: Texture for audio data (waveform/FFT)
     out vec4          frag_out_color;
     void mainImage( out vec4 c, in vec2 f );
     void main( void )
@@ -37,7 +38,9 @@ function ShaderToyLite(canvasId) {
     
     var basicFragShader =
     `void mainImage( out vec4 fragColor, in vec2 fragCoord ) {
-        fragColor = texture2D(iChannel0, gl_FragCoord.xy / iResolution.xy);
+        // Default: show waveform from iAudioTexture's second row (e.g., y=0.75), red channel
+        float audioSample = texture(iAudioTexture, vec2(fragCoord.x / iResolution.x, 0.75)).r;
+        fragColor = vec4(audioSample, audioSample, audioSample, 1.0);
     }
     `;
     
@@ -104,6 +107,8 @@ function ShaderToyLite(canvasId) {
     var flip = {};      // a b flip
     var quadBuffer;     // <-- Declare quadBuffer here
     
+    this.iAudioTexture = null; // New: Reference to the internal audio texture object
+    
     var setup = () => {
         gl.getExtension( 'OES_texture_float_linear');
         gl.getExtension( 'OES_texture_half_float_linear');
@@ -123,6 +128,11 @@ function ShaderToyLite(canvasId) {
                 flip[key] = false;
             }
         });
+    
+        // Create the dedicated audio texture
+        // Format RGBA, type UNSIGNED_BYTE for the Uint8Array data from VisualizationCanvas
+        this.iAudioTexture = createTextureInternal(1024, 2, gl.RGBA, gl.UNSIGNED_BYTE); 
+        console.log("ShaderToyLite: iAudioTexture created (1024x2, RGBA UNSIGNED_BYTE)");
     
         // bind the geometry
         quadBuffer = gl.createBuffer();
@@ -167,6 +177,20 @@ function ShaderToyLite(canvasId) {
         return texture;
     }
     
+    // New internal function for creating textures with specific dimensions and formats
+    var createTextureInternal = (width, height, internalFormat, type) => {
+        var texture = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        // Use provided width/height. internalFormat (e.g. gl.RGBA), type (e.g. gl.UNSIGNED_BYTE)
+        gl.texImage2D(gl.TEXTURE_2D, 0, internalFormat, width, height, 0, internalFormat, type, null);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR); // Use LINEAR for audio data too
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.bindTexture(gl.TEXTURE_2D, null); // Unbind after creation
+        return texture;
+    };
+    
     var createFrameBuffer = (texture) => {
         var framebuffer = gl.createFramebuffer();
         gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
@@ -188,13 +212,14 @@ function ShaderToyLite(canvasId) {
         }
     
         var source = hdr + common + sourcecode[key];
+        console.log(`Compiling shader for ${key}:`, source.substring(0, 200) + '...');
         var frag = gl.createShader(gl.FRAGMENT_SHADER);
         gl.shaderSource(frag, source);
         gl.compileShader(frag);
     
         if (!gl.getShaderParameter(frag, gl.COMPILE_STATUS)) {
-            console.error('Fragment Shader compilation failed: ' + gl.getShaderInfoLog(frag));
-            console.error(source);
+            console.error(`Fragment Shader compilation failed for ${key}: ` + gl.getShaderInfoLog(frag));
+            console.error('Full shader source:', source);
             gl.deleteShader(frag);
             return null;
         }
@@ -205,10 +230,12 @@ function ShaderToyLite(canvasId) {
         gl.linkProgram(program);
     
         if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-            console.error('Program initialization failed: ' + gl.getProgramInfoLog(program));
+            console.error(`Program initialization failed for ${key}: ` + gl.getProgramInfoLog(program));
             return null;
         }
     
+        console.log(`Successfully compiled shader program for ${key}`);
+        
         // uniform locations
         location[key]["iResolution"]        = gl.getUniformLocation(program, "iResolution");
         location[key]["iTime"]              = gl.getUniformLocation(program, "iTime");
@@ -226,6 +253,7 @@ function ShaderToyLite(canvasId) {
         location[key]["iSampleRate"]        = gl.getUniformLocation(program, "iSampleRate");
         location[key]["iRMSInput"] = gl.getUniformLocation(program, "iRMSInput");
         location[key]["iRMSOutput"] = gl.getUniformLocation(program, "iRMSOutput");
+        location[key]["iAudioTexture"]      = gl.getUniformLocation(program, "iAudioTexture"); // New
         location[key]["vertexInPosition"]   = gl.getAttribLocation(program, "vertexInPosition");
     
         return program;
@@ -291,10 +319,10 @@ function ShaderToyLite(canvasId) {
         var iChannelTimes = new Float32Array(repeat(4, [iTime]));
         var iChannelResolutions = new Float32Array(repeat(4, [gl.canvas.width, gl.canvas.height, 0]));
     
-        ['A', 'B', 'C', 'D', 'Image'].forEach((key) => {
-    
+                ['A', 'B', 'C', 'D', 'Image'].forEach((key) => {
+
             if (program[key]) {
-    
+
                 // framebuffer
                 if (key === "Image") {
                     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
@@ -302,7 +330,7 @@ function ShaderToyLite(canvasId) {
                     var output = flip[key] ? bframebuf[key] : aframebuf[key];
                     gl.bindFramebuffer(gl.FRAMEBUFFER, output);
                 }
-    
+
                 // textures
                 for (let i = 0; i < 4; i++) {
                     var chkey = ichannels[key][i];
@@ -312,10 +340,16 @@ function ShaderToyLite(canvasId) {
                         gl.bindTexture(gl.TEXTURE_2D, input);
                     }
                 }
-    
+
+                // Bind the iAudioTexture to a dedicated texture unit (e.g., TEXTURE4)
+                if (this.iAudioTexture && location[key]["iAudioTexture"]) {
+                    gl.activeTexture(gl.TEXTURE4); // Use texture unit 4 for iAudioTexture
+                    gl.bindTexture(gl.TEXTURE_2D, this.iAudioTexture);
+                }
+
                 // program
                 gl.useProgram(program[key]);
-    
+
                 // uniforms
                 gl.uniform3f( location[key]["iResolution"], gl.canvas.width, gl.canvas.height, 1.0);
                 gl.uniform1f( location[key]["iTime"], iTime);
@@ -337,7 +371,12 @@ function ShaderToyLite(canvasId) {
                 if (location[key]["iRMSOutput"]) {
                     gl.uniform1f(location[key]["iRMSOutput"], iRMSOutputValue);
                 }
-    
+
+                // Set the iAudioTexture uniform to texture unit 4
+                if (location[key]["iAudioTexture"]) {
+                    gl.uniform1i(location[key]["iAudioTexture"], 4);
+                }
+
                 // viewport
                 gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
             
@@ -345,10 +384,10 @@ function ShaderToyLite(canvasId) {
                 gl.bindBuffer(gl.ARRAY_BUFFER, quadBuffer);
                 gl.vertexAttribPointer(location[key]["vertexInPosition"], 2, gl.FLOAT, false, 0, 0);
                 gl.enableVertexAttribArray(location[key]["vertexInPosition"]);
-    
+
                 // draw
                 gl.drawArrays(gl.TRIANGLES, 0, 6);
-    
+
                 flip[key] = !flip[key];
             }
         });
@@ -446,6 +485,20 @@ function ShaderToyLite(canvasId) {
 
     this.setRMSOutput = (value) => {
         iRMSOutputValue = typeof value === 'number' ? value : 0.0;
+    };
+    
+    // New method to update the internal iAudioTexture
+    this.updateAudioTexture = (uint8ArrayData, texWidth, texHeight) => {
+        if (!gl || !this.iAudioTexture) {
+            console.warn("ShaderToyLite: gl context or iAudioTexture not available for update.");
+            return;
+        }
+        gl.bindTexture(gl.TEXTURE_2D, this.iAudioTexture);
+        // Using texImage2D for the first update to define structure, then texSubImage2D for subsequent ones.
+        // For simplicity if the size is fixed, we can use texSubImage2D always after initial creation.
+        // The texture is created with 1024x2, RGBA, UNSIGNED_BYTE in setup.
+        gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, texWidth, texHeight, gl.RGBA, gl.UNSIGNED_BYTE, uint8ArrayData);
+        gl.bindTexture(gl.TEXTURE_2D, null); // Unbind after updating
     };
     
     setup();
