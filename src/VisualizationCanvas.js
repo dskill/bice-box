@@ -154,9 +154,9 @@ function VisualizationCanvas({
       const toy = shaderToyInstanceRef.current;
       if (toy.gl) {
           const loseContextExt = toy.gl.getExtension('WEBGL_lose_context');
-          // if (loseContextExt) { // Decided against this earlier as it caused issues
-          //     loseContextExt.loseContext();
-          // }
+          if (loseContextExt) { // Decided against this earlier as it caused issues
+              loseContextExt.loseContext();
+          }
       }
       shaderToyInstanceRef.current = null;
     }
