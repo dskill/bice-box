@@ -350,12 +350,12 @@ function VisualizationCanvas({
                 if (currentShaderContent.bufferA) {
                     console.log('BufferA source code:', currentShaderContent.bufferA.substring(0, 100) + '...');
                     const bufferAConfig = { 
-                        source: currentShaderContent.bufferA
-                        // Remove iChannel0 mapping for now to test
+                        source: currentShaderContent.bufferA,
+                        iChannel0: "A" // BufferA references its own previous frame for feedback effects
                     };
                     console.log('Calling toy.setBufferA with config:', bufferAConfig);
                     toy.setBufferA(bufferAConfig);
-                    console.log('Set BufferA pass (no channels) - completed');
+                    console.log('Set BufferA pass with self-referencing - completed');
                 } else {
                     console.log('No BufferA content found in currentShaderContent');
                 }
