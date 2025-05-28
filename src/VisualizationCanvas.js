@@ -9,6 +9,37 @@ import WebGLDetector from './utils/webGLDetector';
 // so we need to clean up FFT1 and waveform1.  the problem is these are not used
 // consisnently in the p5.js visualizers, so we'll have to clean those up when we remove these.
 
+// Helper function to parse resolution scale from shader code
+function getResolutionScaleFromMetadata(shaderContent) {
+  let codeToSearch = '';
+  if (typeof shaderContent === 'string') {
+    codeToSearch = shaderContent;
+  } else if (typeof shaderContent === 'object' && shaderContent !== null && typeof shaderContent.image === 'string') {
+    // For multi-pass, metadata is expected in the image pass
+    codeToSearch = shaderContent.image;
+  }
+
+  if (codeToSearch) {
+    console.log('[MetadataDebug] Code to search (first 100 chars):', codeToSearch.substring(0, 100));
+    // Updated regex for "// resolution: 0.1" format, anchored to start of line with multiline flag
+    const metadataMatch = codeToSearch.match(/^\s*\/\/\s*resolution:\s*([0-9\.]+)/m);
+    console.log('[MetadataDebug] Regex match result:', metadataMatch);
+
+    if (metadataMatch && metadataMatch[1]) {
+      const scaleStr = metadataMatch[1];
+      console.log('[MetadataDebug] Captured scale string:', scaleStr);
+      const scale = parseFloat(scaleStr);
+      if (!isNaN(scale) && scale > 0) {
+        console.log('Parsed resolutionScale from metadata:', scale);
+        return scale;
+      } else {
+        console.warn('Invalid resolution value in metadata comment:', scaleStr);
+      }
+    }
+  }
+  return 1.0; // Default value if not found or invalid
+}
+
 function VisualizationCanvas({ 
   currentVisualContent, 
   currentShaderPath,    // New prop
@@ -299,6 +330,9 @@ function VisualizationCanvas({
       if (currentShaderContent && window.ShaderToyLite) {
         console.log('Shader content found, creating canvas and loading ShaderToyLite sketch...');
 
+        // Determine resolution scale from metadata or default
+        const actualResolutionScale = getResolutionScaleFromMetadata(currentShaderContent);
+
         if (!webGLCapabilities || !webGLCapabilities.webGL2) {
           console.error("WebGL2 not supported, cannot run ShaderToyLite effect.");
           errorRef.current = 'WebGL2 is required for this shader effect.';
@@ -311,15 +345,15 @@ function VisualizationCanvas({
           shaderCanvas.id = 'bice-box-shader-canvas'; // Fixed ID for the shader canvas
           
           const rect = containerElement.getBoundingClientRect();
-          const resolutionScale = 0.7; // Hardcoded here
-          shaderCanvas.width = Math.floor(rect.width * resolutionScale);
-          shaderCanvas.height = Math.floor(rect.height * resolutionScale);
+          // Use the parsed or default resolution scale
+          shaderCanvas.width = Math.floor(rect.width * actualResolutionScale);
+          shaderCanvas.height = Math.floor(rect.height * actualResolutionScale);
           shaderCanvas.style.position = 'absolute'; // Ensure it fills the div correctly
           shaderCanvas.style.top = '0';
           shaderCanvas.style.left = '0';
           shaderCanvas.style.width = '100%';
           shaderCanvas.style.height = '100%';
-
+ 
           containerElement.appendChild(shaderCanvas);
           console.log('Dynamically created canvas for ShaderToyLite and appended to div.');
           console.log('Shader canvas dimensions before ShaderToyLite init:', shaderCanvas.width, shaderCanvas.height);
@@ -333,24 +367,28 @@ function VisualizationCanvas({
 
             // Set the main image shader (single pass) or the image pass of a multi-pass shader.
             // iAudioTexture is globally available to all shaders within ShaderToyLite.
-            if (typeof currentShaderContent === 'string') { // Single GLSL file
+
+            // currentShaderContent here is the raw shader code (string for single-pass, object of passes for multi-pass)
+            const shaderCodeToUse = currentShaderContent; 
+
+            if (typeof shaderCodeToUse === 'string') { // Single GLSL file
                 toy.setImage({
-                    source: currentShaderContent
+                    source: shaderCodeToUse
                     // No iChannel0 mapping for audio needed here, iAudioTexture is global
                 });
                 console.log(`setImage called for single pass shader.`);
-            } else if (typeof currentShaderContent === 'object' && currentShaderContent !== null) { // Multi-pass config
-                // Set common functions if available
-                if (currentShaderContent.common) {
-                    toy.setCommon(currentShaderContent.common);
+            } else if (typeof shaderCodeToUse === 'object' && shaderCodeToUse !== null) { // Multi-pass config
+                // currentShaderContent is the object with .image, .bufferA, .common etc.
+                if (shaderCodeToUse.common) {
+                    toy.setCommon(shaderCodeToUse.common);
                     console.log('Set common shader functions');
                 }
                 
                 // Set buffer passes with self-referencing
-                if (currentShaderContent.bufferA) {
-                    console.log('BufferA source code:', currentShaderContent.bufferA.substring(0, 100) + '...');
+                if (shaderCodeToUse.bufferA) {
+                    console.log('BufferA source code:', shaderCodeToUse.bufferA.substring(0, 100) + '...');
                     const bufferAConfig = { 
-                        source: currentShaderContent.bufferA,
+                        source: shaderCodeToUse.bufferA,
                         iChannel0: "A" // BufferA references its own previous frame for feedback effects
                     };
                     console.log('Calling toy.setBufferA with config:', bufferAConfig);
@@ -359,44 +397,44 @@ function VisualizationCanvas({
                 } else {
                     console.log('No BufferA content found in currentShaderContent');
                 }
-                if (currentShaderContent.bufferB) {
+                if (shaderCodeToUse.bufferB) {
                     toy.setBufferB({ 
-                        source: currentShaderContent.bufferB, 
+                        source: shaderCodeToUse.bufferB, 
                         iChannel0: "self" // BufferB references its own previous frame
                     });
                     console.log('Set BufferB pass');
                 }
-                if (currentShaderContent.bufferC) {
+                if (shaderCodeToUse.bufferC) {
                     toy.setBufferC({ 
-                        source: currentShaderContent.bufferC, 
+                        source: shaderCodeToUse.bufferC, 
                         iChannel0: "self" // BufferC references its own previous frame
                     });
                     console.log('Set BufferC pass');
                 }
-                if (currentShaderContent.bufferD) {
+                if (shaderCodeToUse.bufferD) {
                     toy.setBufferD({ 
-                        source: currentShaderContent.bufferD, 
+                        source: shaderCodeToUse.bufferD, 
                         iChannel0: "self" // BufferD references its own previous frame
                     });
                     console.log('Set BufferD pass');
                 }
                 
                 // Set image pass with automatic channel mapping to available buffers
-                if (currentShaderContent.image) {
-                    const imageConfig = { source: currentShaderContent.image };
+                if (shaderCodeToUse.image) {
+                    const imageConfig = { source: shaderCodeToUse.image };
                     
                     // Auto-map channels to available buffers (ShaderToy convention)
                     // Use single letters as expected by ShaderToyLite.js
-                    if (currentShaderContent.bufferA) imageConfig.iChannel0 = "A";
-                    if (currentShaderContent.bufferB) imageConfig.iChannel1 = "B";
-                    if (currentShaderContent.bufferC) imageConfig.iChannel2 = "C";
-                    if (currentShaderContent.bufferD) imageConfig.iChannel3 = "D";
+                    if (shaderCodeToUse.bufferA) imageConfig.iChannel0 = "A";
+                    if (shaderCodeToUse.bufferB) imageConfig.iChannel1 = "B";
+                    if (shaderCodeToUse.bufferC) imageConfig.iChannel2 = "C";
+                    if (shaderCodeToUse.bufferD) imageConfig.iChannel3 = "D";
                     
                     toy.setImage(imageConfig);
                     console.log('Set Image pass with channels:', Object.keys(imageConfig).filter(k => k.startsWith('iChannel')));
                 }
                 
-                console.log(`ShaderToyLite configured for multi-pass shader with passes: ${Object.keys(currentShaderContent).join(', ')}`);
+                console.log(`ShaderToyLite configured for multi-pass shader with passes: ${Object.keys(shaderCodeToUse).join(', ')}`);
             }
           } else {
             console.error("ShaderToyLite GL context not available after instantiation.");
