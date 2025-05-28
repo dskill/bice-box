@@ -38,6 +38,7 @@ const {
   loadP5SketchSync,
   loadScFile,
   loadEffectFromFile,
+  loadMultiPassShader
 } = require('./superColliderManager');
 const generativeEffectManager = require('./generativeEffectManager');
 const wifi = require('node-wifi');
@@ -1358,16 +1359,52 @@ function getAvailableVisualizers(effectsRepoPath) {
   try {
     if (fs.existsSync(shaderVisualsDir)) {
       const files = fs.readdirSync(shaderVisualsDir);
-      files
-        .filter(file => path.extname(file).toLowerCase() === '.glsl') // Check for .glsl
-        .forEach(file => {
-          const name = path.basename(file, '.glsl').replace(/_/g, ' ');
-          visualizers.push({
-            name: name,
-            type: 'shader', // Added type
-            path: path.join('shaders', file) // Path relative to effects repo root
+      const shadersOutput = new Map(); // Use a map to handle overrides and ensure uniqueness by base name
+
+      // Regex to identify multi-pass component files that should NOT be listed directly,
+      // except for _image.glsl which is used as an identifier.
+      const multiPassComponentPattern = /_buffer[a-d]\.glsl$|_common\.glsl$/i;
+
+      // First pass: Identify multi-pass shaders via _image.glsl
+      files.forEach(file => {
+        if (file.toLowerCase().endsWith('_image.glsl')) {
+          const baseName = file.substring(0, file.length - '_image.glsl'.length);
+          const displayName = baseName.replace(/_/g, ' ');
+          shadersOutput.set(baseName, {
+            name: displayName,
+            type: 'shader',
+            path: path.join('shaders', baseName) // Path is the base name for multi-pass
           });
-        });
+        }
+      });
+
+      // Second pass: Identify single-pass shaders
+      files.forEach(file => {
+        if (file.toLowerCase().endsWith('.glsl')) {
+          const baseName = file.substring(0, file.length - '.glsl'.length);
+          
+          // If it's an _image.glsl, it's already handled by the first pass (identified as multi-pass).
+          // If it's another multi-pass component (_bufferX.glsl, _common.glsl), ignore it for direct listing.
+          if (file.toLowerCase().endsWith('_image.glsl') || multiPassComponentPattern.test(file.toLowerCase())) {
+            return;
+          }
+
+          // If this baseName is NOT already in shadersOutput (meaning it wasn't identified as a multi-pass shader by an _image.glsl file)
+          // then it's a single-pass shader.
+          if (!shadersOutput.has(baseName)) {
+            const displayName = baseName.replace(/_/g, ' ');
+            // The key for single-pass shaders should be distinct if a multi-pass with the same basename exists.
+            // However, the current logic correctly prioritizes multi-pass via the first loop.
+            // This ensures that if "foo_image.glsl" exists, "foo.glsl" (if it also exists as a separate single file) won't override "foo" as multi-pass.
+            shadersOutput.set(baseName, { 
+              name: displayName,
+              type: 'shader',
+              path: path.join('shaders', file) // Path is the full filename for single-pass
+            });
+          }
+        }
+      });
+      visualizers.push(...Array.from(shadersOutput.values()));
     } else {
       console.warn(`Shader Visuals directory not found: ${shaderVisualsDir}`);
     }
@@ -1376,7 +1413,7 @@ function getAvailableVisualizers(effectsRepoPath) {
   }
 
   visualizers.sort((a, b) => a.name.localeCompare(b.name)); // Sort alphabetically
-  console.log(`Found ${visualizers.length} total visualizers (P5 and Shaders):`, visualizers.map(v => `${v.name} (${v.type})`));
+  console.log(`Found ${visualizers.length} total visualizers (P5 and Shaders):`, visualizers.map(v => `${v.name} (${v.type}) [${v.path}]`));
   return visualizers;
 }
 
@@ -1392,14 +1429,26 @@ ipcMain.handle('get-visualizers', async (event) => {
 ipcMain.handle('load-shader-content', async (event, shaderPath) => {
   try {
     const effectsRepoPath = getEffectsRepoPath();
-    const fullPath = path.join(effectsRepoPath, shaderPath); // shaderPath is relative
-
-    if (!fs.existsSync(fullPath)) {
-      console.error(`Shader file not found: ${fullPath}`);
-      throw new Error(`Shader file not found: ${shaderPath}`);
+    
+    if (shaderPath.toLowerCase().endsWith('.glsl')) {
+      // Single-pass shader: load GLSL content directly
+      const fullPath = path.join(effectsRepoPath, shaderPath); // shaderPath is relative
+      if (!fs.existsSync(fullPath)) {
+        console.error(`Shader file not found: ${fullPath}`);
+        throw new Error(`Shader file not found: ${shaderPath}`);
+      }
+      const content = fs.readFileSync(fullPath, 'utf-8');
+      return content;
+    } else {
+      // Multi-pass shader: shaderPath is the base name (e.g., "shaders/myEffect")
+      // Use loadMultiPassShader from superColliderManager.js
+      console.log(`Loading multi-pass shader content for base: ${shaderPath}`);
+      const multiPassConfig = loadMultiPassShader(shaderPath, effectsRepoPath);
+      if (!multiPassConfig || Object.keys(multiPassConfig).length === 0 || !multiPassConfig.image) {
+          throw new Error(`Failed to load multi-pass shader or image pass missing for ${shaderPath}`);
+      }
+      return multiPassConfig; // Return the object with all shader passes
     }
-    const content = fs.readFileSync(fullPath, 'utf-8');
-    return content;
   } catch (error) {
     console.error(`Error loading shader content for ${shaderPath}:`, error);
     throw error; // Propagate error to renderer
