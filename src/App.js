@@ -724,7 +724,7 @@ function App() {
         // onOpenEffectSelect={openEffectSelect} // Replace this
         effectsRepoStatus={effectsRepoStatus}
         onCheckEffectsRepo={checkEffectsRepoStatus}
-        devMode={devMode}
+        devMode={true}
         // Still need a way to handle parameter changes, maybe pass `currentSynth.params`?
         // And a handler `onParamChange(paramName, value)` that sends SC messages
         // using `currentSynth.name` as the target synthdef.
