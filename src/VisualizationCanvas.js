@@ -58,6 +58,7 @@ function VisualizationCanvas({
   const errorRef = useRef(null);
   const rmsInputRef = useRef(0);
   const rmsOutputRef = useRef(0);
+  const iRmsTimeRef = useRef(0); // New: Ref for accumulated RMS time
   const tunerDataRef = useRef(0);
   // Add new refs for FFT data
   const fft0DataRef = useRef([]);
@@ -238,6 +239,10 @@ function VisualizationCanvas({
         // Call the new methods to set RMS uniforms for ShaderToy
         shaderToyInstanceRef.current.setRMSInput(rmsInput);
         shaderToyInstanceRef.current.setRMSOutput(rmsOutput);
+        
+        // Update and set iRmsTime
+        iRmsTimeRef.current += rmsOutput; // Accumulate rmsOutput
+        shaderToyInstanceRef.current.setRmsTime(iRmsTimeRef.current);
       }
     } else {
       // Update warning for incorrect data length
