@@ -25,7 +25,7 @@ function ShaderToyLite(canvasId) {
     uniform float     iSampleRate;           // sound sample rate (i.e., 44100)
     uniform float     iRMSInput;             // input RMS value
     uniform float     iRMSOutput;            // output RMS value
-    uniform float     iRmsTime;              // New: Accumulated RMS output time
+    uniform float     iRMSTIme;              // New: Accumulated RMS output time
     uniform sampler2D iAudioTexture;         // New: Texture for audio data (waveform/FFT)
     out vec4          frag_out_color;
     void mainImage( out vec4 c, in vec2 f );
@@ -91,7 +91,7 @@ function ShaderToyLite(canvasId) {
     var iMouse = {x: 0, y: 0, clickX: 0, clickY: 0};
     var iRMSInputValue = 0.0;
     var iRMSOutputValue = 0.0;
-    var iRmsTimeValue = 0.0; // New: Store iRmsTime
+    var iRMSTImeValue = 0.0; // New: Store iRMSTIme
     
     // shader common source 
     var common = "";
@@ -256,7 +256,7 @@ function ShaderToyLite(canvasId) {
         location[key]["iRMSInput"] = gl.getUniformLocation(program, "iRMSInput");
         location[key]["iRMSOutput"] = gl.getUniformLocation(program, "iRMSOutput");
         location[key]["iAudioTexture"]      = gl.getUniformLocation(program, "iAudioTexture"); // New
-        location[key]["iRmsTime"]           = gl.getUniformLocation(program, "iRmsTime"); // New
+        location[key]["iRMSTIme"]           = gl.getUniformLocation(program, "iRMSTIme"); // New
         location[key]["vertexInPosition"]   = gl.getAttribLocation(program, "vertexInPosition");
     
         return program;
@@ -374,8 +374,8 @@ function ShaderToyLite(canvasId) {
                 if (location[key]["iRMSOutput"]) {
                     gl.uniform1f(location[key]["iRMSOutput"], iRMSOutputValue);
                 }
-                if (location[key]["iRmsTime"]) { // New
-                    gl.uniform1f(location[key]["iRmsTime"], iRmsTimeValue); // New
+                if (location[key]["iRMSTIme"]) { // New
+                    gl.uniform1f(location[key]["iRMSTIme"], iRMSTImeValue); // New
                 }
 
                 // Set the iAudioTexture uniform to texture unit 4
@@ -494,7 +494,7 @@ function ShaderToyLite(canvasId) {
     };
     
     this.setRmsTime = (value) => { // New method
-        iRmsTimeValue = typeof value === 'number' ? value : 0.0;
+        iRMSTImeValue = typeof value === 'number' ? value : 0.0;
     };
     
     // New method to update the internal iAudioTexture
