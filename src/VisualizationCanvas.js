@@ -240,8 +240,9 @@ function VisualizationCanvas({
         shaderToyInstanceRef.current.setRMSInput(rmsInput);
         shaderToyInstanceRef.current.setRMSOutput(rmsOutput);
         
-        // Update and set iRMSTime
-        iRMSTimeRef.current += rmsOutput; // Accumulate rmsOutput
+        // Update and set iRMSTime.
+        // magic number to get it closer to iTime roughly
+        iRMSTimeRef.current += rmsOutput * 0.1; // Accumulate rmsOutput 
         shaderToyInstanceRef.current.setRmsTime(iRMSTimeRef.current);
       }
     } else {
