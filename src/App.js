@@ -75,8 +75,9 @@ function App() {
        if (currentSynth && currentSynth.scFilePath === currentAudioSource && Array.isArray(currentSynth.params)) {
           currentSynth.params.forEach(param => {
               if (param && typeof param.name === 'string' && param.value !== undefined) {
-                  const scCode = `~effect.set(\${param.name}, ${param.value});`;
-                  electron.ipcRenderer.send('send-to-supercollider', scCode);
+                  if (electron && electron.ipcRenderer) {
+                    electron.ipcRenderer.send('send-osc-to-sc', { address: '/effect/param/set', args: [param.name, param.value] });
+                  }
               }
           });
        }
@@ -345,9 +346,9 @@ function App() {
         if (Array.isArray(selectedPreset.params)) {
           selectedPreset.params.forEach(param => {
             if (param && typeof param.name === 'string' && param.value !== undefined) {
-              // Use preset name for synthdef target
-              const scCode = `~effect.set(\\${param.name}, ${param.value});`; 
-              electron.ipcRenderer.send('send-to-supercollider', scCode);
+              if (electron && electron.ipcRenderer) {
+                electron.ipcRenderer.send('send-osc-to-sc', { address: '/effect/param/set', args: [param.name, param.value] });
+              }
             }
           });
         }

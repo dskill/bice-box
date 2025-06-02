@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import useSuperCollider from './hooks/useSuperCollider';
 import { generateColor } from './theme';
 import './ParamFader.css';
 
@@ -17,7 +16,6 @@ const throttle = (func, limit) => {
 
 const ParamFader = ({ param, onParamChange }) => {
   const { name, value, range } = param;
-  const { sendCode } = useSuperCollider();
   const [faderValue, setFaderValue] = useState(value);
   const [isDragging, setIsDragging] = useState(false);
   const currentValueRef = useRef(value);
@@ -25,10 +23,14 @@ const ParamFader = ({ param, onParamChange }) => {
   const initialMouseYRef = useRef(null);
   const lastUpdateTime = useRef(0);
 
-  // Throttled version of sendCode
-  const throttledSendCode = useCallback(
-    throttle((code) => sendCode(code), 16), // ~60fps
-    [sendCode]
+  // Throttled version of sending OSC message
+  const throttledSendOsc = useCallback(
+    throttle((oscAddress, oscArgs) => {
+      if (window.electron && window.electron.ipcRenderer) {
+        window.electron.ipcRenderer.send('send-osc-to-sc', { address: oscAddress, args: oscArgs });
+      }
+    }, 16), // ~60fps (1000ms / 60fps = ~16.67ms)
+    [] // No dependencies needed for this version of throttledSendOsc
   );
 
   // Helper function to convert camelCase to Title Case
@@ -57,11 +59,10 @@ const ParamFader = ({ param, onParamChange }) => {
   useEffect(() => {
     if (faderValue !== currentValueRef.current) {
       currentValueRef.current = faderValue;
-      const code = `~effect.set(\\${name}, ${faderValue})`;
-      throttledSendCode(code);
+      throttledSendOsc('/effect/param/set', [name, faderValue]);
       onParamChange(name, faderValue);
     }
-  }, [faderValue, name, throttledSendCode, onParamChange]);
+  }, [faderValue, name, throttledSendOsc, onParamChange]);
 
   useEffect(() => {
     const handleMouseMove = (e) => {
