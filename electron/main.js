@@ -210,8 +210,6 @@ function createWindow()
     // Initialize SuperCollider with the necessary callbacks
     const loadEffectsCallback = () => {
       loadEffectsList(mainWindow, getEffectsRepoPath, getEffectsPath);
-      // After initial effects are loaded, fetch their parameters
-      fetchAllEffectParameters(); 
     };
     initializeSuperCollider(mainWindow, getEffectsRepoPath, loadEffectsCallback);
 
@@ -916,31 +914,6 @@ ipcMain.on('set-current-effect', (event, effectName) =>
     console.error(`Effect not found: ${effectName}`);
   }
 });
-
-async function fetchAllEffectParameters() {
-  console.log("Fetching parameters for all loaded effects...");
-  for (const effect of synths) {
-    if (effect.scFilePath && oscManager && oscManager.oscServer) {
-      try {
-        // It's good practice to ensure the SC file is loaded before requesting specs.
-        // However, loadScFile is async. If called repeatedly, ensure it handles being called for an already loaded file gracefully.
-        // For simplicity here, we assume SC files are loaded by selection or initial boot.
-        // If an effect is never selected, its SC might not be explicitly loaded before this runs unless init.sc loads all.
-        // A safer approach might be to loadScFile here if we're not sure.
-        console.log(`Requesting parameters for ${effect.name}`);
-        oscManager.oscServer.send({
-            address: '/effect/get_specs',
-            args: [{ type: 's', value: effect.name }]
-        }, '127.0.0.1', 57120);
-        // Add a small delay to avoid flooding SC, especially if loadScFile were here.
-        await new Promise(resolve => setTimeout(resolve, 50)); 
-      } catch (err) {
-        console.error(`Error requesting specs for ${effect.name}:`, err);
-      }
-    }
-  }
-  console.log("Finished requesting parameters for all effects.");
-}
 
 // IPC listeners for explicitly setting active audio/visual sources
 ipcMain.on('set-current-audio-source', (event, filePath) => {
