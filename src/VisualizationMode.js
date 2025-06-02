@@ -4,7 +4,6 @@ import ParamFader from './ParamFader';
 import VisualizationCanvas from './VisualizationCanvas';
 
 function VisualizationMode({ 
-  currentPresetName,
   currentAudioSourcePath, 
   currentVisualSourcePath, 
   currentVisualContent,
@@ -13,10 +12,8 @@ function VisualizationMode({
   currentAudioParams,
   onOpenAudioSelect, 
   onOpenVisualSelect,
-  onOpenPresetSelect,
   reloadEffectList, 
   pullEffectsRepo, 
-  hardReloadCurrentEffect,
   effectsRepoStatus, 
   onCheckEffectsRepo,
   devMode
@@ -58,7 +55,6 @@ function VisualizationMode({
           <EffectManagement 
             reloadEffectList={reloadEffectList} 
             pullEffectsRepo={pullEffectsRepo}
-            hardReloadCurrentEffect={hardReloadCurrentEffect}
             effectsRepoStatus={effectsRepoStatus}
             onCheckEffectsRepo={onCheckEffectsRepo}
           />
@@ -67,29 +63,20 @@ function VisualizationMode({
       
       <div className="source-select-container">
         <button 
-          className="nav-button preset-select-button" 
-          onClick={onOpenPresetSelect}
+          className="nav-button audio-select-button" 
+          onClick={onOpenAudioSelect}
         >
-          <span className="button-label">Preset:</span>
-          <span className="button-value">{currentPresetName}</span> 
+          <span className="button-label">Audio:</span>
+          <span className="button-value">{prettifySourceName(currentAudioSourcePath)}</span>
         </button>
         {devMode && (
-          <>
-            <button 
-              className="nav-button audio-select-button" 
-              onClick={onOpenAudioSelect}
-            >
-              <span className="button-label">Audio:</span>
-              <span className="button-value">{prettifySourceName(currentAudioSourcePath)}</span>
-            </button>
-            <button 
-              className="nav-button visual-select-button" 
-              onClick={onOpenVisualSelect}
-            >
-              <span className="button-label">Visual:</span>
-              <span className="button-value">{activeVisualName}</span>
-            </button>
-          </>
+          <button 
+            className="nav-button visual-select-button" 
+            onClick={onOpenVisualSelect}
+          >
+            <span className="button-label">Visual:</span>
+            <span className="button-value">{activeVisualName}</span>
+          </button>
         )}
       </div>
 

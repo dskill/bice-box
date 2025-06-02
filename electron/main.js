@@ -553,9 +553,6 @@ function reloadEffectForChangedFile(changedPath)
 
   switch (extension)
   {
-    case '.json':
-      reloadFullEffect(changedPath);
-      break;
     case '.sc':
       reloadAudioEffect(relativeChangedPath);
       break;
@@ -567,100 +564,6 @@ function reloadEffectForChangedFile(changedPath)
       break;
     default:
       console.log(`Unhandled file type: ${extension}`);
-  }
-}
-
-function reloadFullEffect(jsonPath)
-{
-  console.log(`Reloading full effect from: ${jsonPath}`);
-  const effectNameFromFile = path.basename(jsonPath, '.json');
-  const effectIndex = synths.findIndex(synth => 
-    synth.name && effectNameFromFile && 
-    synth.name.toLowerCase() === effectNameFromFile.toLowerCase()
-  );
-
-  if (effectIndex !== -1)
-  {
-    try
-    {
-      console.log(`Reading JSON file: ${jsonPath}`);
-      const fileContent = fs.readFileSync(jsonPath, 'utf8');
-      const newEffectData = JSON.parse(fileContent);
-
-      // Load p5 sketch content if visual path exists
-      let p5SketchContent = null;
-      if (newEffectData.visual) {
-        p5SketchContent = loadP5SketchSync(newEffectData.visual, getEffectsRepoPath);
-      }
-
-      // Load shader content if shader path exists
-      let shaderContent = null;
-      if (newEffectData.shader) {
-        try {
-            const effectsRepoPath = getEffectsRepoPath(); 
-            const fullShaderPath = path.join(effectsRepoPath, newEffectData.shader);
-            if (fs.existsSync(fullShaderPath)) {
-                shaderContent = fs.readFileSync(fullShaderPath, 'utf-8');
-                console.log(`ReloadFullEffect: Loaded shader content from: ${fullShaderPath}`);
-            } else {
-                console.warn(`ReloadFullEffect: Shader file not found: ${fullShaderPath}`);
-            }
-        } catch (error) {
-            console.error(`ReloadFullEffect: Error loading shader file ${newEffectData.shader}:`, error);
-        }
-      }
-
-      // Update the effect in the synths array
-      const updatedEffect = {
-        name: newEffectData.name || effectNameFromFile,
-        scFilePath: newEffectData.audio,
-        p5SketchPath: newEffectData.visual,
-        p5SketchContent: p5SketchContent, // Use the loaded p5 content
-        shaderPath: newEffectData.shader, // Add shader path
-        shaderContent: shaderContent,     // Add loaded shader content
-        params: newEffectData.params || []
-      };
-      console.log(`Updated effect object:`, updatedEffect);
-
-      synths[effectIndex] = updatedEffect;
-
-      // Reload SuperCollider file
-      if (updatedEffect.scFilePath)
-      {
-        console.log(`Loading SC file: ${updatedEffect.scFilePath}`);
-        loadScFile(updatedEffect.scFilePath, getEffectsRepoPath, mainWindow);
-      } else
-      {
-        console.warn(`No SC file path provided for effect ${effectNameFromFile}`);
-      }
-
-      // Notify renderer process about the updated effect
-      if (mainWindow && mainWindow.webContents)
-      {
-        console.log(`Sending updated effect to renderer:`, updatedEffect);
-        mainWindow.webContents.send('effect-updated', updatedEffect);
-      } else
-      {
-        console.error('mainWindow or webContents is not available');
-      }
-
-      console.log(`Reloaded effect details:`, {
-        name: updatedEffect.name,
-        scFilePath: updatedEffect.scFilePath,
-        p5SketchPath: updatedEffect.p5SketchPath,
-        paramsCount: updatedEffect.params.length
-      });
-
-      console.log(`Effect ${updatedEffect.name} has been reloaded`);
-    } catch (error)
-    {
-      console.error(`Error reloading effect ${effectNameFromFile}:`, error);
-      console.error(error.stack);
-    }
-  } else
-  {
-    console.warn(`Effect ${effectNameFromFile} not found in synths array`);
-    console.log('Current synths:', synths.map(s => s.name));
   }
 }
 
@@ -868,60 +771,6 @@ function reloadShaderEffect(glslFilePath) {
         }
     });
 }
-
-ipcMain.on('set-current-effect', (event, effectName) =>
-{
-  console.log(`IPC: Received set-current-effect for: ${effectName}`);
-  const effectToLoad = synths.find(synth => synth.name === effectName);
-  if (effectToLoad)
-  {
-    // Set the current effect immediately
-    setCurrentEffect(effectToLoad);
-    console.log(`Set current effect to: ${effectName}`);
-
-    // 1. Load the SC File
-    if (effectToLoad.scFilePath) {
-      loadScFile(effectToLoad.scFilePath, getEffectsRepoPath, mainWindow)
-        .then(() => {
-          console.log(`SC file for ${effectName} loaded successfully. Requesting specs...`);
-          // 2. Request Specs via OSC to SC (sclang default port 57120)
-          if (oscManager && oscManager.oscServer) {
-            oscManager.oscServer.send({
-              address: '/effect/get_specs',
-              args: [{ type: 's', value: effectName }] 
-            }, '127.0.0.1', 57120);
-            console.log(`Sent /effect/get_specs for ${effectName} to SC.`);
-          } else {
-            console.error('OSC Manager or oscServer not available to request specs.');
-          }
-        })
-        .catch(error => {
-          console.error(`Error loading SC file for ${effectName}:`, error);
-        });
-    } else {
-        console.warn(`No SC file path for effect ${effectName}. Cannot request specs or fully set effect.`);
-        if (effectToLoad.shaderPath) {
-            activeVisualSourcePath = effectToLoad.shaderPath;
-        } else if (effectToLoad.p5SketchPath) {
-            activeVisualSourcePath = effectToLoad.p5SketchPath;
-        } else {
-            activeVisualSourcePath = null;
-        }
-        mainWindow.webContents.send('effect-updated', effectToLoad);
-    }
-    activeAudioSourcePath = effectToLoad.scFilePath; 
-    if (effectToLoad.shaderPath) {
-        activeVisualSourcePath = effectToLoad.shaderPath;
-    } else if (effectToLoad.p5SketchPath) {
-        activeVisualSourcePath = effectToLoad.p5SketchPath;
-    } else {
-        activeVisualSourcePath = null;
-    }
-  } else
-  {
-    console.error(`Effect not found: ${effectName}`);
-  }
-});
 
 // IPC listeners for explicitly setting active audio/visual sources
 ipcMain.on('set-current-audio-source', (event, filePath) => {
@@ -1589,64 +1438,6 @@ ipcMain.handle('load-shader-content', async (event, shaderPath) => {
   } catch (error) {
     console.error(`Error loading shader content for ${shaderPath}:`, error);
     throw error; // Propagate error to renderer
-  }
-});
-
-ipcMain.on('get-specific-effect', (event, effectName) => {
-  console.log(`IPC: Received get-specific-effect for: ${effectName}`);
-  try {
-    const effectsPath = getEffectsPath(); // ~/bice-box-effects/effects
-    
-    // Transform the effectName to match typical file naming conventions (lowercase, underscore for spaces)
-    const expectedJsonFileName = effectName.toLowerCase().replace(/ /g, '_') + '.json';
-    const effectJsonPath = path.join(effectsPath, expectedJsonFileName);
-
-    console.log(`Attempting to load effect from: ${effectJsonPath}`); // Log the path being attempted
-
-    if (!fs.existsSync(effectJsonPath)) {
-      console.error(`Effect JSON file not found: ${effectJsonPath}. Original name: "${effectName}"`);
-      event.reply('specific-effect-data', { error: `Effect JSON not found at ${effectJsonPath}`, name: effectName });
-      return;
-    }
-
-    const freshlyLoadedEffect = loadEffectFromFile(effectJsonPath, getEffectsRepoPath);
-
-    if (freshlyLoadedEffect) {
-      // Update the effect in the main synths array
-      const effectIndex = synths.findIndex(synth => synth.name === effectName);
-      if (effectIndex !== -1) {
-        synths[effectIndex] = freshlyLoadedEffect;
-        console.log(`Updated effect ${effectName} in main synths array.`);
-
-        // If the reloaded effect is the currently active one, update its SC file etc.
-        const currentActiveEffect = getCurrentEffect();
-        if (currentActiveEffect && currentActiveEffect.name === effectName) {
-            setCurrentEffect(freshlyLoadedEffect); // Update currentEffect in superColliderManager
-             if (freshlyLoadedEffect.scFilePath) {
-                loadScFile(freshlyLoadedEffect.scFilePath, getEffectsRepoPath, mainWindow);
-            }
-        }
-        
-        // Notify renderer process about the updated effect (optional, but good for consistency)
-        // This uses the existing 'effect-updated' channel which App.js listens to.
-        if (mainWindow && mainWindow.webContents) {
-          mainWindow.webContents.send('effect-updated', freshlyLoadedEffect);
-        }
-
-      } else {
-        // This case should ideally not happen if the effect was in the list before.
-        // If it's a brand new effect that wasn't in the list, 'Reload All Effects' is more appropriate.
-        console.warn(`Effect ${effectName} was not found in the existing synths array. Adding it.`);
-        synths.push(freshlyLoadedEffect);
-         // Potentially send 'effects-updated' with the full list or handle as a new effect.
-      }
-      event.reply('specific-effect-data', freshlyLoadedEffect);
-    } else {
-      throw new Error('Failed to load effect data.');
-    }
-  } catch (error) {
-    console.error(`Error reloading specific effect ${effectName}:`, error);
-    event.reply('specific-effect-data', { error: error.message, name: effectName });
   }
 });
 

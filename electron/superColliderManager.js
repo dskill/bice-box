@@ -18,38 +18,54 @@ function setCurrentEffect(effect) {
 }
 
 function loadEffectsList(mainWindow, getEffectsRepoPath, getEffectsPath) {
-    console.log('Loading effects list...');
-    const effectsPath = getEffectsPath();
-    const effectFiles = fs.readdirSync(effectsPath).filter(file => file.endsWith('.json'));
-
+    console.log('Loading audio effects from SC files...');
+    const audioEffectsPath = path.join(getEffectsRepoPath(), 'audio');
+    
     // Clear the existing synths array
     synths.length = 0;
 
-    // Add new effects to the array
-    effectFiles.forEach(file => {
-        const filePath = path.join(effectsPath, file);
-        const effect = loadEffectFromFile(filePath, getEffectsRepoPath);
+    try {
+        const scFiles = fs.readdirSync(audioEffectsPath).filter(file => file.endsWith('.sc'));
+        console.log(`Found ${scFiles.length} SC files in audio directory`);
 
-        if (effect.p5SketchPath) {
-            console.log(`Reloading p5.js sketch for ${effect.name}: ${effect.p5SketchPath}`);
-            effect.p5SketchContent = loadP5SketchSync(effect.p5SketchPath, getEffectsRepoPath);
+        // Add new audio effects to the array
+        scFiles.forEach(file => {
+            const scFilePath = path.join('audio', file); // Relative path for consistency
+            const effectName = path.basename(file, '.sc'); // Use filename as effect name
+            
+            const audioEffect = {
+                name: effectName,
+                scFilePath: scFilePath,
+                params: {}, // Will be populated when SC file is loaded and specs are requested
+                isAudioEffect: true // Flag to distinguish from old JSON-based effects
+            };
+            
+            console.log(`Added audio effect: ${effectName} -> ${scFilePath}`);
+            synths.push(audioEffect);
+        });
+
+        // Sort effects alphabetically by name
+        synths.sort((a, b) => a.name.localeCompare(b.name));
+
+        // Move "bypass" to the front if it exists
+        const bypassIndex = synths.findIndex(effect => effect.name === "bypass");
+        if (bypassIndex !== -1) {
+            const bypass = synths.splice(bypassIndex, 1)[0];
+            synths.unshift(bypass);
         }
-        synths.push(effect); 
-    });
 
-    // Move "Bypass" to the front if it exists
-    const bypassIndex = synths.findIndex(effect => effect.name === "bypass");
-    if (bypassIndex !== -1) {
-        const bypass = synths.splice(bypassIndex, 1)[0];
-        synths.unshift(bypass);
+        console.log(`Loaded ${synths.length} audio effects:`, synths.map(s => s.name));
+
+        // Notify renderer about updated effects
+        if (mainWindow && mainWindow.webContents) {
+            mainWindow.webContents.send('effects-data', synths);
+        }
+
+        return synths;
+    } catch (error) {
+        console.error('Error loading audio effects:', error);
+        return [];
     }
-
-    // Notify renderer about updated effects
-    if (mainWindow && mainWindow.webContents) {
-        mainWindow.webContents.send('effects-updated', synths);
-    }
-
-    return synths;
 }
 
 function loadEffectFromFile(filePath, getEffectsRepoPath) {
@@ -358,6 +374,5 @@ module.exports = {
     loadEffectsList,
     loadP5SketchSync,
     loadScFile,
-    loadEffectFromFile,
     loadMultiPassShader
 }; 

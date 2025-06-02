@@ -18,7 +18,6 @@ const electron = window.electron;
 
 function App() {
   const [synths, setSynths] = useState([]);
-  const [currentSynth, setCurrentSynth] = useState(null); // Represents the loaded preset
   const [currentAudioSource, setCurrentAudioSource] = useState(null); // Stores scFilePath
   const [currentVisualSource, setCurrentVisualSource] = useState(null); // Stores p5SketchPath
   const [currentVisualContent, setCurrentVisualContent] = useState(''); // Stores loaded p5 sketch content
@@ -28,7 +27,6 @@ function App() {
   const [currentScreen, setCurrentScreen] = useState('visualization'); // 'visualization' or 'select' - Will be replaced
   const [showAudioSelector, setShowAudioSelector] = useState(false);
   const [showVisualSelector, setShowVisualSelector] = useState(false);
-  const [showPresetSelector, setShowPresetSelector] = useState(false); // State for preset selector
   const [visualizerList, setVisualizerList] = useState([]); // State for direct visualizers
   const [currentAudioParams, setCurrentAudioParams] = useState([]); // State for active audio params
   const [effectsRepoStatus, setEffectsRepoStatus] = useState({
@@ -57,14 +55,6 @@ function App() {
     return Array.from(sources.values()).sort((a, b) => a.name.localeCompare(b.name));
   }, [synths]);
 
-  // Derived list for curated presets selector
-  const curatedPresets = useMemo(() => {
-    console.log('Filtering curated presets from:', synths);
-    const filtered = synths.filter(synth => synth.curated === true);
-    console.log('Curated presets:', filtered.map(s => s.name));
-    return filtered;
-  }, [synths]);
-
   const handleScReady = useCallback((event) => {
     console.log('SuperCollider is ready');
     // When SC is ready, ensure the current audio source is loaded
@@ -72,8 +62,8 @@ function App() {
       console.log(`SC ready, activating current audio source: ${currentAudioSource}`);
       electron.ipcRenderer.send('load-sc-file', currentAudioSource);
       // Also apply params from the original preset if it exists
-       if (currentSynth && currentSynth.scFilePath === currentAudioSource && Array.isArray(currentSynth.params)) {
-          currentSynth.params.forEach(param => {
+       if (Array.isArray(currentAudioParams)) {
+          currentAudioParams.forEach(param => {
               if (param && typeof param.name === 'string' && param.value !== undefined) {
                   if (electron && electron.ipcRenderer) {
                     electron.ipcRenderer.send('send-osc-to-sc', { address: '/effect/param/set', args: [param.name, param.value] });
@@ -81,14 +71,14 @@ function App() {
               }
           });
        }
-    } else if (currentSynth && currentSynth.scFilePath) {
+    } else if (synths.length > 0 && synths[0].scFilePath) {
         // Fallback to loading the preset's audio if no override is set
-         console.log(`SC ready, activating preset audio source: ${currentSynth.scFilePath}`);
-         electron.ipcRenderer.send('load-sc-file', currentSynth.scFilePath);
+         console.log(`SC ready, activating preset audio source: ${synths[0].scFilePath}`);
+         electron.ipcRenderer.send('load-sc-file', synths[0].scFilePath);
     } else {
       console.log('SC ready, but no current audio source to activate');
     }
-  }, [currentAudioSource, currentSynth, electron]); // Added electron to dependencies
+  }, [currentAudioSource, currentAudioParams, synths, electron]); // Added electron to dependencies
 
   useEffect(() => {
     // Initial effects load and repo check
@@ -130,38 +120,7 @@ function App() {
         return updatedSynths;
       });
 
-      // If the updated effect is the currently loaded preset, update sources and content
-      setCurrentSynth(prevSynth => {
-        if (prevSynth && prevSynth.name === updatedEffect.name) {
-          console.log('Updating current synth preset and sources due to effect-updated IPC:', updatedEffect);
-          setCurrentAudioSource(updatedEffect.scFilePath);
-          // Prioritize shader, then p5, then nothing
-          if (updatedEffect.shaderPath && updatedEffect.shaderContent) {
-            setCurrentShaderPath(updatedEffect.shaderPath);
-            setCurrentShaderContent(updatedEffect.shaderContent);
-            setCurrentVisualSource(null);
-            setCurrentVisualContent('');
-          } else if (updatedEffect.p5SketchPath) {
-            setCurrentVisualSource(updatedEffect.p5SketchPath);
-            setCurrentVisualContent(updatedEffect.p5SketchContent || '');
-            setCurrentShaderPath(null);
-            setCurrentShaderContent('');
-          } else {
-            setCurrentVisualSource(null);
-            setCurrentVisualContent('');
-            setCurrentShaderPath(null);
-            setCurrentShaderContent('');
-          }
-          // Also update params if they are part of updatedEffect and it's the current one
-          if (updatedEffect.params) {
-            setCurrentAudioParams(updatedEffect.params);
-          }
-          return updatedEffect;
-        }
-        return prevSynth;
-      });
-
-      // ALSO check if the updated effect matches the current audio source (for direct audio selection)
+      // Check if the updated effect matches the current audio source (for direct audio selection)
       if (currentAudioSource && updatedEffect.scFilePath && 
           currentAudioSource.toLowerCase() === updatedEffect.scFilePath.toLowerCase()) {
         console.log('Updated effect matches current audio source, updating currentAudioParams:', updatedEffect.params);
@@ -229,7 +188,7 @@ function App() {
         electron.ipcRenderer.removeListener('sc-ready', handleScReady);
       };
     }
-  }, [currentAudioSource, currentSynth, handleScReady, electron]); // Added handleScReady and electron to dependencies
+  }, [currentAudioSource, synths, handleScReady, electron]); // Added handleScReady and electron to dependencies
 
   useEffect(() => {
     if (electron) {
@@ -257,66 +216,38 @@ function App() {
 
   const reloadEffectList = () => {
     return new Promise((resolve, reject) => {
-      console.log("loadEffects function called");
+      console.log("Loading audio effects from SC files...");
       if (electron) {
         electron.ipcRenderer.send('reload-all-effects'); 
         electron.ipcRenderer.once('effects-data', (event, data) => {
-          console.log("Received effects data:", data);
+          console.log("Received audio effects data:", data);
           if (Array.isArray(data) && data.length > 0) {
             setSynths(data);
-            const firstSynth = data[0];
-            setCurrentSynth(firstSynth);
-            setCurrentAudioSource(firstSynth.scFilePath);
-            // Prioritize shader if available, otherwise use p5 visual
-            if (firstSynth.shaderPath && firstSynth.shaderContent) {
-              setCurrentShaderPath(firstSynth.shaderPath);
-              setCurrentShaderContent(firstSynth.shaderContent);
-              setCurrentVisualSource(null); // Ensure p5 visual is cleared if shader is active
-              setCurrentVisualContent('');
-              console.log("Initial state set with shader: ", firstSynth.shaderPath);
-            } else if (firstSynth.p5SketchPath) {
-              setCurrentVisualSource(firstSynth.p5SketchPath);
-              setCurrentVisualContent(firstSynth.p5SketchContent || '');
-              setCurrentShaderPath(null); // Ensure shader is cleared if p5 is active
-              setCurrentShaderContent('');
-              console.log("Initial state set with p5 visual: ", firstSynth.p5SketchPath);
-            } else {
-              // No visual or shader initially
-              setCurrentVisualSource(null);
-              setCurrentVisualContent('');
-              setCurrentShaderPath(null);
-              setCurrentShaderContent('');
-              console.log("Initial state set with no visual/shader.");
-            }
-            setCurrentAudioParams(firstSynth.params || []);
+            const firstEffect = data[0];
+            setCurrentAudioSource(firstEffect.scFilePath);
+            setCurrentAudioParams(firstEffect.params || {});
             
-            // Inform main process of initial active sources
-            electron.ipcRenderer.send('set-current-effect', firstSynth.name); // This already updates them in main
-            // electron.ipcRenderer.send('set-current-audio-source', firstSynth.scFilePath);
-            // electron.ipcRenderer.send('set-current-visual-source', firstSynth.p5SketchPath);
-
-            console.log("Initial state set:", { 
-              currentSynth: firstSynth.name, 
-              audio: firstSynth.scFilePath, 
-              visual: firstSynth.p5SketchPath 
+            // Don't set any visual sources - keep them independent
+            console.log("Initial audio effect set:", { 
+              audio: firstEffect.scFilePath
             });
             
             resolve(data);
           } else {
-            const errorMessage = "Received empty or invalid effects data";
+            const errorMessage = "Received empty or invalid audio effects data";
             console.warn(errorMessage, data);
             reject(new Error(errorMessage));
           }
         });
 
         electron.ipcRenderer.once('effects-error', (event, error) => {
-          console.error('Error loading effects:', error);
+          console.error('Error loading audio effects:', error);
           reject(new Error(error));
         });
 
         // Add a timeout in case the IPC call doesn't respond
         setTimeout(() => {
-          reject(new Error("Timeout while waiting for effects data"));
+          reject(new Error("Timeout while waiting for audio effects data"));
         }, 5000);
       } else {
         console.warn('Electron is not available');
@@ -325,78 +256,7 @@ function App() {
     });
   };
 
-  // Renamed and updated: Selects a *preset*
-  const switchPreset = async (presetName) => {
-    if (typeof presetName !== 'string') {
-      console.error('Invalid preset name:', presetName);
-      return;
-    }
-
-    const selectedPreset = synths.find(synth => synth.name === presetName);
-    if (!selectedPreset) {
-      console.error('Preset not found:', presetName);
-      return;
-    }
-
-    console.log(`Switching to preset: ${presetName}`);
-    setCurrentSynth(selectedPreset);
-    setCurrentAudioParams(selectedPreset.params || []);
-    
-    if (electron) {
-      electron.ipcRenderer.send('set-current-effect', selectedPreset.name);
-    }
-    
-    // Update audio source and load it
-    if (selectedPreset.scFilePath) {
-      setCurrentAudioSource(selectedPreset.scFilePath);
-      if (electron) {
-        electron.ipcRenderer.send('load-sc-file', selectedPreset.scFilePath);
-        electron.ipcRenderer.send('set-current-audio-source', selectedPreset.scFilePath);
-        if (Array.isArray(selectedPreset.params)) {
-          selectedPreset.params.forEach(param => {
-            if (param && typeof param.name === 'string' && param.value !== undefined) {
-              if (electron && electron.ipcRenderer) {
-                electron.ipcRenderer.send('send-osc-to-sc', { address: '/effect/param/set', args: [param.name, param.value] });
-              }
-            }
-          });
-        }
-      }
-    } else {
-      setCurrentAudioSource(null); 
-    }
-
-    // Update visual/shader source and load its content
-    // Prioritize shader if available
-    if (selectedPreset.shaderPath && selectedPreset.shaderContent) {
-      console.log(`Preset ${presetName} uses shader: ${selectedPreset.shaderPath}`);
-      setCurrentShaderPath(selectedPreset.shaderPath);
-      setCurrentShaderContent(selectedPreset.shaderContent);
-      setCurrentVisualSource(null); // Clear p5 visual path
-      setCurrentVisualContent('');    // Clear p5 visual content
-      // Inform main process that p5 is not the active visual for hot-reloading purposes
-      if (electron) electron.ipcRenderer.send('set-current-visual-source', selectedPreset.shaderPath); 
-    } else if (selectedPreset.p5SketchPath) {
-      console.log(`Preset ${presetName} uses p5 sketch: ${selectedPreset.p5SketchPath}`);
-      setCurrentVisualSource(selectedPreset.p5SketchPath);
-      setCurrentVisualContent(selectedPreset.p5SketchContent || ''); // Use preloaded if available
-      setCurrentShaderPath(null);   // Clear shader path
-      setCurrentShaderContent('');  // Clear shader content
-      if (electron) electron.ipcRenderer.send('set-current-visual-source', selectedPreset.p5SketchPath);
-      // No need to invoke load-p5-sketch here if p5SketchContent is already populated by main process
-      // If p5SketchContent can be missing for a valid p5SketchPath, then loading logic here would be needed.
-    } else {
-      // No visual or shader specified for the preset
-      console.log(`Preset ${presetName} has no visual or shader specified.`);
-      setCurrentVisualSource(null);
-      setCurrentVisualContent('');
-      setCurrentShaderPath(null);
-      setCurrentShaderContent('');
-      if (electron) electron.ipcRenderer.send('set-current-visual-source', null);
-    }
-  };
-
-  // --- New Handlers for Audio/Visual/Preset Selection ---
+  // --- New Handlers for Audio/Visual Selection ---
 
   const handleAudioSelect = (scFilePath) => {
     if (!scFilePath) {
@@ -410,16 +270,6 @@ function App() {
       // Use the new handler that loads SC file AND requests specs
       electron.ipcRenderer.send('load-sc-file-and-request-specs', scFilePath);
       electron.ipcRenderer.send('set-current-audio-source', scFilePath); // Inform main process
-      // Note: Params are NOT automatically applied when selecting audio only.
-      // Find the preset associated with this audio file to load its params
-      const associatedPreset = synths.find(synth => synth.scFilePath === scFilePath);
-      if (associatedPreset) {
-        console.log(`Found preset ${associatedPreset.name} for audio source ${scFilePath}, loading params.`);
-        setCurrentAudioParams(associatedPreset.params || []);
-      } else {
-        console.warn(`Could not find preset associated with audio source ${scFilePath}. Clearing params.`);
-        setCurrentAudioParams([]);
-      }
     }
     setShowAudioSelector(false);
   };
@@ -495,128 +345,6 @@ function App() {
         reject(new Error("Electron not available"));
       }
     });
-  };
-
-  const hardReloadCurrentEffect = () => {
-    if (!currentSynth || !currentSynth.name) {
-      console.warn('No current synth selected to hard reload.');
-      return Promise.reject(new Error('No current synth to reload'));
-    }
-    const effectName = currentSynth.name;
-    console.log(`Hard reloading current effect: ${effectName}`);
-    return new Promise((resolve, reject) => {
-      if (electron) {
-        electron.ipcRenderer.send('get-specific-effect', effectName);
-        electron.ipcRenderer.once('specific-effect-data', (event, updatedEffect) => {
-          if (updatedEffect && updatedEffect.error) {
-            console.error(`Error reloading specific effect ${effectName}:`, updatedEffect.error);
-            setError(`Failed to reload ${effectName}: ${updatedEffect.error}`);
-            reject(new Error(updatedEffect.error));
-            return;
-          }
-          if (updatedEffect && updatedEffect.name) {
-            console.log('Received updated specific effect data:', updatedEffect);
-            // Update the main synths list
-            setSynths(prevSynths => 
-              prevSynths.map(s => s.name === updatedEffect.name ? updatedEffect : s)
-            );
-            // Update the current synth and its associated states
-            setCurrentSynth(updatedEffect);
-            setCurrentAudioSource(updatedEffect.scFilePath);
-            if (updatedEffect.shaderPath && updatedEffect.shaderContent) {
-              setCurrentShaderPath(updatedEffect.shaderPath);
-              setCurrentShaderContent(updatedEffect.shaderContent);
-              setCurrentVisualSource(null);
-              setCurrentVisualContent('');
-            } else if (updatedEffect.p5SketchPath) {
-              setCurrentVisualSource(updatedEffect.p5SketchPath);
-              setCurrentVisualContent(updatedEffect.p5SketchContent || '');
-              setCurrentShaderPath(null);
-              setCurrentShaderContent('');
-            } else {
-              setCurrentVisualSource(null);
-              setCurrentVisualContent('');
-              setCurrentShaderPath(null);
-              setCurrentShaderContent('');
-            }
-            setCurrentAudioParams(updatedEffect.params || []);
-            
-            // Inform main process of the reloaded current effect (if necessary, already handled by get-specific-effect handler)
-            // electron.ipcRenderer.send('set-current-effect', updatedEffect.name); 
-            // SC file is reloaded by main process if it's the active one
-
-            console.log("Hard reload complete for:", updatedEffect.name);
-            resolve(updatedEffect);
-          } else {
-            const errorMessage = "Received invalid or empty data for specific effect reload";
-            console.warn(errorMessage, updatedEffect);
-            setError(errorMessage);
-            reject(new Error(errorMessage));
-          }
-        });
-        // Add a timeout
-        const timeoutId = setTimeout(() => {
-          reject(new Error(`Timeout waiting for specific-effect-data for ${effectName}`))
-        }, 5000);
-        electron.ipcRenderer.once('specific-effect-data', () => clearTimeout(timeoutId)); // Clear timeout on reply
-
-      } else {
-        console.warn('Electron is not available for hardReloadCurrentEffect');
-        reject(new Error("Electron not available"));
-      }
-    });
-  };
-
-  // Handles selecting a preset from the list
-  const handlePresetSelect = (presetName) => {
-    if (!presetName) {
-      console.log('Preset selection cancelled.');
-      setShowPresetSelector(false);
-      return;
-    }
-    console.log(`Preset selected: ${presetName}`);
-    switchPreset(presetName); // Call the existing function to load the preset
-    setShowPresetSelector(false);
-  };
-
-  // Opens the preset selector
-  const openPresetSelect = () => {
-    console.log("Open Preset Selector triggered");
-    setShowPresetSelector(true);
-    setShowAudioSelector(false);
-    setShowVisualSelector(false);
-  };
-
-  // Opens the audio selector
-  const openAudioSelect = () => {
-    console.log("Open Audio Selector triggered");
-    setShowAudioSelector(true);
-    setShowPresetSelector(false);
-    setShowVisualSelector(false);
-  };
-  
-  // Updated to fetch visualizer list on demand
-  const openVisualSelect = async () => {
-    console.log("Open Visual Selector triggered");
-    // Fetch the list before showing the selector
-    try {
-      if (electron) {
-        console.log('Fetching available visualizers...');
-        const fetchedVisualizers = await electron.ipcRenderer.invoke('get-visualizers');
-        console.log('Received visualizers:', fetchedVisualizers);
-        setVisualizerList(fetchedVisualizers || []); 
-        setShowVisualSelector(true); // Show selector only after successful fetch
-        setShowAudioSelector(false); 
-        setShowPresetSelector(false); // Also hide preset selector
-      } else {
-         throw new Error("Electron IPC not available");
-      }
-    } catch (err) {
-      console.error("Failed to fetch visualizers:", err);
-      setError("Could not load visualizer list.");
-      setVisualizerList([]); // Clear list on error
-      setShowVisualSelector(false); // Ensure selector is hidden
-    }
   };
 
   const checkEffectsRepoStatus = async () => {
@@ -706,6 +434,36 @@ function App() {
     };
   }, [handleShaderEffectUpdated, electron]); // Add electron to dependency array
 
+  // Opens the audio selector
+  const openAudioSelect = () => {
+    console.log("Open Audio Selector triggered");
+    setShowAudioSelector(true);
+    setShowVisualSelector(false);
+  };
+  
+  // Updated to fetch visualizer list on demand
+  const openVisualSelect = async () => {
+    console.log("Open Visual Selector triggered");
+    // Fetch the list before showing the selector
+    try {
+      if (electron) {
+        console.log('Fetching available visualizers...');
+        const fetchedVisualizers = await electron.ipcRenderer.invoke('get-visualizers');
+        console.log('Received visualizers:', fetchedVisualizers);
+        setVisualizerList(fetchedVisualizers || []); 
+        setShowVisualSelector(true); // Show selector only after successful fetch
+        setShowAudioSelector(false); 
+      } else {
+         throw new Error("Electron IPC not available");
+      }
+    } catch (err) {
+      console.error("Failed to fetch visualizers:", err);
+      setError("Could not load visualizer list.");
+      setVisualizerList([]); // Clear list on error
+      setShowVisualSelector(false); // Ensure selector is hidden
+    }
+  };
+
   if (error) {
     return <div className="error-message">{error}</div>;
   }
@@ -714,42 +472,22 @@ function App() {
     <div className="App" style={styles.app}>
       <VisualizationMode
         // Pass necessary state and handlers
-        currentPresetName={currentSynth ? currentSynth.name : 'None'} // Pass preset name
         currentAudioSourcePath={currentAudioSource}
         currentVisualSourcePath={currentVisualSource}
         currentVisualContent={currentVisualContent} // Pass the loaded sketch content
         currentShaderPath={currentShaderPath} // Pass new shader state
         currentShaderContent={currentShaderContent} // Pass new shader state
         currentAudioParams={currentAudioParams} // Pass the audio params
-        // currentSynth={currentSynth} // Remove if no longer needed by VisMode besides params
-        // Remove next/previous handlers
-        // nextSynth={nextSynth} 
-        // previousSynth={previousSynth}
         reloadEffectList={reloadEffectList}
         pullEffectsRepo={pullEffectsRepo}
-        hardReloadCurrentEffect={hardReloadCurrentEffect} // Pass down the new function
         // Pass handlers to open selectors
-        onOpenPresetSelect={openPresetSelect}
         onOpenAudioSelect={openAudioSelect} 
         onOpenVisualSelect={openVisualSelect} 
-        // onOpenEffectSelect={openEffectSelect} // Replace this
         effectsRepoStatus={effectsRepoStatus}
         onCheckEffectsRepo={checkEffectsRepoStatus}
         devMode={true}
-        // Still need a way to handle parameter changes, maybe pass `currentSynth.params`?
-        // And a handler `onParamChange(paramName, value)` that sends SC messages
-        // using `currentSynth.name` as the target synthdef.
       />
       {/* Render selectors conditionally based on new state */}
-      { showPresetSelector && (
-        <EffectSelectScreen
-          type="preset"
-          items={curatedPresets} // Use the filtered list of curated presets
-          onSelect={handlePresetSelect} // Use the new preset handler
-          currentSourcePath={currentSynth?.name} // Highlight based on current preset name
-          onClose={() => setShowPresetSelector(false)}
-        />
-      )}
       { showAudioSelector && (
           <EffectSelectScreen
             type="audio"
