@@ -46,6 +46,11 @@ function VisualizationMode({
     ? prettifySourceName(currentShaderPath) 
     : prettifySourceName(currentVisualSourcePath);
 
+  // Debug logging for currentAudioParams
+  console.log('VisualizationMode render - currentAudioParams:', currentAudioParams);
+  console.log('VisualizationMode render - currentAudioParams type:', typeof currentAudioParams);
+  console.log('VisualizationMode render - currentAudioParams keys:', currentAudioParams ? Object.keys(currentAudioParams) : 'null/undefined');
+
   return (
     <div className="visualization-mode" style={{ touchAction: 'none' }}>
       {window.electron && (
@@ -101,12 +106,14 @@ function VisualizationMode({
         <div className="visualization-controls">
           <div className="knobs-container">
             {currentAudioParams && Object.entries(currentAudioParams).map(([paramName, paramSpec], index) => {
+              console.log(`VisualizationMode: Processing param ${paramName}:`, paramSpec);
               const faderParam = {
                 name: paramName,
                 value: paramSpec.default,
                 range: [paramSpec.minval, paramSpec.maxval],
                 index: index,
               };
+              console.log(`VisualizationMode: Created faderParam for ${paramName}:`, faderParam);
               return (
                 <ParamFader
                   key={`${currentAudioSourcePath}-${paramName}`}

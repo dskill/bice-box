@@ -160,6 +160,15 @@ function App() {
         }
         return prevSynth;
       });
+
+      // ALSO check if the updated effect matches the current audio source (for direct audio selection)
+      if (currentAudioSource && updatedEffect.scFilePath && 
+          currentAudioSource.toLowerCase() === updatedEffect.scFilePath.toLowerCase()) {
+        console.log('Updated effect matches current audio source, updating currentAudioParams:', updatedEffect.params);
+        if (updatedEffect.params) {
+          setCurrentAudioParams(updatedEffect.params);
+        }
+      }
     };
 
     if (electron) {
@@ -170,7 +179,7 @@ function App() {
         electron.ipcRenderer.removeListener('effect-updated', handleEffectUpdate);
       };
     }
-  }, []);
+  }, [currentAudioSource]); // Add currentAudioSource to dependency array
 
   const handleVisualEffectUpdate = useCallback((event, payload) => {
     if (!payload) {
@@ -398,7 +407,8 @@ function App() {
     console.log(`Selecting audio source: ${scFilePath}`);
     setCurrentAudioSource(scFilePath);
     if (electron) {
-      electron.ipcRenderer.send('load-sc-file', scFilePath);
+      // Use the new handler that loads SC file AND requests specs
+      electron.ipcRenderer.send('load-sc-file-and-request-specs', scFilePath);
       electron.ipcRenderer.send('set-current-audio-source', scFilePath); // Inform main process
       // Note: Params are NOT automatically applied when selecting audio only.
       // Find the preset associated with this audio file to load its params

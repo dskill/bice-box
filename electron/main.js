@@ -241,13 +241,20 @@ function createWindow()
 
         const currentActiveEffect = getCurrentEffect();
         console.log(`CALLBACK: Current active effect:`, currentActiveEffect ? currentActiveEffect.name : 'none');
+        console.log(`CALLBACK: Active audio source path:`, activeAudioSourcePath);
+        console.log(`CALLBACK: This effect's SC file path:`, synths[effectIndex].scFilePath);
         
-        if (currentActiveEffect && currentActiveEffect.name === effectName) {
-          console.log(`CALLBACK: Updating current effect with new params`);
+        // Check if this effect's SC file matches the currently active audio source
+        const isActiveAudioSource = activeAudioSourcePath && synths[effectIndex].scFilePath && 
+                                   activeAudioSourcePath.toLowerCase() === synths[effectIndex].scFilePath.toLowerCase();
+        
+        if (isActiveAudioSource) {
+          console.log(`CALLBACK: This effect matches the active audio source - updating UI`);
+          // Update the current effect to include the new params
           setCurrentEffect(synths[effectIndex]); 
           console.log('Updated currentEffect with new params from SC.');
           if (mainWindow && mainWindow.webContents) {
-            console.log(`CALLBACK: Sending effect-updated to renderer for ${effectName}`);
+            console.log(`CALLBACK: Sending effect-updated to renderer for active audio source ${effectName}`);
             mainWindow.webContents.send('effect-updated', synths[effectIndex]);
             console.log(`Sent effect-updated for ${effectName} with new SC params to renderer.`);
           } else {
@@ -272,7 +279,7 @@ function createWindow()
             console.error(`CALLBACK: mainWindow or webContents not available for initial effect!`);
           }
         } else {
-          console.log(`CALLBACK: Effect ${effectName} is not the current active effect. Current: ${currentActiveEffect ? currentActiveEffect.name : 'none'}`);
+          console.log(`CALLBACK: Effect ${effectName} does not match active audio source. Active: ${activeAudioSourcePath}, This effect: ${synths[effectIndex].scFilePath}`);
         }
       } else {
         console.warn(`Received specs for unknown effect: ${effectName}`);
@@ -749,6 +756,7 @@ function reloadShaderEffect(glslFilePath) {
     
     // Check if this is a multi-pass shader file (has underscore suffix)
     const multiPassSuffixes = ['_common', '_bufferA', '_bufferB', '_bufferC', '_bufferD', '_image'];
+    const multiPassComponentPattern = /_buffer[a-d]\.glsl$|_common\.glsl$/i;
     for (const suffix of multiPassSuffixes) {
         if (fileName.endsWith(suffix)) {
             potentialBaseName = fileName.substring(0, fileName.length - suffix.length);
@@ -1246,9 +1254,40 @@ ipcMain.handle('load-p5-sketch', async (event, sketchPath) =>
   }
 });
 
-// Add handler for loading SC files
-ipcMain.on('load-sc-file', (event, filePath) => {
-    loadScFile(filePath, getEffectsRepoPath, mainWindow);
+// Handler for loading SC files and requesting specs
+ipcMain.on('load-sc-file-and-request-specs', (event, filePath) => {
+    console.log(`IPC: Received load-sc-file-and-request-specs for: ${filePath}`);
+    
+    // Update the active audio source path
+    activeAudioSourcePath = filePath;
+    console.log(`Updated activeAudioSourcePath to: ${activeAudioSourcePath}`);
+    
+    // Load the SC file
+    loadScFile(filePath, getEffectsRepoPath, mainWindow)
+        .then(() => {
+            console.log(`SC file ${filePath} loaded successfully. Requesting specs...`);
+            
+            // Extract effect name from file path (remove .sc extension and path)
+            const effectName = path.basename(filePath, '.sc');
+            console.log(`Using effect name: ${effectName} for OSC request`);
+            
+            // Add a small delay to ensure SuperCollider has time to register the specs
+            setTimeout(() => {
+                // Request specs via OSC to SC
+                if (oscManager && oscManager.oscServer) {
+                    oscManager.oscServer.send({
+                        address: '/effect/get_specs',
+                        args: [{ type: 's', value: effectName }] 
+                    }, '127.0.0.1', 57120);
+                    console.log(`Sent /effect/get_specs for ${effectName} to SC.`);
+                } else {
+                    console.error('OSC Manager or oscServer not available to request specs.');
+                }
+            }, 100); // 100ms delay to let SuperCollider finish registration
+        })
+        .catch(error => {
+            console.error(`Error loading SC file ${filePath}:`, error);
+        });
 });
 
 // Handler for WebGL capabilities logging
@@ -1609,4 +1648,9 @@ ipcMain.on('get-specific-effect', (event, effectName) => {
     console.error(`Error reloading specific effect ${effectName}:`, error);
     event.reply('specific-effect-data', { error: error.message, name: effectName });
   }
+});
+
+// Handler for loading SC files
+ipcMain.on('load-sc-file', (event, filePath) => {
+    loadScFile(filePath, getEffectsRepoPath, mainWindow);
 });
