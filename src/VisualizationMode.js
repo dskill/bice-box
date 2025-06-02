@@ -100,13 +100,21 @@ function VisualizationMode({
       <div className="effect-nav-buttons-container">
         <div className="visualization-controls">
           <div className="knobs-container">
-            {currentAudioParams && currentAudioParams.map((param, index) => (
-              <ParamFader
-                key={`${currentAudioSourcePath}-${param.name}`}
-                param={{ ...param, index }}
-                onParamChange={handleParamChange}
-              />
-            ))}
+            {currentAudioParams && Object.entries(currentAudioParams).map(([paramName, paramSpec], index) => {
+              const faderParam = {
+                name: paramName,
+                value: paramSpec.default,
+                range: [paramSpec.minval, paramSpec.maxval],
+                index: index,
+              };
+              return (
+                <ParamFader
+                  key={`${currentAudioSourcePath}-${paramName}`}
+                  param={faderParam}
+                  onParamChange={handleParamChange}
+                />
+              );
+            })}
           </div>
         </div>
       </div>

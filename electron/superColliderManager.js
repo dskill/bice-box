@@ -99,7 +99,7 @@ function loadEffectFromFile(filePath, getEffectsRepoPath) {
         p5SketchContent: p5SketchContent, 
         shaderPath: synthData.shader,       // This will store the path to the .glsl file or base name
         shaderContent: shaderConfigOrContent, // This now holds string (single GLSL) or object (multi-pass config)
-        params: synthData.params,
+        params: {},
         curated: synthData.curated || false
     };
 }

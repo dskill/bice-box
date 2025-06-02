@@ -208,11 +208,82 @@ function createWindow()
     });
 
     // Initialize SuperCollider with the necessary callbacks
-    const loadEffectsCallback = () => loadEffectsList(mainWindow, getEffectsRepoPath, getEffectsPath);
+    const loadEffectsCallback = () => {
+      loadEffectsList(mainWindow, getEffectsRepoPath, getEffectsPath);
+      // After initial effects are loaded, fetch their parameters
+      fetchAllEffectParameters(); 
+    };
     initializeSuperCollider(mainWindow, getEffectsRepoPath, loadEffectsCallback);
 
     // Initialize OSC Server after creating the window
-    oscManager = new OSCManager(mainWindow);
+    const handleEffectSpecs = ({ name: effectName, params, error }) => {
+      console.log(`=== CALLBACK: handleEffectSpecs called ===`);
+      console.log(`Effect name: ${effectName}`);
+      console.log(`Params:`, params);
+      console.log(`Error:`, error);
+      
+      if (error) {
+        console.error(`Received error with specs for ${effectName}: ${error}`);
+        return;
+      }
+      
+      console.log(`CALLBACK: Received effect-specs for ${effectName}`);
+      console.log(`CALLBACK: Params received:`, params);
+      console.log(`CALLBACK: Current synths array length: ${synths.length}`);
+      console.log(`CALLBACK: Synths names: ${synths.map(s => s.name).join(', ')}`);
+      
+      const effectIndex = synths.findIndex(synth => synth.name === effectName);
+      console.log(`CALLBACK: Found effect at index: ${effectIndex}`);
+      
+      if (effectIndex !== -1) {
+        console.log(`CALLBACK: Before update - synths[${effectIndex}].params:`, synths[effectIndex].params);
+        synths[effectIndex].params = params || {}; 
+        console.log(`CALLBACK: After update - synths[${effectIndex}].params:`, synths[effectIndex].params);
+        console.log(`Updated params for ${effectName} in synths array:`, synths[effectIndex].params);
+
+        const currentActiveEffect = getCurrentEffect();
+        console.log(`CALLBACK: Current active effect:`, currentActiveEffect ? currentActiveEffect.name : 'none');
+        
+        if (currentActiveEffect && currentActiveEffect.name === effectName) {
+          console.log(`CALLBACK: Updating current effect with new params`);
+          setCurrentEffect(synths[effectIndex]); 
+          console.log('Updated currentEffect with new params from SC.');
+          if (mainWindow && mainWindow.webContents) {
+            console.log(`CALLBACK: Sending effect-updated to renderer for ${effectName}`);
+            mainWindow.webContents.send('effect-updated', synths[effectIndex]);
+            console.log(`Sent effect-updated for ${effectName} with new SC params to renderer.`);
+          } else {
+            console.error(`CALLBACK: mainWindow or webContents not available!`);
+          }
+        } else if (!currentActiveEffect && synths.length > 0 && synths[0].name === effectName) {
+          console.log(`CALLBACK: Setting initial effect ${effectName}`);
+          // This handles the case where the very first effect (e.g. bypass or default) gets its specs
+          setCurrentEffect(synths[effectIndex]);
+          activeAudioSourcePath = synths[effectIndex].scFilePath;
+          if (synths[effectIndex].shaderPath) {
+            activeVisualSourcePath = synths[effectIndex].shaderPath;
+          } else if (synths[effectIndex].p5SketchPath) {
+            activeVisualSourcePath = synths[effectIndex].p5SketchPath;
+          }
+
+          if (mainWindow && mainWindow.webContents) {
+            console.log(`CALLBACK: Sending effect-updated to renderer for initial effect ${effectName}`);
+            mainWindow.webContents.send('effect-updated', synths[effectIndex]);
+            console.log(`Sent effect-updated for initial effect ${effectName} with new SC params to renderer.`);
+          } else {
+            console.error(`CALLBACK: mainWindow or webContents not available for initial effect!`);
+          }
+        } else {
+          console.log(`CALLBACK: Effect ${effectName} is not the current active effect. Current: ${currentActiveEffect ? currentActiveEffect.name : 'none'}`);
+        }
+      } else {
+        console.warn(`Received specs for unknown effect: ${effectName}`);
+        console.log(`Available effects: ${synths.map(s => s.name).join(', ')}`);
+      }
+      console.log(`=== END CALLBACK: handleEffectSpecs ===`);
+    };
+
+    oscManager = new OSCManager(mainWindow, handleEffectSpecs);
     oscManager.initialize();
 
     // Set up file watcher for hot reloading
@@ -795,27 +866,81 @@ function reloadShaderEffect(glslFilePath) {
 ipcMain.on('set-current-effect', (event, effectName) =>
 {
   console.log(`IPC: Received set-current-effect for: ${effectName}`);
-  const effect = synths.find(synth => synth.name === effectName);
-  if (effect)
+  const effectToLoad = synths.find(synth => synth.name === effectName);
+  if (effectToLoad)
   {
-    setCurrentEffect(effect);
-    activeAudioSourcePath = effect.scFilePath;
-    // Update activeVisualSourcePath based on whether it's a p5 or shader visual
-    if (effect.shaderPath) {
-        activeVisualSourcePath = effect.shaderPath;
-        console.log(`Active visual source (shader) path updated from preset ${effectName}: ${activeVisualSourcePath}`);
-    } else if (effect.p5SketchPath) {
-        activeVisualSourcePath = effect.p5SketchPath;
-        console.log(`Active visual source (p5) path updated from preset ${effectName}: ${activeVisualSourcePath}`);
+    // Set the current effect immediately
+    setCurrentEffect(effectToLoad);
+    console.log(`Set current effect to: ${effectName}`);
+
+    // 1. Load the SC File
+    if (effectToLoad.scFilePath) {
+      loadScFile(effectToLoad.scFilePath, getEffectsRepoPath, mainWindow)
+        .then(() => {
+          console.log(`SC file for ${effectName} loaded successfully. Requesting specs...`);
+          // 2. Request Specs via OSC to SC (sclang default port 57120)
+          if (oscManager && oscManager.oscServer) {
+            oscManager.oscServer.send({
+              address: '/effect/get_specs',
+              args: [{ type: 's', value: effectName }] 
+            }, '127.0.0.1', 57120);
+            console.log(`Sent /effect/get_specs for ${effectName} to SC.`);
+          } else {
+            console.error('OSC Manager or oscServer not available to request specs.');
+          }
+        })
+        .catch(error => {
+          console.error(`Error loading SC file for ${effectName}:`, error);
+        });
     } else {
-        activeVisualSourcePath = null; // No visual for this effect
-        console.log(`No visual source path in preset ${effectName}.`);
+        console.warn(`No SC file path for effect ${effectName}. Cannot request specs or fully set effect.`);
+        if (effectToLoad.shaderPath) {
+            activeVisualSourcePath = effectToLoad.shaderPath;
+        } else if (effectToLoad.p5SketchPath) {
+            activeVisualSourcePath = effectToLoad.p5SketchPath;
+        } else {
+            activeVisualSourcePath = null;
+        }
+        mainWindow.webContents.send('effect-updated', effectToLoad);
+    }
+    activeAudioSourcePath = effectToLoad.scFilePath; 
+    if (effectToLoad.shaderPath) {
+        activeVisualSourcePath = effectToLoad.shaderPath;
+    } else if (effectToLoad.p5SketchPath) {
+        activeVisualSourcePath = effectToLoad.p5SketchPath;
+    } else {
+        activeVisualSourcePath = null;
     }
   } else
   {
     console.error(`Effect not found: ${effectName}`);
   }
 });
+
+async function fetchAllEffectParameters() {
+  console.log("Fetching parameters for all loaded effects...");
+  for (const effect of synths) {
+    if (effect.scFilePath && oscManager && oscManager.oscServer) {
+      try {
+        // It's good practice to ensure the SC file is loaded before requesting specs.
+        // However, loadScFile is async. If called repeatedly, ensure it handles being called for an already loaded file gracefully.
+        // For simplicity here, we assume SC files are loaded by selection or initial boot.
+        // If an effect is never selected, its SC might not be explicitly loaded before this runs unless init.sc loads all.
+        // A safer approach might be to loadScFile here if we're not sure.
+        console.log(`Requesting parameters for ${effect.name}`);
+        oscManager.oscServer.send({
+            address: '/effect/get_specs',
+            args: [{ type: 's', value: effect.name }]
+        }, '127.0.0.1', 57120);
+        // Add a small delay to avoid flooding SC, especially if loadScFile were here.
+        await new Promise(resolve => setTimeout(resolve, 50)); 
+      } catch (err) {
+        console.error(`Error requesting specs for ${effect.name}:`, err);
+      }
+    }
+  }
+  console.log("Finished requesting parameters for all effects.");
+}
 
 // IPC listeners for explicitly setting active audio/visual sources
 ipcMain.on('set-current-audio-source', (event, filePath) => {

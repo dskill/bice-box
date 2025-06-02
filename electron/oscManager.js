@@ -2,9 +2,10 @@ const OSC = require('osc');
 
 class OSCManager
 {
-    constructor(mainWindow)
+    constructor(mainWindow, onEffectSpecsReceived = null)
     {
         this.mainWindow = mainWindow;
+        this.onEffectSpecsReceived = onEffectSpecsReceived; // Callback for effect specs
         this.oscServer = null;
         this.isClosing = false;
         this.oscMessageCount = 0;
@@ -84,6 +85,29 @@ class OSCManager
                         differences: differences,
                         amplitudes: amplitudes
                     });
+                    break;
+
+                case '/effect/specs_reply':
+                    if (oscMsg.args.length >= 2) {
+                        const effectName = oscMsg.args[0].value;
+                        const specsJSON = oscMsg.args[1].value;
+                        console.log(`OSCManager: Received specs for ${effectName}, raw JSON: ${specsJSON}`);
+                        try {
+                            const params = JSON.parse(specsJSON);
+                            console.log(`OSCManager: Parsed specs for ${effectName}:`, params);
+                            // Call the callback directly instead of sending IPC
+                            if (this.onEffectSpecsReceived) {
+                                this.onEffectSpecsReceived({ name: effectName, params: params });
+                            }
+                        } catch (e) {
+                            console.error(`OSCManager: Error parsing specs JSON for ${effectName}: ${specsJSON}`, e);
+                            if (this.onEffectSpecsReceived) {
+                                this.onEffectSpecsReceived({ name: effectName, params: null, error: 'Error parsing specs JSON' });
+                            }
+                        }
+                    } else {
+                        console.warn("OSCManager: Received malformed /effect/specs_reply", oscMsg.args);
+                    }
                     break;
 
                 default:
