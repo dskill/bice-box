@@ -37,7 +37,6 @@ const {
   loadEffectsList,
   loadP5SketchSync,
   loadScFile,
-  loadEffectFromFile,
   loadMultiPassShader
 } = require('./superColliderManager');
 const generativeEffectManager = require('./generativeEffectManager');

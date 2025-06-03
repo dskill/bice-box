@@ -68,58 +68,6 @@ function loadEffectsList(mainWindow, getEffectsRepoPath, getEffectsPath) {
     }
 }
 
-function loadEffectFromFile(filePath, getEffectsRepoPath) {
-    const synthData = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-    let p5SketchContent = null;
-    if (synthData.visual) { // Ensure synthData.visual exists before trying to load
-        p5SketchContent = loadP5SketchSync(synthData.visual, getEffectsRepoPath);
-    }
-
-    let shaderConfigOrContent = null; // Will hold either GLSL string or multi-pass object
-    const effectsRepoPath = getEffectsRepoPath(); // Get base path for effects
-
-    if (synthData.shader && typeof synthData.shader === 'string') {
-        const shaderPath = synthData.shader;
-        const fullShaderPath = path.join(effectsRepoPath, shaderPath);
-
-        if (shaderPath.toLowerCase().endsWith('.glsl')) {
-            // Single-pass shader: load GLSL content directly
-            if (fs.existsSync(fullShaderPath)) {
-                try {
-                    shaderConfigOrContent = fs.readFileSync(fullShaderPath, 'utf-8');
-                    console.log(`Loaded single-pass shader content from: ${fullShaderPath}`);
-                } catch (error) {
-                    console.error(`Error loading single-pass shader file ${fullShaderPath}:`, error);
-                    shaderConfigOrContent = `// Error loading shader ${shaderPath}`;
-                }
-            } else {
-                console.warn(`Single-pass shader file not found: ${fullShaderPath}`);
-                shaderConfigOrContent = `// Shader file not found: ${shaderPath}`;
-            }
-        } else {
-            // Multi-pass shader: scan for related files using naming convention
-            console.log(`Loading multi-pass shader with base name: ${shaderPath}`);
-            try {
-                shaderConfigOrContent = loadMultiPassShader(shaderPath, effectsRepoPath);
-            } catch (error) {
-                console.error(`Error loading multi-pass shader ${shaderPath}:`, error);
-                shaderConfigOrContent = `// Error loading multi-pass shader ${shaderPath}`;
-            }
-        }
-    }
-
-    return {
-        name: synthData.name,
-        scFilePath: synthData.audio,
-        p5SketchPath: synthData.visual,
-        p5SketchContent: p5SketchContent, 
-        shaderPath: synthData.shader,       // This will store the path to the .glsl file or base name
-        shaderContent: shaderConfigOrContent, // This now holds string (single GLSL) or object (multi-pass config)
-        params: {},
-        curated: synthData.curated || false
-    };
-}
-
 function loadMultiPassShader(shaderBasePath, effectsRepoPath) {
     // Extract base name from the path (e.g., "shaders/oscilloscope" -> "oscilloscope")
     const baseName = path.basename(shaderBasePath);
