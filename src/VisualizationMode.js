@@ -142,6 +142,7 @@ function VisualizationMode({
                 name: paramName,
                 value: paramSpec.default,
                 range: [paramSpec.minval, paramSpec.maxval],
+                units: paramSpec.units || '',
                 index: index,
               };
               return (

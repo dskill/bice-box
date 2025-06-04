@@ -15,7 +15,7 @@ const throttle = (func, limit) => {
 };
 
 const ParamFader = ({ param, onParamChange }) => {
-  const { name, value, range } = param;
+  const { name, value, range, units } = param;
   const [faderValue, setFaderValue] = useState(value);
   const [isDragging, setIsDragging] = useState(false);
   const currentValueRef = useRef(value);
@@ -39,6 +39,31 @@ const ParamFader = ({ param, onParamChange }) => {
     const result = str.replace(/([A-Z])/g, ' $1');
     // Convert first character to uppercase and trim any extra spaces
     return result.charAt(0).toUpperCase() + result.slice(1).trim();
+  };
+
+  // Helper function to format the value with appropriate precision and units
+  const formatValue = (val, unit) => {
+    let formattedValue;
+    
+    // Format based on unit type and value range
+    if (unit === 'Hz' && val >= 1000) {
+      formattedValue = (val / 1000).toFixed(1) + ' k';
+    } else if (unit === 'Hz' || unit === 's' || unit === 'ms') {
+      formattedValue = val.toFixed(val < 1 ? 3 : val < 10 ? 2 : 1);
+    } else if (unit === '%') {
+      formattedValue = Math.round(val * 100);
+    } else if (unit === 'dB') {
+      formattedValue = val.toFixed(1);
+    } else if (unit === 'x' || unit === 'Q') {
+      formattedValue = val.toFixed(2);
+    } else if (unit === 'bits' || unit === 'st') {
+      formattedValue = Math.round(val);
+    } else {
+      // Default formatting for other units or no units
+      formattedValue = val.toFixed(val < 1 ? 3 : val < 10 ? 2 : 1);
+    }
+    
+    return unit ? `${formattedValue} ${unit}` : formattedValue;
   };
 
   // Handle initial value and external value changes
@@ -132,6 +157,16 @@ const ParamFader = ({ param, onParamChange }) => {
         cursor: isDragging ? 'grabbing' : 'grab'
       }}
     >
+      {isDragging && (
+        <div 
+          className="fader-value-tooltip"
+          style={{ 
+            '--fader-color': faderColor
+          }}
+        >
+          {formatValue(faderValue, units)}
+        </div>
+      )}
       <div className="fader-track">
         <div
           className={`fader-thumb ${isDragging ? 'dragging' : ''}`}
