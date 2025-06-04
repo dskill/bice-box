@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import EffectManagement from './EffectManagement';
 import ParamFader from './ParamFader';
 import VisualizationCanvas from './VisualizationCanvas';
@@ -43,10 +43,62 @@ function VisualizationMode({
     ? prettifySourceName(currentShaderPath) 
     : prettifySourceName(currentVisualSourcePath);
 
+  // Calculate responsive fader width based on grid layout and screen size
+  useEffect(() => {
+    const calculateFaderWidth = () => {
+      if (currentAudioParams) {
+        const paramCount = Object.keys(currentAudioParams).length;
+        const viewportWidth = window.innerWidth;
+        const availableWidth = viewportWidth - 40; // Account for padding
+        
+        // Determine columns per row based on screen size (matching CSS breakpoints)
+        let maxColumnsPerRow = 6; // Default (includes 800px)
+        if (viewportWidth <= 600) maxColumnsPerRow = 4;
+        if (viewportWidth <= 480) maxColumnsPerRow = 3;
+        if (viewportWidth <= 360) maxColumnsPerRow = 2;
+        
+        const columnsPerRow = Math.min(maxColumnsPerRow, paramCount);
+        const gapWidth = 15 * (columnsPerRow - 1); // Gap between columns in a row
+        const maxFaderWidth = 120;
+        const minFaderWidth = 60;
+        
+        // Calculate ideal width per fader based on columns in a row
+        let faderWidth = (availableWidth - gapWidth) / columnsPerRow;
+        
+        // Clamp to min/max values
+        faderWidth = Math.max(minFaderWidth, Math.min(maxFaderWidth, faderWidth));
+        
+        // Set CSS custom property
+        document.documentElement.style.setProperty('--fader-width', `${faderWidth}px`);
+        
+        console.log(`Grid layout: ${paramCount} params, ${columnsPerRow}/${maxColumnsPerRow} columns, fader width: ${faderWidth}px, viewport: ${viewportWidth}px`);
+      }
+    };
+
+    // Calculate on mount and when currentAudioParams changes
+    calculateFaderWidth();
+
+    // Add window resize listener
+    window.addEventListener('resize', calculateFaderWidth);
+
+    // Cleanup
+    return () => {
+      window.removeEventListener('resize', calculateFaderWidth);
+    };
+  }, [currentAudioParams]);
+
   // Debug logging for currentAudioParams
   console.log('VisualizationMode render - currentAudioParams:', currentAudioParams);
   console.log('VisualizationMode render - currentAudioParams type:', typeof currentAudioParams);
   console.log('VisualizationMode render - currentAudioParams keys:', currentAudioParams ? Object.keys(currentAudioParams) : 'null/undefined');
+  
+  // Additional debugging for parameters
+  if (currentAudioParams) {
+    console.log('Parameter details:');
+    Object.entries(currentAudioParams).forEach(([key, value]) => {
+      console.log(`  ${key}:`, value);
+    });
+  }
 
   return (
     <div className="visualization-mode" style={{ touchAction: 'none' }}>

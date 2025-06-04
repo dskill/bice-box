@@ -136,16 +136,35 @@ body {
 
 
 .knobs-container {
-  display: flex;
-  /* Use flexbox to layout children */
-  justify-content: center;
-  /* Center the knobs horizontally */
-  align-items: center;
-  /* Align the knobs vertically */
-  gap: 20px;
-  /* Space between each knob */
+  display: grid;
+  grid-template-columns: repeat(6, 1fr); /* 6 columns by default */
+  grid-auto-rows: 1fr; /* Auto-sized rows */
+  gap: 15px;
   margin: 10px 0;
-  /* Margin around the knobs container */
+  max-width: 100vw;
+  padding: 0 20px;
+  box-sizing: border-box;
+  justify-items: center; /* Center faders in their grid cells */
+  align-items: end; /* Align faders to bottom of their cells */
+}
+
+/* More conservative responsive breakpoints - keep 6 columns longer */
+@media (max-width: 600px) {
+  .knobs-container {
+    grid-template-columns: repeat(4, 1fr); /* 4 columns on small tablets */
+  }
+}
+
+@media (max-width: 480px) {
+  .knobs-container {
+    grid-template-columns: repeat(3, 1fr); /* 3 columns on large phones */
+  }
+}
+
+@media (max-width: 360px) {
+  .knobs-container {
+    grid-template-columns: repeat(2, 1fr); /* 2 columns on small phones */
+  }
 }
 
 .toggles-container {
