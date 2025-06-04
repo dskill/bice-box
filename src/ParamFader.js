@@ -72,7 +72,8 @@ const ParamFader = ({ param, onParamChange }) => {
       if (now - lastUpdateTime.current < 16) return; // 60fps throttle
       lastUpdateTime.current = now;
 
-      const deltaY = (e.clientY - initialMouseYRef.current) / window.innerHeight;
+      let deltaY = (e.clientY - initialMouseYRef.current) / window.innerHeight;
+      deltaY *= 2.0 //cause the fader is half the height  it used to be
       const valueRange = range[1] - range[0];
       const newValue = Math.max(range[0], Math.min(range[1],
         initialValueRef.current + -(deltaY * valueRange)
