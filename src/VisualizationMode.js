@@ -20,6 +20,7 @@ function VisualizationMode({
 }) {
   const [isLoadingEffect, setIsLoadingEffect] = useState(false);
   const paramValuesRef = useRef({});
+  const [actualRenderedColumns, setActualRenderedColumns] = useState(6); // Default to 6, will be updated
 
   const handleEffectLoaded = useCallback(() => {
     setIsLoadingEffect(false);
@@ -51,54 +52,39 @@ function VisualizationMode({
         const viewportWidth = window.innerWidth;
         const availableWidth = viewportWidth - 40; // Account for padding
         
-        // Determine max columns based on screen size
         let maxColumnsPerRow = 6; // Default (includes 800px)
         if (viewportWidth <= 600) maxColumnsPerRow = 4;
         if (viewportWidth <= 480) maxColumnsPerRow = 3;
         if (viewportWidth <= 360) maxColumnsPerRow = 2;
         
-        // Calculate optimal grid layout
+        setActualRenderedColumns(maxColumnsPerRow); // Update state
+
         let gridColumns, columnsForWidth;
-        
         if (paramCount <= maxColumnsPerRow) {
-          // Fewer params than max: always use full width but center the params
-          gridColumns = maxColumnsPerRow; // Always use full 6 columns (or responsive max)
-          columnsForWidth = paramCount; // But calculate width based on actual params
+          gridColumns = maxColumnsPerRow;
+          columnsForWidth = paramCount;
         } else {
-          // More params than max: use max columns and multiple rows
           gridColumns = maxColumnsPerRow;
           columnsForWidth = maxColumnsPerRow;
         }
         
-        // Calculate number of rows needed
         const gridRows = Math.ceil(paramCount / gridColumns);
-        
-        // Calculate fader width based on columns that will actually be used
         const gapWidth = 15 * (columnsForWidth - 1);
         const maxFaderWidth = 120;
         const minFaderWidth = 60;
         let faderWidth = (availableWidth - gapWidth) / columnsForWidth;
         faderWidth = Math.max(minFaderWidth, Math.min(maxFaderWidth, faderWidth));
         
-        // Set CSS custom properties
         document.documentElement.style.setProperty('--grid-columns', gridColumns.toString());
         document.documentElement.style.setProperty('--grid-rows', gridRows.toString());
         document.documentElement.style.setProperty('--fader-width', `${faderWidth}px`);
         
-        console.log(`Smart grid: ${paramCount} params, ${gridColumns} columns, ${gridRows} rows, fader width: ${faderWidth}px, viewport: ${viewportWidth}px`);
+        console.log(`Smart grid: ${paramCount} params, ${gridColumns} cols, ${gridRows} rows, faderWidth: ${faderWidth}px, actualRenderedCols: ${maxColumnsPerRow}, viewport: ${viewportWidth}px`);
       }
     };
-
-    // Calculate on mount and when currentAudioParams changes
     calculateFaderLayout();
-
-    // Add window resize listener
     window.addEventListener('resize', calculateFaderLayout);
-
-    // Cleanup
-    return () => {
-      window.removeEventListener('resize', calculateFaderLayout);
-    };
+    return () => window.removeEventListener('resize', calculateFaderLayout);
   }, [currentAudioParams]);
 
   // Debug logging for currentAudioParams
@@ -159,31 +145,24 @@ function VisualizationMode({
         <div className="visualization-controls">
           <div className="knobs-container">
             {currentAudioParams && Object.entries(currentAudioParams).map(([paramName, paramSpec], index) => {
-              console.log(`VisualizationMode: Processing param ${paramName}:`, paramSpec);
-              
-              // Calculate grid position for bottom-row-first behavior
               const paramCount = Object.keys(currentAudioParams).length;
-              const maxCols = 6; // Use base 6 columns for positioning logic
               let gridColumn, gridRow;
-              
-              if (paramCount <= maxCols) {
-                // Single row: let CSS Grid handle placement
-                gridColumn = 'auto';
-                gridRow = 'auto'; // This combined with align-items: end should place it at bottom
+
+              if (paramCount <= actualRenderedColumns) {
+                const startCol = Math.floor((actualRenderedColumns - paramCount) / 2) + 1;
+                gridColumn = startCol + index;
+                gridRow = 1; 
               } else {
-                // Multiple rows: first 6 go to bottom row, rest go above
-                // We need to be explicit with rows for multi-row layout to ensure bottom-first
-                const totalRows = Math.ceil(paramCount / maxCols);
-                if (index < maxCols) {
-                  // First 6 parameters: bottom row
-                  gridColumn = (index % maxCols) + 1;
-                  gridRow = totalRows; // Explicitly set to the last row
+                const maxConceptualCols = 6;
+                const totalVisualRows = Math.ceil(paramCount / actualRenderedColumns);
+                if (index < maxConceptualCols) {
+                  gridRow = totalVisualRows - Math.floor(index / actualRenderedColumns);
+                  gridColumn = (index % actualRenderedColumns) + 1;
                 } else {
-                  // Subsequent parameters: rows above
-                  const positionInUpperRows = index - maxCols;
-                  gridColumn = (positionInUpperRows % maxCols) + 1;
-                  // Calculate row index from the top (e.g., row 1 for 2-row layout)
-                  gridRow = totalRows - 1 - Math.floor(positionInUpperRows / maxCols);
+                  const upperParamsIndex = index - maxConceptualCols;
+                  const visualRowsForUpperParams = Math.ceil((paramCount - maxConceptualCols) / actualRenderedColumns);
+                  gridRow = visualRowsForUpperParams - Math.floor(upperParamsIndex / actualRenderedColumns);
+                  gridColumn = (upperParamsIndex % actualRenderedColumns) + 1;
                 }
               }
               
@@ -193,19 +172,12 @@ function VisualizationMode({
                 range: [paramSpec.minval, paramSpec.maxval],
                 index: index,
               };
-              console.log(`VisualizationMode: Created faderParam for ${paramName}:`, faderParam);
               return (
                 <div
                   key={`${currentAudioSourcePath}-${paramName}`}
-                  style={{
-                    gridColumn: gridColumn,
-                    gridRow: gridRow
-                  }}
+                  style={{ gridColumnStart: gridColumn, gridRowStart: gridRow }}
                 >
-                  <ParamFader
-                    param={faderParam}
-                    onParamChange={handleParamChange}
-                  />
+                  <ParamFader param={faderParam} onParamChange={handleParamChange} />
                 </div>
               );
             })}
