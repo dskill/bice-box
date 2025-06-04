@@ -426,6 +426,37 @@ function App() {
     }
   }, [currentShaderPath, setCurrentShaderContent]); // Dependency: currentShaderPath, setCurrentShaderContent
 
+  // Handler for 'auto-visualizer-loaded' IPC messages (from SC file comments)
+  const handleAutoVisualizerLoaded = useCallback((event, data) => {
+    console.log(`App.js: Received auto-visualizer-loaded. Raw data:`, data);
+    if (data && data.type && data.path && data.content !== undefined) {
+      const { type, path, content } = data;
+      console.log(`App.js: Auto-loading visualizer: ${path} (type: ${type})`);
+      
+      if (type === 'p5') {
+        setCurrentVisualSource(path);
+        setCurrentVisualContent(content);
+        setCurrentShaderPath(null); // Clear shader if p5 is auto-loaded
+        setCurrentShaderContent('');
+        // Also send to main for hot-reloading
+        electron.ipcRenderer.send('set-current-visual-source', path);
+        console.log(`Auto-loaded p5 visualizer: ${path}`);
+      } else if (type === 'shader') {
+        setCurrentShaderPath(path);
+        setCurrentShaderContent(content);
+        setCurrentVisualSource(null); // Clear p5 if shader is auto-loaded
+        setCurrentVisualContent('');
+        // Also send to main for hot-reloading
+        electron.ipcRenderer.send('set-current-visual-source', path);
+        console.log(`Auto-loaded shader visualizer: ${path}`);
+      } else {
+        console.warn(`App.js: Unknown auto-visualizer type: ${type}`);
+      }
+    } else {
+      console.warn('App.js: Received auto-visualizer-loaded with invalid or missing data payload.', data);
+    }
+  }, [setCurrentVisualSource, setCurrentVisualContent, setCurrentShaderPath, setCurrentShaderContent]);
+
   // Effect for general IPC listeners (like settings, wifi, etc.)
   useEffect(() => {
     electron.ipcRenderer.on('shader-effect-updated', handleShaderEffectUpdated);
@@ -433,6 +464,14 @@ function App() {
         electron.ipcRenderer.removeAllListeners('shader-effect-updated');
     };
   }, [handleShaderEffectUpdated, electron]); // Add electron to dependency array
+
+  // Effect for auto-visualizer-loaded IPC listener
+  useEffect(() => {
+    electron.ipcRenderer.on('auto-visualizer-loaded', handleAutoVisualizerLoaded);
+    return () => {
+        electron.ipcRenderer.removeAllListeners('auto-visualizer-loaded');
+    };
+  }, [handleAutoVisualizerLoaded, electron]);
 
   // Opens the audio selector
   const openAudioSelect = () => {
