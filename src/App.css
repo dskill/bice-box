@@ -569,6 +569,7 @@ button:active {
 
 .effect-management__content button {
   color: rgb(198, 202, 224);
+  font-size: 16px; /* Reduced from 20px to better match nav button sizing */
   transition: all 0.3s ease;
 }
 
@@ -601,12 +602,6 @@ button:active {
 
 /* Style for labels within the management content */
 .effect-management__content label {
-  color: rgb(198, 202, 224);
-  font-size: 20px;
-}
-
-/* Style for buttons within the management content */
-.effect-management__content button {
   color: rgb(198, 202, 224);
   font-size: 20px;
 }
@@ -873,7 +868,7 @@ button:active {
 .effect-management__buttons {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 15px;
   align-items: flex-end;
   width: 100%;
   padding-right: 5px;
