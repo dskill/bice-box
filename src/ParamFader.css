@@ -65,11 +65,10 @@
 .fader-label.dragging {
   color: var(--fader-color);
   text-shadow: 0 0 10px var(--fader-color);
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(0, 0, 0, 0.85); /* Increased opacity for better readability without blur */
   padding: 2px 6px;
   border-radius: 3px;
   border: 1px solid var(--fader-color);
-  backdrop-filter: blur(4px);
 }
 
 .fader-value-tooltip {
@@ -82,7 +81,7 @@
   font-weight: 600;
   color: var(--fader-color);
   text-shadow: 0 0 8px var(--fader-color);
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(0, 0, 0, 0.9); /* Increased opacity for better readability without blur */
   padding: 2px 6px;
   border-radius: 3px;
   white-space: nowrap;
@@ -90,5 +89,4 @@
   user-select: none;
   z-index: 10;
   border: 1px solid var(--fader-color);
-  backdrop-filter: blur(4px);
 }
