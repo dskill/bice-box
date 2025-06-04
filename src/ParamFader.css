@@ -65,6 +65,11 @@
 .fader-label.dragging {
   color: var(--fader-color);
   text-shadow: 0 0 10px var(--fader-color);
+  background: rgba(0, 0, 0, 0.7);
+  padding: 2px 6px;
+  border-radius: 3px;
+  border: 1px solid var(--fader-color);
+  backdrop-filter: blur(4px);
 }
 
 .fader-value-tooltip {
