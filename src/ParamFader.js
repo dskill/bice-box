@@ -33,6 +33,14 @@ const ParamFader = ({ param, onParamChange }) => {
     [] // No dependencies needed for this version of throttledSendOsc
   );
 
+  // Throttled version of parent callback to prevent excessive calls during dragging
+  const throttledOnParamChange = useCallback(
+    throttle((paramName, paramValue) => {
+      onParamChange(paramName, paramValue);
+    }, 16), // Match OSC throttling rate
+    [onParamChange]
+  );
+
   // Helper function to convert camelCase to Title Case
   const toTitleCase = (str) => {
     // First split the camelCase string into words
@@ -71,7 +79,7 @@ const ParamFader = ({ param, onParamChange }) => {
     if (value !== currentValueRef.current) {
       currentValueRef.current = value;
       setFaderValue(value);
-      onParamChange(name, faderValue);
+      // Remove the onParamChange call here to avoid double-calling
     }
   }, [value]);
 
@@ -85,9 +93,9 @@ const ParamFader = ({ param, onParamChange }) => {
     if (faderValue !== currentValueRef.current) {
       currentValueRef.current = faderValue;
       throttledSendOsc('/effect/param/set', [name, faderValue]);
-      onParamChange(name, faderValue);
+      throttledOnParamChange(name, faderValue); // Use throttled version
     }
-  }, [faderValue, name, throttledSendOsc, onParamChange]);
+  }, [faderValue, name, throttledSendOsc, throttledOnParamChange]);
 
   useEffect(() => {
     const handleMouseMove = (e) => {
@@ -104,13 +112,14 @@ const ParamFader = ({ param, onParamChange }) => {
         initialValueRef.current + -(deltaY * valueRange)
       ));
 
-      if (Math.abs(newValue - currentValueRef.current) > 0.001) {
+      // Use a more effective threshold based on the value range
+      const threshold = Math.max(0.001, valueRange * 0.0001); // Adaptive threshold
+      if (Math.abs(newValue - currentValueRef.current) > threshold) {
         setFaderValue(newValue);
       }
     };
 
     const handleMouseUp = (e) => {
-      console.log('Mouse up event:', e); // Add logging
       setIsDragging(false);
       initialValueRef.current = null;
       initialMouseYRef.current = null;
@@ -137,7 +146,6 @@ const ParamFader = ({ param, onParamChange }) => {
   const handleMouseDown = (e) => {
     e.preventDefault();
     e.stopPropagation(); // Prevent event bubbling
-    console.log('Mouse down event:', e);
     setIsDragging(true);
     initialValueRef.current = faderValue;
     initialMouseYRef.current = e.clientY;

@@ -503,6 +503,7 @@ button:active {
 .effect-management-modal {
   position: fixed;
   top: 0;
+  left: 0;
   right: 0;
   bottom: 0;
   width: 100%;  
@@ -516,7 +517,7 @@ button:active {
 
 .effect-management-modal--expanded {
   pointer-events: auto;
-  background-color: rgba(0, 0, 0, 0.3); /* Optional: adds a slight overlay when expanded */
+  background-color: rgba(0, 0, 0, 0.4);
 }
 
 .effect-management {
@@ -872,6 +873,7 @@ button:active {
   align-items: flex-end;
   width: 100%;
   padding-right: 5px;
+  padding-top: 20px; /* Added buffer before the first button */
 }
 
 .effect-management__device-selectors {
