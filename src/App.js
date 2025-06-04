@@ -36,6 +36,7 @@ function App() {
     error: null
   });
   const [scError, setScError] = useState(null);
+  const [shaderError, setShaderError] = useState(null);
   const [devMode, setDevMode] = useState(false);
 
   // --- Derived State for Selectors ---
@@ -163,6 +164,11 @@ function App() {
     setScError(errorData);
   }, [setScError]);
 
+  const handleShaderErrorCallback = useCallback((event, errorData) => {
+    console.log("Shader loading error received:", errorData);
+    setShaderError(errorData);
+  }, [setShaderError]);
+
   const handleDevModeChange = useCallback((event, newMode) => {
     console.log('Dev mode changed:', newMode);
     setDevMode(newMode);
@@ -199,6 +205,16 @@ function App() {
         };
     }
   }, [handleScErrorCallback, electron]); // Added handleScErrorCallback and electron
+
+  useEffect(() => {
+    if (electron) {
+        electron.ipcRenderer.on('shader-loading-error', handleShaderErrorCallback);
+
+        return () => {
+            electron.ipcRenderer.removeListener('shader-loading-error', handleShaderErrorCallback);
+        };
+    }
+  }, [handleShaderErrorCallback, electron]);
 
   useEffect(() => {
     if (electron && electron.ipcRenderer) {
@@ -558,6 +574,20 @@ function App() {
                   SuperCollider Compilation Error in {scError.file}:
               </div>
               <pre>{scError.errorMessage}</pre>
+          </div>
+      )}
+      {shaderError && (
+          <div className="shader-error-display">
+              <button 
+                  className="shader-error-close" 
+                  onClick={() => setShaderError(null)}
+              >
+                  ×
+              </button>
+              <div className="shader-error-header">
+                  Shader Loading Error for "{shaderError.shaderName}":
+              </div>
+              <pre>{shaderError.errorMessage}</pre>
           </div>
       )}
     </div>
