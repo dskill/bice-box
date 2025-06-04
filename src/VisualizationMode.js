@@ -57,29 +57,22 @@ function VisualizationMode({
         if (viewportWidth <= 480) maxColumnsPerRow = 3;
         if (viewportWidth <= 360) maxColumnsPerRow = 2;
         
-        setActualRenderedColumns(maxColumnsPerRow); // Update state
-
-        let gridColumns, columnsForWidth;
-        if (paramCount <= maxColumnsPerRow) {
-          gridColumns = maxColumnsPerRow;
-          columnsForWidth = paramCount;
-        } else {
-          gridColumns = maxColumnsPerRow;
-          columnsForWidth = maxColumnsPerRow;
-        }
+        // Use actual param count up to the maximum allowed by viewport
+        const gridColumns = Math.min(paramCount, maxColumnsPerRow);
+        setActualRenderedColumns(gridColumns); // Update state
         
         const gridRows = Math.ceil(paramCount / gridColumns);
-        const gapWidth = 15 * (columnsForWidth - 1);
+        const gapWidth = 15 * (gridColumns - 1);
         const maxFaderWidth = 120;
         const minFaderWidth = 60;
-        let faderWidth = (availableWidth - gapWidth) / columnsForWidth;
+        let faderWidth = (availableWidth - gapWidth) / gridColumns;
         faderWidth = Math.max(minFaderWidth, Math.min(maxFaderWidth, faderWidth));
         
         document.documentElement.style.setProperty('--grid-columns', gridColumns.toString());
         document.documentElement.style.setProperty('--grid-rows', gridRows.toString());
         document.documentElement.style.setProperty('--fader-width', `${faderWidth}px`);
         
-        console.log(`Smart grid: ${paramCount} params, ${gridColumns} cols, ${gridRows} rows, faderWidth: ${faderWidth}px, actualRenderedCols: ${maxColumnsPerRow}, viewport: ${viewportWidth}px`);
+        console.log(`Smart grid: ${paramCount} params, ${gridColumns} cols, ${gridRows} rows, faderWidth: ${faderWidth}px, viewport: ${viewportWidth}px`);
       }
     };
     calculateFaderLayout();
@@ -145,27 +138,6 @@ function VisualizationMode({
         <div className="visualization-controls">
           <div className="knobs-container">
             {currentAudioParams && Object.entries(currentAudioParams).map(([paramName, paramSpec], index) => {
-              const paramCount = Object.keys(currentAudioParams).length;
-              let gridColumn, gridRow;
-
-              if (paramCount <= actualRenderedColumns) {
-                const startCol = Math.floor((actualRenderedColumns - paramCount) / 2) + 1;
-                gridColumn = startCol + index;
-                gridRow = 1; 
-              } else {
-                const maxConceptualCols = 6;
-                const totalVisualRows = Math.ceil(paramCount / actualRenderedColumns);
-                if (index < maxConceptualCols) {
-                  gridRow = totalVisualRows - Math.floor(index / actualRenderedColumns);
-                  gridColumn = (index % actualRenderedColumns) + 1;
-                } else {
-                  const upperParamsIndex = index - maxConceptualCols;
-                  const visualRowsForUpperParams = Math.ceil((paramCount - maxConceptualCols) / actualRenderedColumns);
-                  gridRow = visualRowsForUpperParams - Math.floor(upperParamsIndex / actualRenderedColumns);
-                  gridColumn = (upperParamsIndex % actualRenderedColumns) + 1;
-                }
-              }
-              
               const faderParam = {
                 name: paramName,
                 value: paramSpec.default,
@@ -173,10 +145,7 @@ function VisualizationMode({
                 index: index,
               };
               return (
-                <div
-                  key={`${currentAudioSourcePath}-${paramName}`}
-                  style={{ gridColumnStart: gridColumn, gridRowStart: gridRow }}
-                >
+                <div key={`${currentAudioSourcePath}-${paramName}`}>
                   <ParamFader param={faderParam} onParamChange={handleParamChange} />
                 </div>
               );
