@@ -286,30 +286,29 @@ function App() {
 
     if (electron) {
       try {
-        if (visualType === 'p5') {
-          console.log(`Loading p5 sketch content for: ${visualPath}`);
-          const sketchContent = await electron.ipcRenderer.invoke('load-p5-sketch', visualPath);
+        // Use the shared visualizer loading logic
+        const result = await electron.ipcRenderer.invoke('load-visualizer-content', visualPath);
+        
+        if (result.type === 'p5') {
           setCurrentVisualSource(visualPath);
-          setCurrentVisualContent(sketchContent);
+          setCurrentVisualContent(result.content);
           setCurrentShaderPath(null); // Clear shader if p5 is selected
           setCurrentShaderContent('');
           electron.ipcRenderer.send('set-current-visual-source', visualPath); // For hot-reloading p5
           console.log(`P5 sketch content loaded successfully.`);
-        } else if (visualType === 'shader') {
-          console.log(`Loading shader content for: ${visualPath}`);
-          const shaderContent = await electron.ipcRenderer.invoke('load-shader-content', visualPath);
+        } else if (result.type === 'shader') {
           setCurrentShaderPath(visualPath);
-          setCurrentShaderContent(shaderContent);
+          setCurrentShaderContent(result.content);
           setCurrentVisualSource(null); // Clear p5 if shader is selected
           setCurrentVisualContent('');
           electron.ipcRenderer.send('set-current-visual-source', visualPath); // For hot-reloading shader
           console.log(`Shader content loaded successfully.`);
         } else {
-          console.warn(`Unknown visual type: ${visualType}`);
-          setError(`Unknown visual type: ${visualType}`);
+          console.warn(`Unknown visualizer result type: ${result.type}`);
+          setError(`Unknown visualizer result type: ${result.type}`);
         }
       } catch (error) {
-        console.error(`Error loading selected ${visualType} visual:`, error);
+        console.error(`Error loading selected visual:`, error);
         // Clear relevant visual state on error
         if (visualType === 'p5') {
           setCurrentVisualSource(null);

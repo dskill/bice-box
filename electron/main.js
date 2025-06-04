@@ -37,7 +37,8 @@ const {
   loadEffectsList,
   loadP5SketchSync,
   loadScFile,
-  loadMultiPassShader
+  loadMultiPassShader,
+  loadVisualizerContent
 } = require('./superColliderManager');
 const generativeEffectManager = require('./generativeEffectManager');
 const wifi = require('node-wifi');
@@ -1437,6 +1438,20 @@ ipcMain.handle('load-shader-content', async (event, shaderPath) => {
   } catch (error) {
     console.error(`Error loading shader content for ${shaderPath}:`, error);
     throw error; // Propagate error to renderer
+  }
+});
+
+// Add this IPC handler for loading visualizer content using shared logic
+ipcMain.handle('load-visualizer-content', async (event, visualizerPath) => {
+  try {
+    const result = loadVisualizerContent(visualizerPath, getEffectsRepoPath);
+    if (result.error) {
+      throw new Error(result.error);
+    }
+    return result; // Return { type, content }
+  } catch (error) {
+    console.error(`Error loading visualizer content for ${visualizerPath}:`, error);
+    throw error;
   }
 });
 

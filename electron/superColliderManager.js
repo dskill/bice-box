@@ -131,6 +131,79 @@ function loadP5SketchSync(sketchPath, getEffectsRepoPath) {
     }
 }
 
+function loadVisualizerContent(visualizerPath, getEffectsRepoPath) {
+    /**
+     * Shared utility function to load visualizer content and determine type
+     * Returns: { type: 'p5'|'shader', content: string|object, error?: string }
+     */
+    try {
+        if (visualizerPath.toLowerCase().endsWith('.js')) {
+            // Load p5 sketch
+            const content = loadP5SketchSync(visualizerPath, getEffectsRepoPath);
+            if (content) {
+                return { type: 'p5', content };
+            } else {
+                return { type: 'p5', content: null, error: `Failed to load p5 sketch: ${visualizerPath}` };
+            }
+        } else if (visualizerPath.toLowerCase().endsWith('.glsl')) {
+            // Single-pass shader
+            const fullShaderPath = path.join(getEffectsRepoPath(), visualizerPath);
+            if (fs.existsSync(fullShaderPath)) {
+                const content = fs.readFileSync(fullShaderPath, 'utf-8');
+                return { type: 'shader', content };
+            } else {
+                return { type: 'shader', content: null, error: `Shader file not found: ${visualizerPath}` };
+            }
+        } else {
+            // Multi-pass shader (base name)
+            const content = loadMultiPassShader(visualizerPath, getEffectsRepoPath());
+            if (content) {
+                return { type: 'shader', content };
+            } else {
+                return { type: 'shader', content: null, error: `Failed to load multi-pass shader: ${visualizerPath}` };
+            }
+        }
+    } catch (error) {
+        return { type: 'unknown', content: null, error: `Error loading visualizer ${visualizerPath}: ${error.message}` };
+    }
+}
+
+function parseAndLoadVisualizerFromComment(scFileContent, getEffectsRepoPath, mainWindow) {
+    /**
+     * Parse SC file for visualizer comments and auto-load the specified visualizer
+     * Expected comment format: //visualizer: path/to/visualizer.glsl or .js
+     */
+    const visualizerMatch = scFileContent.match(/\/\/\s*visualizer:\s*(.+)/i);
+    
+    if (!visualizerMatch) {
+        return; // No visualizer comment found
+    }
+
+    const visualizerPath = visualizerMatch[1].trim();
+    console.log(`Found visualizer comment in SC file: ${visualizerPath}`);
+    
+    if (!mainWindow || !mainWindow.webContents) {
+        console.warn('MainWindow not available for visualizer auto-loading');
+        return;
+    }
+
+    const result = loadVisualizerContent(visualizerPath, getEffectsRepoPath);
+    
+    if (result.error) {
+        console.error(`Error auto-loading visualizer: ${result.error}`);
+        return;
+    }
+
+    if (result.content) {
+        mainWindow.webContents.send('auto-visualizer-loaded', {
+            type: result.type,
+            path: visualizerPath,
+            content: result.content
+        });
+        console.log(`Auto-loaded ${result.type} visualizer: ${visualizerPath}`);
+    }
+}
+
 function loadScFile(filePath, getEffectsRepoPath, mainWindow) {
     // Check if filePath is already absolute. If not, join with effects repo path.
     const scFilePath = path.isAbsolute(filePath) ? filePath : path.join(getEffectsRepoPath(), filePath);
@@ -139,58 +212,7 @@ function loadScFile(filePath, getEffectsRepoPath, mainWindow) {
     // Read the SC file content to look for visualizer comments
     try {
         const scFileContent = fs.readFileSync(scFilePath, 'utf-8');
-        
-        // Look for visualizer comment: //visualizer: path/to/visualizer.glsl or .js
-        const visualizerMatch = scFileContent.match(/\/\/\s*visualizer:\s*(.+)/i);
-        
-        if (visualizerMatch) {
-            const visualizerPath = visualizerMatch[1].trim();
-            console.log(`Found visualizer comment in SC file: ${visualizerPath}`);
-            
-            // Load and send the visualizer content
-            if (mainWindow && mainWindow.webContents) {
-                try {
-                    if (visualizerPath.toLowerCase().endsWith('.js')) {
-                        // Load p5 sketch
-                        const sketchContent = loadP5SketchSync(visualizerPath, getEffectsRepoPath);
-                        if (sketchContent) {
-                            mainWindow.webContents.send('auto-visualizer-loaded', {
-                                type: 'p5',
-                                path: visualizerPath,
-                                content: sketchContent
-                            });
-                            console.log(`Auto-loaded p5 visualizer: ${visualizerPath}`);
-                        }
-                    } else if (visualizerPath.toLowerCase().endsWith('.glsl') || 
-                               (!visualizerPath.toLowerCase().endsWith('.js') && !visualizerPath.toLowerCase().endsWith('.glsl'))) {
-                        // Load shader (single-pass or multi-pass)
-                        let shaderContent;
-                        
-                        if (visualizerPath.toLowerCase().endsWith('.glsl')) {
-                            // Single-pass shader
-                            const fullShaderPath = path.join(getEffectsRepoPath(), visualizerPath);
-                            if (fs.existsSync(fullShaderPath)) {
-                                shaderContent = fs.readFileSync(fullShaderPath, 'utf-8');
-                            }
-                        } else {
-                            // Multi-pass shader (base name)
-                            shaderContent = loadMultiPassShader(visualizerPath, getEffectsRepoPath());
-                        }
-                        
-                        if (shaderContent) {
-                            mainWindow.webContents.send('auto-visualizer-loaded', {
-                                type: 'shader',
-                                path: visualizerPath,
-                                content: shaderContent
-                            });
-                            console.log(`Auto-loaded shader visualizer: ${visualizerPath}`);
-                        }
-                    }
-                } catch (visualizerError) {
-                    console.error(`Error loading visualizer ${visualizerPath}:`, visualizerError);
-                }
-            }
-        }
+        parseAndLoadVisualizerFromComment(scFileContent, getEffectsRepoPath, mainWindow);
     } catch (readError) {
         console.warn(`Could not read SC file for visualizer parsing: ${readError.message}`);
     }
@@ -381,5 +403,6 @@ module.exports = {
     loadEffectsList,
     loadP5SketchSync,
     loadScFile,
-    loadMultiPassShader
+    loadMultiPassShader,
+    loadVisualizerContent
 };
