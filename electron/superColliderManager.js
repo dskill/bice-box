@@ -134,6 +134,8 @@ function loadP5SketchSync(sketchPath, getEffectsRepoPath) {
 function loadVisualizerContent(visualizerPath, getEffectsRepoPath) {
     /**
      * Shared utility function to load visualizer content and determine type
+     * Used for manual visualizer selection from the UI
+     * For auto-loading from SC file comments, see parseAndLoadShaderFromComment()
      * Returns: { type: 'p5'|'shader', content: string|object, error?: string }
      */
     try {
@@ -168,39 +170,67 @@ function loadVisualizerContent(visualizerPath, getEffectsRepoPath) {
     }
 }
 
-function parseAndLoadVisualizerFromComment(scFileContent, getEffectsRepoPath, mainWindow) {
+function parseAndLoadShaderFromComment(scFileContent, getEffectsRepoPath, mainWindow) {
     /**
-     * Parse SC file for visualizer comments and auto-load the specified visualizer
-     * Expected comment format: //visualizer: path/to/visualizer.glsl or .js
+     * Parse SC file for shader comments and auto-load the specified shader
+     * Expected comment format: //shader: shadername (assumes shaders/ path prefix)
+     * Auto-detects single-pass vs multi-pass shaders
      */
-    const visualizerMatch = scFileContent.match(/\/\/\s*visualizer:\s*(.+)/i);
+    const shaderMatch = scFileContent.match(/\/\/\s*shader:\s*(.+)/i);
     
-    if (!visualizerMatch) {
-        return; // No visualizer comment found
+    if (!shaderMatch) {
+        return; // No shader comment found
     }
 
-    const visualizerPath = visualizerMatch[1].trim();
-    console.log(`Found visualizer comment in SC file: ${visualizerPath}`);
+    const shaderName = shaderMatch[1].trim();
+    console.log(`Found shader comment in SC file: ${shaderName}`);
     
     if (!mainWindow || !mainWindow.webContents) {
-        console.warn('MainWindow not available for visualizer auto-loading');
+        console.warn('MainWindow not available for shader auto-loading');
         return;
     }
 
-    const result = loadVisualizerContent(visualizerPath, getEffectsRepoPath);
+    const effectsRepoPath = getEffectsRepoPath();
+    const shadersDir = path.join(effectsRepoPath, 'shaders');
     
-    if (result.error) {
-        console.error(`Error auto-loading visualizer: ${result.error}`);
+    // Check for multi-pass shader first (look for _image.glsl file)
+    const multiPassImageFile = path.join(shadersDir, `${shaderName}_image.glsl`);
+    const singlePassFile = path.join(shadersDir, `${shaderName}.glsl`);
+    
+    let shaderPath, shaderContent, shaderType;
+    
+    if (fs.existsSync(multiPassImageFile)) {
+        // Multi-pass shader detected
+        shaderPath = `shaders/${shaderName}`; // Base name for multi-pass
+        try {
+            shaderContent = loadMultiPassShader(shaderPath, effectsRepoPath);
+            shaderType = 'multi-pass';
+        } catch (error) {
+            console.error(`Error loading multi-pass shader ${shaderName}: ${error.message}`);
+            return;
+        }
+    } else if (fs.existsSync(singlePassFile)) {
+        // Single-pass shader detected
+        shaderPath = `shaders/${shaderName}.glsl`;
+        try {
+            shaderContent = fs.readFileSync(singlePassFile, 'utf-8');
+            shaderType = 'single-pass';
+        } catch (error) {
+            console.error(`Error loading single-pass shader ${shaderName}: ${error.message}`);
+            return;
+        }
+    } else {
+        console.error(`Shader not found: ${shaderName} (looked for ${singlePassFile} and ${multiPassImageFile})`);
         return;
     }
 
-    if (result.content) {
+    if (shaderContent) {
         mainWindow.webContents.send('auto-visualizer-loaded', {
-            type: result.type,
-            path: visualizerPath,
-            content: result.content
+            type: 'shader',
+            path: shaderPath,
+            content: shaderContent
         });
-        console.log(`Auto-loaded ${result.type} visualizer: ${visualizerPath}`);
+        console.log(`Auto-loaded ${shaderType} shader: ${shaderName} -> ${shaderPath}`);
     }
 }
 
@@ -209,12 +239,12 @@ function loadScFile(filePath, getEffectsRepoPath, mainWindow) {
     const scFilePath = path.isAbsolute(filePath) ? filePath : path.join(getEffectsRepoPath(), filePath);
     console.log(`Loading SC file: ${scFilePath}`); // Path will now be correct for temp files too
 
-    // Read the SC file content to look for visualizer comments
+    // Read the SC file content to look for shader comments
     try {
         const scFileContent = fs.readFileSync(scFilePath, 'utf-8');
-        parseAndLoadVisualizerFromComment(scFileContent, getEffectsRepoPath, mainWindow);
+        parseAndLoadShaderFromComment(scFileContent, getEffectsRepoPath, mainWindow);
     } catch (readError) {
-        console.warn(`Could not read SC file for visualizer parsing: ${readError.message}`);
+        console.warn(`Could not read SC file for shader parsing: ${readError.message}`);
     }
 
     const scCommand = `("${scFilePath}").load;`;
