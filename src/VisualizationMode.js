@@ -19,6 +19,7 @@ function VisualizationMode({
   devMode
 }) {
   const [isLoadingEffect, setIsLoadingEffect] = useState(false);
+  const [useRotatedLabels, setUseRotatedLabels] = useState(false);
   const paramValuesRef = useRef({});
   const [actualRenderedColumns, setActualRenderedColumns] = useState(6); // Default to 6, will be updated
 
@@ -51,6 +52,9 @@ function VisualizationMode({
         const paramCount = Object.keys(currentAudioParams).length;
         if (paramCount === 0) return; // No params, no layout needed
 
+        const shouldRotate = paramCount > 6;
+        setUseRotatedLabels(shouldRotate);
+
         const viewportWidth = window.innerWidth;
         const availableWidth = viewportWidth - 40; // Account for padding
         
@@ -60,8 +64,8 @@ function VisualizationMode({
         
         const gridRows = 1; // Always one row
         const gapWidth = 15 * (gridColumns - 1);
-        const maxFaderWidth = 120;
-        const minFaderWidth = 60;
+        const maxFaderWidth = shouldRotate ? 80 : 120;
+        const minFaderWidth = shouldRotate ? 40 : 60;
         let faderWidth = (availableWidth - gapWidth) / gridColumns;
         faderWidth = Math.max(minFaderWidth, Math.min(maxFaderWidth, faderWidth));
         
@@ -144,7 +148,11 @@ function VisualizationMode({
               };
               return (
                 <div key={`${currentAudioSourcePath}-${paramName}`}>
-                  <ParamFader param={faderParam} onParamChange={handleParamChange} />
+                  <ParamFader 
+                    param={faderParam} 
+                    onParamChange={handleParamChange} 
+                    useRotatedLabels={useRotatedLabels}
+                  />
                 </div>
               );
             })}

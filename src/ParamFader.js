@@ -14,7 +14,7 @@ const throttle = (func, limit) => {
   }
 };
 
-const ParamFader = ({ param, onParamChange }) => {
+const ParamFader = ({ param, onParamChange, useRotatedLabels }) => {
   const { name, value, range, units } = param;
   const [faderValue, setFaderValue] = useState(value);
   const [isDragging, setIsDragging] = useState(false);
@@ -161,7 +161,7 @@ const ParamFader = ({ param, onParamChange }) => {
 
   return (
     <div 
-      className="param-fader" 
+      className={`param-fader ${useRotatedLabels ? 'rotated-layout' : ''}`} 
       onMouseDown={handleMouseDown}
       onPointerDown={handleMouseDown}
       style={{ 
