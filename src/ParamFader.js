@@ -22,6 +22,7 @@ const ParamFader = ({ param, onParamChange }) => {
   const initialValueRef = useRef(null);
   const initialMouseYRef = useRef(null);
   const lastUpdateTime = useRef(0);
+  const faderTrackRef = useRef(null);
 
   // Throttled version of sending OSC message
   const throttledSendOsc = useCallback(
@@ -105,8 +106,11 @@ const ParamFader = ({ param, onParamChange }) => {
       if (now - lastUpdateTime.current < 16) return; // 60fps throttle
       lastUpdateTime.current = now;
 
-      let deltaY = (e.clientY - initialMouseYRef.current) / window.innerHeight;
-      deltaY *= 2.0 //cause the fader is half the height  it used to be
+      if (!faderTrackRef.current) return;
+      const faderHeight = faderTrackRef.current.offsetHeight;
+      if (faderHeight === 0) return;
+
+      let deltaY = (e.clientY - initialMouseYRef.current) / faderHeight;
       const valueRange = range[1] - range[0];
       const newValue = Math.max(range[0], Math.min(range[1],
         initialValueRef.current + -(deltaY * valueRange)
@@ -176,7 +180,7 @@ const ParamFader = ({ param, onParamChange }) => {
           {formatValue(faderValue, units)}
         </div>
       )}
-      <div className="fader-track">
+      <div className="fader-track" ref={faderTrackRef}>
         <div
           className={`fader-thumb ${isDragging ? 'dragging' : ''}`}
           style={{ 
