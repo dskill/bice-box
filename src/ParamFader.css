@@ -16,6 +16,8 @@
 
 .param-fader.rotated-layout {
   padding: 40px 5px 20px 25px; /* Make space for label on the left */
+  min-width: 40px; /* Allow faders to be narrower in this mode */
+  max-width: 80px;
 }
 
 .fader-track {
@@ -70,12 +72,14 @@
   transform: rotate(180deg);
   text-align: center;
   position: absolute;
-  left: 20px; /* Closer to the fader line */
+  right: 50%; /* Position right edge relative to center */
+  margin-right: 0px; /* Gap between text and fader line */
   bottom: 20px; /* Position from bottom, within padding */
   height: auto;
   width: auto;
   margin-top: 0;
   padding: 0;
+  font-size: 14px;
 }
 
 .fader-label.dragging {
@@ -91,7 +95,7 @@
 
 .param-fader.rotated-layout .fader-label.dragging {
   padding: 8px 4px; /* More vertical padding for rotated text */
-  left: 10px; /* Closer to the fader line */
+  font-size: 20px;
 
 }
 
