@@ -11,8 +11,7 @@ These guidelines aim to maintain consistency and readability across the SuperCol
     -   The `defName` (e.g., `\my_effect_name`) MUST be a `Symbol` using `lowercase_snake_case`.
     -   This `defName` MUST precisely match the base filename (without extension) of the `.sc` file itself (e.g., if the file is `my_cool_delay.sc`, the SynthDef name must be `\my_cool_delay`).
 -   **`.add` Call:** Immediately follow the closing brace `}` of the `SynthDef` function with `.add;` to compile and register the definition.
--   **Parameter Registration:** Use `~registerEffectSpecs.value(defName, (...))` to register parameter specifications with ControlSpec objects.
--   **Synth Management:** Include a `fork { ... }` block after parameter registration to handle asynchronous synth creation and management.
+-   **Parameter & Synth Setup:** Define a `specs` variable to hold all `ControlSpec` objects, then call the global helper function `~setupEffect.value(defName, specs)` to handle both parameter registration and synth creation in one step.
 -   **Logging:** Use `.postln` sparingly for essential status messages (e.g., "Effect SynthDef 'effect_name' added").
 
 ## 2. SynthDef Internals
@@ -21,19 +20,27 @@ These guidelines aim to maintain consistency and readability across the SuperCol
     -   Use `NamedControl` style instead of traditional arguments: `var param = \param.kr(default_value);`
     -   Include standard parameters: `var out = \out.kr(0);`, `var in_bus = \in_bus.kr(0);`, `var analysis_out_bus = \analysis_out_bus.kr;`
     -   Include a `var mix = \mix.kr(0.5);` parameter for wet/dry control if applicable.
-    -   Provide sensible default values for all parameters.
+    -   **CRITICAL: Default values for parameters MUST be set from the `specs` variable.** This makes the `ControlSpec` the single source of truth. Example: `var param1 = \param1.kr(specs[\param1].default);`
     -   **Custom Control Signals:**
         -   If the effect requires custom control signals or triggers (e.g., a manual freeze trigger, an envelope follower input for control purposes), these **MUST** be implemented as NamedControl parameters.
         -   Provide a clear name (e.g., `freezeTrig`, `envFollowIn`) and a sensible default value (e.g., 0).
         -   The value of these parameters can then be controlled externally via `.set` messages to the Synth.
 -   **Variable Declaration (`var`):**
     -   **CRITICAL:** Declare *all* local variables using `var varName1, varName2, ...;` in a single block *immediately* after the parameter declarations. **Do not declare variables anywhere else within the function.** This is a common mistake that causes compilation errors.
--   **Signal Input:** Start the processing chain by getting the input signal: `sig = In.ar(in_bus);`. Store the original dry signal if needed for mixing later (e.g., `dry = sig;`).
--   **Signal Processing:** Arrange UGen code logically, reflecting the intended signal flow.
-    -   For complex effects with distinct stages, consider storing intermediate processed signals in local variables for clarity and correct routing before further processing or mixing.
--   **Mix Control:** If a `mix` parameter is present, use `XFade2.ar(drySignal, wetSignal, mix * 2 - 1)` for linear crossfading between the original and processed signals.
--   **Analysis Output:** Prepare a mono signal for analysis: `mono_for_analysis = Mix.ar(finalSignal);` and output it with `Out.ar(analysis_out_bus, mono_for_analysis);`
--   **Signal Output:** End the main processing chain with `Out.ar(out, outputSignal);`. Ensure `outputSignal` is stereo if needed, often `[finalSig, finalSig]` or similar.
+-   **Signal Path: The Mono-First Standard**
+    -   **For Performance, Default to Mono:** Your guitar is a mono source. `init.sc` now provides a reliable dual-mono signal on `~input_bus`. The most performant way to process this is in mono.
+        -   **Input:** Read the input as a mono signal using `var sig = In.ar(in_bus);`. This sums the input bus to a single channel.
+        -   **Processing:** Perform all your filtering, distortion, and other effects on this single mono signal.
+        -   **Output:** At the very end, duplicate your processed mono signal for the stereo output: `Out.ar(out, [processed_sig, processed_sig]);`.
+    -   **Exception for "True Stereo" Effects:** Some effects, like a ping-pong delay or a stereo chorus, are inherently stereo. Only in these specific cases should you process the signal in stereo.
+        -   **Input:** Read the input as a true stereo signal: `var sig = In.ar(in_bus, 2);`.
+        -   **Processing:** Perform your stereo-aware logic.
+        -   **Output:** Output the resulting stereo signal directly: `Out.ar(out, processed_stereo_sig);`.
+-   **Mix Control:** Use `XFade2.ar(drySignal, wetSignal, mix * 2 - 1)` for linear crossfading. SuperCollider automatically handles channel expansion if one signal is mono and the other is stereo (e.g., crossfading a mono dry signal with a stereo reverb).
+-   **Analysis Output:** The analysis bus `analysis_out_bus` **MUST** always receive a mono signal.
+    -   If you followed the mono-first pattern, your signal is already mono. No `Mix.ar` is needed: `mono_for_analysis = processed_sig;`.
+    -   If you created a true stereo effect, you must mix it down: `mono_for_analysis = Mix.ar(processed_stereo_sig);`.
+-   **Signal Output:** The main `out` bus **MUST** always receive a stereo signal.
 
 ## 3. Analysis Integration
 
@@ -55,7 +62,7 @@ Effects now use a simplified analysis system managed by `~masterAnalyser`:
 
 ## 5. Parameter Registration
 
-Instead of separate JSON files, parameters are now registered directly in the SuperCollider file using `~registerEffectSpecs.value()`:
+Instead of separate JSON files, parameters are now registered directly in the SuperCollider file using `~registerEffectSpecs.value()`. **Effects are limited to a maximum of 12 parameters** (excluding standard parameters like `out`, `in_bus`, and `analysis_out_bus`).
 
 **Parameter Registration Structure:**
 ```supercollider
@@ -70,7 +77,7 @@ Instead of separate JSON files, parameters are now registered directly in the Su
 -   **min/max:** Minimum and maximum values for the parameter range
 -   **warp:** Scaling curve - `'lin'` (linear), `'exp'` (exponential), etc.
 -   **step:** Value increment step (usually 0 for continuous parameters)
--   **default:** Default value (must match the NamedControl default in SynthDef)
+-   **default:** Default value for the parameter. This is the single source of truth.
 -   **unit:** Unit string for display (e.g., "Hz", "%", "x", "s")
 
 **Common Parameter Types:**
@@ -94,109 +101,61 @@ delay: ControlSpec(0.001, 2.0, 'exp', 0, 0.1, "s")
 
 ## 6. Complete File Template
 
-Here's a basic template for a new audio effect:
+This template demonstrates the standard, high-performance, mono-first signal path using the new simplified setup.
 
 ```supercollider
 // shader: oscilloscope
 (
     var defName = \my_effect;
+
+    // 1. Define all parameter specifications in a 'specs' variable
+    var specs = (
+        param1: ControlSpec(0.1, 10.0, 'exp', 0, 1.0, "x"),
+        mix: ControlSpec(0.0, 1.0, 'lin', 0, 0.5, "%")
+    );
+
+    // 2. Define the SynthDef
     var def = SynthDef(defName, {
-        // Parameters (NamedControl style)
+        // Parameters - get defaults directly from the 'specs' variable
         var out = \out.kr(0);
         var in_bus = \in_bus.kr(0);
         var analysis_out_bus = \analysis_out_bus.kr;
-        var param1 = \param1.kr(0.5);
-        var param2 = \param2.kr(1.0);
-        var mix = \mix.kr(0.5);
-        
-        // Variables (MUST be declared here!)
-        var sig, processed, mono_for_analysis;
+        var param1 = \param1.kr(specs[\param1].default);
+        var mix = \mix.kr(specs[\mix].default);
 
-        // Signal processing
+        // Variables (MUST be declared here!)
+        var sig, dry, processed, mono_for_analysis;
+
+        // Get Mono Input Signal
+        // In.ar(in_bus) sums the dual-mono input from init.sc to a single channel for performance.
         sig = In.ar(in_bus);
-        
-        // Your effect processing here...
-        processed = sig; // Replace with actual processing
-        
-        // Mix control
-        processed = XFade2.ar(sig, processed, mix * 2 - 1);
-        
-        // Analysis output
-        mono_for_analysis = Mix.ar(processed);
+        dry = sig;
+
+        // Process in Mono
+        // Replace this with your actual mono processing chain...
+        processed = (sig * param1).tanh;
+
+        // Mix Control
+        processed = XFade2.ar(dry, processed, mix * 2 - 1);
+
+        // Analysis Output (must be mono)
+        // The signal is already mono, so no need for Mix.ar.
+        mono_for_analysis = processed;
         Out.ar(analysis_out_bus, mono_for_analysis);
-        
-        // Main output
+
+        // Final Stereo Output
+        // Duplicate the processed mono signal to create a stereo pair.
         Out.ar(out, [processed, processed]);
     });
     def.add;
     "Effect SynthDef 'my_effect' added".postln;
 
-    // Parameter registration
-    ~registerEffectSpecs.value(defName, (
-        param1: ControlSpec(0.0, 1.0, 'lin', 0, 0.5, "%"),
-        param2: ControlSpec(0.1, 10.0, 'exp', 0, 1.0, "x"),
-        mix: ControlSpec(0.0, 1.0, 'lin', 0, 0.5, "%")
-    ));
-
-    // Synth creation
-    fork {
-        s.sync;
-        if(~effect.notNil, {
-            "Freeing existing effect synth".postln;
-            ~effect.free;
-        });
-        ~effect = Synth(defName, [
-            \in_bus, ~input_bus,
-            \analysis_out_bus, ~effect_output_bus_for_analysis
-        ], ~effectGroup);
-        ("New % synth created with analysis output bus").format(defName).postln;
-    };
+    // 3. Register specs and create the synth with a single helper function
+    ~setupEffect.value(defName, specs);
 )
 ```
 
 ## 7. Advanced Techniques
 
 **Feedback Systems (ping_pong_delay.sc):**
-```supercollider
-// Cross-channel feedback delay
-fbNode = LocalIn.ar(2);
-leftDelay = DelayC.ar(sig[0] + fbNode[1], 2, delayTime);
-rightDelay = DelayC.ar(sig[1] + fbNode[0], 2, delayTime);
-LocalOut.ar([leftDelay, rightDelay] * feedback);
 ```
-
-**Reverse Reverb with Local Buffers (mbv.sc):**
-```supercollider
-// Create local buffer for reverse reverb
-reverb_buffer = LocalBuf(SampleRate.ir * 0.75);
-RecordBuf.ar(processed, reverb_buffer, loop: 1);
-reverse_sig = PlayBuf.ar(1, reverb_buffer, rate: -1, loop: 1, 
-    startPos: BufFrames.kr(reverb_buffer));
-reverse_verb_sig = FreeVerb.ar(reverse_sig, mix: 1, room: 1.25, damp: 0.5);
-```
-
-**Pitch Detection + Synthesis (flames.sc):**
-```supercollider
-// Pitch detection with synthesis overlay
-# freq, hasFreq = Pitch.kr(in: sig, ampThreshold: 0.02, median: 2);
-synth_sig = Select.ar(hasFreq, [
-    PinkNoise.ar(0.3), // No pitch detected
-    LFSaw.ar(freq * 0.5) * 0.7 + PinkNoise.ar(0.4) // Pitch detected
-]) * RunningSum.rms(Mix.ar(sig), 256) * gain;
-```
-
-**Custom OSC Data Sending (ping_pong_delay.sc):**
-```supercollider
-// In SynthDef: Send custom data to visualizations
-SendReply.kr(Impulse.kr(30), '/customData', [param1, param2]);
-
-
-## 8. Common Mistakes to Avoid
-
--   **Variable Declaration:** Always declare ALL variables at the start of the SynthDef function with `var varName1, varName2, ...;`. Not doing this causes compilation errors.
--   **Parameter Matching:** Ensure ControlSpec defaults match NamedControl defaults exactly.
--   **Analysis Output:** Don't forget the `analysis_out_bus` parameter and mono output.
--   **Shader Comment:** Include the `// shader: shader_name` comment at the top.
--   **Self-Contained:** Everything must be in the `.sc` file - no separate JSON files.
--   **Feedback Stability:** When using LocalIn/LocalOut, always multiply feedback by a value < 1.0 to prevent runaway feedback.
--   **Buffer Management:** Use LocalBuf for temporary buffers rather than global buffers that need allocation.
