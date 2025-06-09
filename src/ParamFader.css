@@ -93,10 +93,18 @@
   font-weight: bold;
 }
 
+.param-fader:not(.rotated-layout) .fader-label.dragging {
+  width: max-content;
+  min-width: 100%;
+  box-sizing: border-box;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
 .param-fader.rotated-layout .fader-label.dragging {
   padding: 8px 4px; /* More vertical padding for rotated text */
   font-size: 20px;
-
 }
 
 .fader-value-tooltip {
