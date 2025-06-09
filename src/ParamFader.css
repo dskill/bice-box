@@ -5,7 +5,7 @@
   width: var(--fader-width, 120px); /* Use CSS custom property with fallback */
   min-width: 60px; /* Minimum width to keep faders usable */
   max-width: 120px; /* Maximum width */
-  height: 200px; /* Set a fixed height for consistent grid layout */
+  height: 400px; /* Set a fixed height for consistent grid layout */
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -75,7 +75,7 @@
 
 .fader-value-tooltip {
   position: absolute;
-  top: calc(130px - 140px * var(--fader-scale, 0));
+  top: calc(330px - 330px * var(--fader-scale, 0));
   left: 50%;
   transform: translateX(-50%);
   font-family: 'Inconsolata', monospace;

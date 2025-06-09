@@ -138,7 +138,7 @@ body {
 .knobs-container {
   display: grid;
   grid-template-columns: repeat(var(--grid-columns, 6), 1fr);
-  grid-template-rows: repeat(var(--grid-rows, auto), 200px);
+  grid-template-rows: repeat(var(--grid-rows, auto), 400px);
   gap: 15px;
   margin-left: auto;
   margin-right: auto;
@@ -150,27 +150,10 @@ body {
   justify-content: center;
   align-content: end;
   width: fit-content;
-  min-height: 200px;
+  min-height: 400px;
 }
 
-/* Responsive breakpoints - keep 6 columns longer */
-@media (max-width: 600px) {
-  .knobs-container {
-    --max-columns: 4; /* Used by JavaScript */
-  }
-}
-
-@media (max-width: 480px) {
-  .knobs-container {
-    --max-columns: 3; /* Used by JavaScript */
-  }
-}
-
-@media (max-width: 360px) {
-  .knobs-container {
-    --max-columns: 2; /* Used by JavaScript */
-  }
-}
+/* Responsive breakpoints are now handled in VisualizationMode.js */
 
 .toggles-container {
   display: flex;

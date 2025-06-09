@@ -49,19 +49,16 @@ function VisualizationMode({
     const calculateFaderLayout = () => {
       if (currentAudioParams) {
         const paramCount = Object.keys(currentAudioParams).length;
+        if (paramCount === 0) return; // No params, no layout needed
+
         const viewportWidth = window.innerWidth;
         const availableWidth = viewportWidth - 40; // Account for padding
         
-        let maxColumnsPerRow = 6; // Default (includes 800px)
-        if (viewportWidth <= 600) maxColumnsPerRow = 4;
-        if (viewportWidth <= 480) maxColumnsPerRow = 3;
-        if (viewportWidth <= 360) maxColumnsPerRow = 2;
-        
-        // Use actual param count up to the maximum allowed by viewport
-        const gridColumns = Math.min(paramCount, maxColumnsPerRow);
+        // Use actual param count for the grid
+        const gridColumns = paramCount;
         setActualRenderedColumns(gridColumns); // Update state
         
-        const gridRows = Math.ceil(paramCount / gridColumns);
+        const gridRows = 1; // Always one row
         const gapWidth = 15 * (gridColumns - 1);
         const maxFaderWidth = 120;
         const minFaderWidth = 60;
@@ -72,7 +69,7 @@ function VisualizationMode({
         document.documentElement.style.setProperty('--grid-rows', gridRows.toString());
         document.documentElement.style.setProperty('--fader-width', `${faderWidth}px`);
         
-        console.log(`Smart grid: ${paramCount} params, ${gridColumns} cols, ${gridRows} rows, faderWidth: ${faderWidth}px, viewport: ${viewportWidth}px`);
+        console.log(`Smart grid: ${paramCount} params, ${gridColumns} cols, ${gridRows} row, faderWidth: ${faderWidth}px, viewport: ${viewportWidth}px`);
       }
     };
     calculateFaderLayout();
