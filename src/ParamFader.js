@@ -161,6 +161,7 @@ const ParamFader = ({ param, onParamChange }) => {
       onMouseDown={handleMouseDown}
       onPointerDown={handleMouseDown}
       style={{ 
+        '--fader-scale': `${faderPosition / 100}`,
         touchAction: 'none',
         cursor: isDragging ? 'grabbing' : 'grab'
       }}
@@ -179,7 +180,6 @@ const ParamFader = ({ param, onParamChange }) => {
         <div
           className={`fader-thumb ${isDragging ? 'dragging' : ''}`}
           style={{ 
-            '--fader-scale': `${faderPosition / 100}`,
             '--fader-color': faderColor
           }}
         />

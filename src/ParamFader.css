@@ -69,15 +69,17 @@
   padding: 2px 6px;
   border-radius: 3px;
   border: 1px solid var(--fader-color);
+  font-size: 20px;
+  font-weight: bold;
 }
 
 .fader-value-tooltip {
   position: absolute;
-  top: 0;
+  top: calc(130px - 140px * var(--fader-scale, 0));
   left: 50%;
   transform: translateX(-50%);
   font-family: 'Inconsolata', monospace;
-  font-size: 12px;
+  font-size: 20px;
   font-weight: 600;
   color: var(--fader-color);
   text-shadow: 0 0 8px var(--fader-color);
@@ -89,4 +91,5 @@
   user-select: none;
   z-index: 10;
   border: 1px solid var(--fader-color);
+  transition: top 0.05s ease-out;
 }
