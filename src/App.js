@@ -622,7 +622,7 @@ function App() {
 
       <div className="effect-nav-buttons-container">
         <div className="visualization-controls">
-          <div className="knobs-container">
+          <div className="fader-container">
             {currentAudioParams && Object.entries(currentAudioParams).map(([paramName, paramSpec], index) => {
               const faderParam = {
                 name: paramName,

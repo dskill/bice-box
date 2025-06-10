@@ -131,7 +131,7 @@ body {
 }
 
 
-.knobs-container {
+.fader-container {
   position: relative;
   z-index: inherit;
   display: grid;
@@ -643,7 +643,7 @@ button:active {
 }
 
 /* Make sure the actual faders can receive events */
-.visualization-controls .knobs-container {
+.visualization-controls .fader-container {
   pointer-events: auto;
 }
 

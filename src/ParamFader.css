@@ -5,7 +5,7 @@
   width: var(--fader-width, 120px); /* Use CSS custom property with fallback */
   min-width: 60px; /* Minimum width to keep faders usable */
   max-width: 120px; /* Maximum width */
-  height: 400px; /* Set a fixed height for consistent grid layout */
+  height: 375px; /* Set a fixed height for consistent grid layout */
   display: flex;
   flex-direction: column;
   align-items: center;
