@@ -40,8 +40,10 @@ function App() {
   const [scError, setScError] = useState(null);
   const [shaderError, setShaderError] = useState(null);
   const [devMode, setDevMode] = useState(false);
+  const wasHeld = useRef(false);
 
   // --- State for Claude Voice Interaction ---
+  const [isClaudeConsoleOpen, setIsClaudeConsoleOpen] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [claudeOutput, setClaudeOutput] = useState('');
 
@@ -557,20 +559,39 @@ function App() {
   };
 
   // --- Handlers for Claude Voice Interaction ---
-  const handleClaudeButtonClick = () => {
-    setIsRecording(prev => {
-      const newIsRecording = !prev;
-      if (newIsRecording) {
-        setClaudeOutput('Listening...');
-      }
-      return newIsRecording;
-    });
+  const handleOpenConsole = () => {
+    setIsClaudeConsoleOpen(true);
+    setClaudeOutput('Ready. Hold the button to talk.');
   };
 
+  const handleInteractionStart = (e) => {
+    e.preventDefault(); // Stop touch from firing mouse events
+    setIsRecording(true);
+    setClaudeOutput('Listening...');
+  };
+
+  const handleInteractionEnd = (e) => {
+    e.preventDefault();
+    if (isRecording) {
+      setIsRecording(false);
+      setClaudeOutput('Transcribing...');
+    }
+  };
+
+  const handleCloseClaudeConsole = () => {
+    setIsClaudeConsoleOpen(false);
+    setClaudeOutput('');
+    setIsRecording(false); // Ensure all states are reset
+  };
+
+  // --- Handlers for SC/Effects ---
   const handleTranscriptionComplete = useCallback((text) => {
     console.log("Transcription complete:", text);
     setClaudeOutput(text);
-    // Here is where you would send the text to the Claude subprocess
+  }, []);
+
+  const handleParamChange = useCallback((paramName, value) => {
+    // ... existing code ...
   }, []);
 
   if (error) {
@@ -584,16 +605,40 @@ function App() {
         onTranscriptionComplete={handleTranscriptionComplete}
       />
 
-      {devMode && (
-        <button 
-          className={`claude-button ${isRecording ? 'recording' : ''}`}
-          onClick={handleClaudeButtonClick}
-        >
-          {isRecording ? 'Listening...' : 'Claude'}
-        </button>
-      )}
+      <div className="claude-ui-container">
+        {devMode && (
+          isClaudeConsoleOpen ? (
+            // Button to show when the console is OPEN
+            <button
+              className={`claude-button ${isRecording ? 'recording' : ''}`}
+              // Mouse events
+              onMouseDown={handleInteractionStart}
+              onMouseUp={handleInteractionEnd}
+              onMouseLeave={handleInteractionEnd}
+              // Touch events
+              onTouchStart={handleInteractionStart}
+              onTouchEnd={handleInteractionEnd}
+            >
+              {isRecording ? 'Listening...' : 'Hold to Talk'}
+            </button>
+          ) : (
+            // Button to show when the console is CLOSED
+            <button
+              className="claude-button"
+              onClick={handleOpenConsole}
+            >
+              Claude
+            </button>
+          )
+        )}
+        {devMode && isClaudeConsoleOpen && (
+          <button className="claude-console-close" onClick={handleCloseClaudeConsole}>
+            ×
+          </button>
+        )}
+      </div>
 
-      {claudeOutput && (
+      {isClaudeConsoleOpen && (
         <div className="claude-console">
           <pre>{claudeOutput}</pre>
         </div>

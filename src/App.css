@@ -1328,15 +1328,15 @@ button:disabled {
 }
 
 .claude-button {
-  position: absolute;
-  top: 20px;
+  top: 0px;
   left: 20px;
-  z-index: 10; /* High z-index to be on top of most elements */
+  height: 60px;
+  z-index: 10; /* High z-index to be on top of faders */
   padding: 8px 16px;
   font-size: 16px;
-  background-color: rgba(40, 44, 52, 0.75);
-  color: #61dafb;
-  border: 1px solid #61dafb;
+  color: rgb(198, 202, 224);
+  background-color: rgba(0, 0, 0, 0);
+  border: 1px solid rgba(198, 202, 224, 0.3);
   border-radius: 5px;
   cursor: pointer;
   transition: background-color 0.3s, color 0.3s;
@@ -1345,6 +1345,12 @@ button:disabled {
 .claude-button:hover {
   background-color: #61dafb;
   color: #282c34;
+}
+
+.claude-button.open {
+  /* A subtle indicator that the console is open */
+  background-color: rgba(60, 64, 72, 0.9);
+  border-color: #82eaff;
 }
 
 .claude-button.recording {
@@ -1372,6 +1378,26 @@ button:disabled {
   text-align: left;
 }
 
+.claude-console-close {
+  /* No longer absolute */
+  background: none;
+  border: 1px solid rgba(198, 202, 224, 0.3);
+  color: #999;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 4px 10px;
+  line-height: 1.5;
+  border-radius: 5px;
+  height: 60px;
+  width: 60px;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+.claude-console-close:hover {
+  color: #fff;
+  background-color: rgba(198, 202, 224, 0.1);
+}
+
 .claude-console pre {
   margin: 0;
   font-family: inherit;
@@ -1384,4 +1410,14 @@ button:disabled {
   left: 0;
   width: 100%;
   z-index: 3; /* Above console */
+}
+
+.claude-ui-container {
+  position: absolute;
+  top: 5px;
+  left: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  z-index: 2001;
 }
