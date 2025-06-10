@@ -4,7 +4,6 @@ import EffectSelectScreen from './EffectSelectScreen';
 import Whisper from './Whisper';
 import ParamFader from './ParamFader';
 import './App.css';
-import './VisualizationMode.css';
 
 // Add this style to your existing CSS or create a new style block
 const styles = {
