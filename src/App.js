@@ -47,11 +47,6 @@ function App() {
 
   // --- State for Faders ---
   const [useRotatedLabels, setUseRotatedLabels] = useState(false);
-  const paramValuesRef = useRef({});
-
-  const handleParamChange = (paramName, value) => {
-    paramValuesRef.current[paramName] = value;
-  };
 
   // Calculate responsive fader layout (moved from VisualizationMode)
   useEffect(() => {
@@ -635,7 +630,7 @@ function App() {
                 <div key={`${currentAudioSource}-${paramName}`}>
                   <ParamFader 
                     param={faderParam} 
-                    onParamChange={handleParamChange} 
+                    onParamChange={() => {}} // Prop must be satisfied, but we no longer need to track changes here
                     useRotatedLabels={useRotatedLabels}
                   />
                 </div>

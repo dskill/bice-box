@@ -44,7 +44,6 @@ function VisualizationCanvas({
   currentVisualContent, 
   currentShaderPath,    // New prop
   currentShaderContent, // New prop
-  paramValuesRef, 
   onEffectLoaded,
   devMode // <-- New prop for dev mode
 }) {
@@ -505,7 +504,6 @@ function VisualizationCanvas({
           newP5Instance.tunerData = tunerDataRef.current;
           newP5Instance.customMessage = oscMessageRef.current;
           newP5Instance.combinedData = combinedDataRef.current;
-          newP5Instance.params = paramValuesRef.current;
           newP5Instance.webGLCapabilities = webGLCapabilities;
           newP5Instance.isPlatformRaspberryPi = isPlatformRaspberryPi;
 
@@ -535,7 +533,7 @@ function VisualizationCanvas({
 
     loadAndCreateSketch();
 
-  }, [currentVisualContent, currentShaderContent, cleanupP5Instance, cleanupShaderToyInstance, paramValuesRef, onEffectLoaded, webGLCapabilities, isPlatformRaspberryPi]);
+  }, [currentVisualContent, currentShaderContent, cleanupP5Instance, cleanupShaderToyInstance, onEffectLoaded, webGLCapabilities, isPlatformRaspberryPi]);
 
   // Effect to update audio texture when combined data or waveform data changes
   useEffect(() => {
