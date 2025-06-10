@@ -56,7 +56,7 @@ User Voice → Whisper → Text → Spawn Claude Code → MCP Tools → App Stat
 
 ### 1. Voice Recognition (Whisper)
 
-- **Integration**: Local Whisper model running in Electron app
+- **Integration**: OpenAI Whisper API called from the Electron app
 - **Trigger**: Push-to-talk button or voice activation
 - **Output**: Transcribed text sent to Claude Code spawner
 
