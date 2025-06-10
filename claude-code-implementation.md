@@ -246,19 +246,7 @@ bice-box/
 2. **Implement MCP server** in electron/mcpServer.js
 3. **Add Claude Code spawning** logic to main.js
 4. **Integrate Whisper** for voice recognition
-5. **Add TTS** for audio feedback
 6. **Create voice UI** components
 7. **Test end-to-end** workflow
 8. **Add error handling** and edge cases
 9. **Optimize performance** and user experience
-
-## Dependencies
-
-```json
-{
-  "dependencies": {
-    "@anthropic/mcp-server": "^1.0.0",
-    "whisper-node": "^1.0.0"
-  }
-}
-``` 
