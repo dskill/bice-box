@@ -1,7 +1,10 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import VisualizationMode from './VisualizationMode';
 import EffectSelectScreen from './EffectSelectScreen';
+import Whisper from './Whisper';
+import ParamFader from './ParamFader';
 import './App.css';
+import './VisualizationMode.css';
 
 // Add this style to your existing CSS or create a new style block
 const styles = {
@@ -38,6 +41,47 @@ function App() {
   const [scError, setScError] = useState(null);
   const [shaderError, setShaderError] = useState(null);
   const [devMode, setDevMode] = useState(false);
+
+  // --- State for Claude Voice Interaction ---
+  const [isRecording, setIsRecording] = useState(false);
+  const [claudeOutput, setClaudeOutput] = useState('');
+
+  // --- State for Faders ---
+  const [useRotatedLabels, setUseRotatedLabels] = useState(false);
+  const paramValuesRef = useRef({});
+
+  const handleParamChange = (paramName, value) => {
+    paramValuesRef.current[paramName] = value;
+  };
+
+  // Calculate responsive fader layout (moved from VisualizationMode)
+  useEffect(() => {
+    const calculateFaderLayout = () => {
+      if (currentAudioParams) {
+        const paramCount = Object.keys(currentAudioParams).length;
+        if (paramCount === 0) return;
+
+        const shouldRotate = paramCount > 6;
+        setUseRotatedLabels(shouldRotate);
+
+        const viewportWidth = window.innerWidth;
+        const availableWidth = viewportWidth - 40; 
+        
+        const gridColumns = paramCount;
+        
+        const maxFaderWidth = shouldRotate ? 80 : 120;
+        const minFaderWidth = shouldRotate ? 40 : 60;
+        let faderWidth = (availableWidth - (15 * (gridColumns - 1))) / gridColumns;
+        faderWidth = Math.max(minFaderWidth, Math.min(maxFaderWidth, faderWidth));
+        
+        document.documentElement.style.setProperty('--grid-columns', gridColumns.toString());
+        document.documentElement.style.setProperty('--fader-width', `${faderWidth}px`);
+      }
+    };
+    calculateFaderLayout();
+    window.addEventListener('resize', calculateFaderLayout);
+    return () => window.removeEventListener('resize', calculateFaderLayout);
+  }, [currentAudioParams]);
 
   // --- Derived State for Selectors ---
   const audioSources = useMemo(() => {
@@ -518,20 +562,55 @@ function App() {
     }
   };
 
+  // --- Handlers for Claude Voice Interaction ---
+  const handleClaudeButtonClick = () => {
+    setIsRecording(prev => {
+      const newIsRecording = !prev;
+      if (newIsRecording) {
+        setClaudeOutput('Listening...');
+      }
+      return newIsRecording;
+    });
+  };
+
+  const handleTranscriptionComplete = useCallback((text) => {
+    console.log("Transcription complete:", text);
+    setClaudeOutput(text);
+    // Here is where you would send the text to the Claude subprocess
+  }, []);
+
   if (error) {
     return <div className="error-message">{error}</div>;
   }
 
   return (
     <div className="App" style={styles.app}>
+      <Whisper 
+        isRecording={isRecording}
+        onTranscriptionComplete={handleTranscriptionComplete}
+      />
+
+      <button 
+        className={`claude-button ${isRecording ? 'recording' : ''}`}
+        onClick={handleClaudeButtonClick}
+      >
+        {isRecording ? 'Listening...' : 'Claude'}
+      </button>
+
+      {claudeOutput && (
+        <div className="claude-console">
+          <pre>{claudeOutput}</pre>
+        </div>
+      )}
+
       <VisualizationMode
         // Pass necessary state and handlers
         currentAudioSourcePath={currentAudioSource}
         currentVisualSourcePath={currentVisualSource}
-        currentVisualContent={currentVisualContent} // Pass the loaded sketch content
-        currentShaderPath={currentShaderPath} // Pass new shader state
-        currentShaderContent={currentShaderContent} // Pass new shader state
-        currentAudioParams={currentAudioParams} // Pass the audio params
+        currentVisualContent={currentVisualContent}
+        currentShaderPath={currentShaderPath}
+        currentShaderContent={currentShaderContent}
+        currentAudioParams={currentAudioParams}
         reloadEffectList={reloadEffectList}
         pullEffectsRepo={pullEffectsRepo}
         // Pass handlers to open selectors
@@ -541,6 +620,32 @@ function App() {
         onCheckEffectsRepo={checkEffectsRepoStatus}
         devMode={true}
       />
+
+      <div className="effect-nav-buttons-container">
+        <div className="visualization-controls">
+          <div className="knobs-container">
+            {currentAudioParams && Object.entries(currentAudioParams).map(([paramName, paramSpec], index) => {
+              const faderParam = {
+                name: paramName,
+                value: paramSpec.default,
+                range: [paramSpec.minval, paramSpec.maxval],
+                units: paramSpec.units || '',
+                index: index,
+              };
+              return (
+                <div key={`${currentAudioSource}-${paramName}`}>
+                  <ParamFader 
+                    param={faderParam} 
+                    onParamChange={handleParamChange} 
+                    useRotatedLabels={useRotatedLabels}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
       {/* Render selectors conditionally based on new state */}
       { showAudioSelector && (
           <EffectSelectScreen

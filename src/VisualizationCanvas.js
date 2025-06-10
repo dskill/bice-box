@@ -718,7 +718,8 @@ function VisualizationCanvas({
       left: 0, 
       width: '100%', 
       height: '100%', 
-      backgroundColor: 'black' 
+      backgroundColor: 'black',
+      zIndex: 1 // Below console (z-index: 2) but creates stacking context for faders
     }}>
       <div 
           ref={canvasRef} // This ref points to the container for p5/ShaderToy sketches

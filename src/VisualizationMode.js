@@ -2,6 +2,7 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import EffectManagement from './EffectManagement';
 import ParamFader from './ParamFader';
 import VisualizationCanvas from './VisualizationCanvas';
+import './VisualizationMode.css';
 
 function VisualizationMode({ 
   currentAudioSourcePath, 
@@ -135,30 +136,6 @@ function VisualizationMode({
         devMode={devMode}
       />
       {isLoadingEffect && <div className="loading-overlay">Loading Effect...</div>}
-      <div className="effect-nav-buttons-container">
-        <div className="visualization-controls">
-          <div className="knobs-container">
-            {currentAudioParams && Object.entries(currentAudioParams).map(([paramName, paramSpec], index) => {
-              const faderParam = {
-                name: paramName,
-                value: paramSpec.default,
-                range: [paramSpec.minval, paramSpec.maxval],
-                units: paramSpec.units || '',
-                index: index,
-              };
-              return (
-                <div key={`${currentAudioSourcePath}-${paramName}`}>
-                  <ParamFader 
-                    param={faderParam} 
-                    onParamChange={handleParamChange} 
-                    useRotatedLabels={useRotatedLabels}
-                  />
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

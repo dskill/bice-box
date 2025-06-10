@@ -36,17 +36,13 @@ body {
 }
 
 .App {
-  width: 100%;
+  text-align: center;
+  background-color: #000;
+  color: white;
   height: 100vh;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  overflow: hidden;
-  margin: 0;
-  padding: 0;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-  font-family: 'Aldrich', 'Inconsolata', monospace;
+  width: 100vw;
+  overflow: hidden; /* Prevent scrollbars */
+  position: relative; /* Needed for absolute positioning of children */
 }
 
 .App-header {
@@ -1334,4 +1330,55 @@ button:disabled {
   font-weight: 500;
   position: relative; /* Needed for z-index */
   z-index: 1010; /* Ensure it's above overlay */
+}
+
+.claude-button {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  z-index: 10; /* High z-index to be on top of most elements */
+  padding: 8px 16px;
+  font-size: 16px;
+  background-color: rgba(40, 44, 52, 0.75);
+  color: #61dafb;
+  border: 1px solid #61dafb;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+.claude-button:hover {
+  background-color: #61dafb;
+  color: #282c34;
+}
+
+.claude-button.recording {
+  background-color: rgba(204, 0, 0, 0.75);
+  border-color: #ff4d4d;
+  color: #ff4d4d;
+}
+
+.claude-console {
+  position: absolute;
+  top: 70px; /* Below the button */
+  left: 20px;
+  right: 20px;
+  bottom: 20px;
+  background-color: rgba(10, 10, 10, 0.85);
+  color: #0f0; /* Classic terminal green */
+  font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+  font-size: 14px;
+  padding: 15px;
+  overflow-y: auto;
+  z-index: 2; /* Above the claude button, below faders */
+  border: 1px solid #333;
+  border-radius: 8px;
+  white-space: pre-wrap; /* To wrap text */
+  text-align: left;
+}
+
+.claude-console pre {
+  margin: 0;
+  font-family: inherit;
+  font-size: inherit;
 }

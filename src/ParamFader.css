@@ -88,7 +88,6 @@
   border-radius: 3px;
   border: 1px solid var(--fader-color);
   font-size: 20px;
-  z-index: 10;
   font-weight: bold;
 }
 
@@ -139,7 +138,6 @@
   white-space: nowrap;
   pointer-events: none;
   user-select: none;
-  z-index: 10;
   border: 1px solid var(--fader-color);
   transition: top 0.05s ease-out;
 }

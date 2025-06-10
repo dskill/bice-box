@@ -1,0 +1,22 @@
+.knobs-container {
+    position: relative;
+    z-index: inherit; /* Inherit the z-index from parent effect-nav-buttons-container */
+    display: grid;
+    grid-template-columns: repeat(var(--grid-columns, 6), 1fr);
+    grid-template-rows: repeat(var(--grid-rows, 1), 1fr);
+    gap: 15px;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    padding: 0 20px;
+    box-sizing: border-box;
+    z-index: 3;
+}
+
+.effect-nav-buttons-container {
+    position: absolute;
+    bottom: 40px; /* Position it above the bottom edge */
+    left: 0;
+    width: 100%;
+    z-index: 3; /* Sit above the Claude console (z-index: 2) */
+} 
