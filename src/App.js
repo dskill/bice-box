@@ -584,12 +584,14 @@ function App() {
         onTranscriptionComplete={handleTranscriptionComplete}
       />
 
-      <button 
-        className={`claude-button ${isRecording ? 'recording' : ''}`}
-        onClick={handleClaudeButtonClick}
-      >
-        {isRecording ? 'Listening...' : 'Claude'}
-      </button>
+      {devMode && (
+        <button 
+          className={`claude-button ${isRecording ? 'recording' : ''}`}
+          onClick={handleClaudeButtonClick}
+        >
+          {isRecording ? 'Listening...' : 'Claude'}
+        </button>
+      )}
 
       {claudeOutput && (
         <div className="claude-console">
