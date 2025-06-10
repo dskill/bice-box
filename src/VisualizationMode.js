@@ -1,5 +1,4 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import EffectManagement from './EffectManagement';
 import VisualizationCanvas from './VisualizationCanvas';
 
 function VisualizationMode({ 
@@ -10,10 +9,6 @@ function VisualizationMode({
   currentShaderContent,
   onOpenAudioSelect, 
   onOpenVisualSelect,
-  reloadEffectList, 
-  pullEffectsRepo, 
-  effectsRepoStatus, 
-  onCheckEffectsRepo,
   devMode
 }) {
   const [isLoadingEffect, setIsLoadingEffect] = useState(false);
@@ -35,16 +30,6 @@ function VisualizationMode({
 
   return (
     <div className="visualization-mode" style={{ touchAction: 'none' }}>
-      {window.electron && (
-        <div className="supercollider-management-wrapper">
-          <EffectManagement 
-            reloadEffectList={reloadEffectList} 
-            pullEffectsRepo={pullEffectsRepo}
-            effectsRepoStatus={effectsRepoStatus}
-            onCheckEffectsRepo={onCheckEffectsRepo}
-          />
-        </div>
-      )}
       
       <div className="source-select-container">
         <button 

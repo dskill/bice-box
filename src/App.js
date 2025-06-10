@@ -3,6 +3,7 @@ import VisualizationMode from './VisualizationMode';
 import EffectSelectScreen from './EffectSelectScreen';
 import Whisper from './Whisper';
 import ParamFader from './ParamFader';
+import EffectManagement from './EffectManagement';
 import './App.css';
 
 // Add this style to your existing CSS or create a new style block
@@ -600,6 +601,12 @@ function App() {
 
   return (
     <div className="App" style={styles.app}>
+      <EffectManagement 
+        reloadEffectList={reloadEffectList} 
+        pullEffectsRepo={pullEffectsRepo}
+        effectsRepoStatus={effectsRepoStatus}
+        onCheckEffectsRepo={checkEffectsRepoStatus}
+      />
       <Whisper 
         isRecording={isRecording}
         onTranscriptionComplete={handleTranscriptionComplete}
@@ -652,14 +659,10 @@ function App() {
         currentShaderPath={currentShaderPath}
         currentShaderContent={currentShaderContent}
         currentAudioParams={currentAudioParams}
-        reloadEffectList={reloadEffectList}
-        pullEffectsRepo={pullEffectsRepo}
         // Pass handlers to open selectors
         onOpenAudioSelect={openAudioSelect} 
         onOpenVisualSelect={openVisualSelect} 
-        effectsRepoStatus={effectsRepoStatus}
-        onCheckEffectsRepo={checkEffectsRepoStatus}
-        devMode={true}
+        devMode={devMode}
       />
 
       <div className="effect-nav-buttons-container">
