@@ -41,6 +41,7 @@ function App() {
   const [scError, setScError] = useState(null);
   const [shaderError, setShaderError] = useState(null);
   const [devMode, setDevMode] = useState(false);
+  const [paramValues, setParamValues] = useState({});
   const wasHeld = useRef(false);
 
   // --- State for Claude Voice Interaction ---
@@ -270,6 +271,17 @@ function App() {
       };
     }
   }, [handleDevModeChange, electron, setDevMode]); // Added handleDevModeChange, electron, and setDevMode (as invoke uses it)
+
+  // Effect to initialize parameter values when a new effect is loaded
+  useEffect(() => {
+    if (currentAudioParams) {
+      const defaultValues = Object.entries(currentAudioParams).reduce((acc, [name, spec]) => {
+        acc[name] = spec.default;
+        return acc;
+      }, {});
+      setParamValues(defaultValues);
+    }
+  }, [currentAudioParams]);
 
   const reloadEffectList = () => {
     return new Promise((resolve, reject) => {
@@ -592,7 +604,10 @@ function App() {
   }, []);
 
   const handleParamChange = useCallback((paramName, value) => {
-    // ... existing code ...
+    setParamValues(prev => ({ ...prev, [paramName]: value }));
+    if (electron && electron.ipcRenderer) {
+      electron.ipcRenderer.send('send-osc-to-sc', { address: '/effect/param/set', args: [paramName, value] });
+    }
   }, []);
 
   if (error) {
@@ -663,6 +678,7 @@ function App() {
         onOpenAudioSelect={openAudioSelect} 
         onOpenVisualSelect={openVisualSelect} 
         devMode={devMode}
+        paramValues={paramValues}
       />
 
       <div className="effect-nav-buttons-container">
@@ -671,7 +687,7 @@ function App() {
             {currentAudioParams && Object.entries(currentAudioParams).map(([paramName, paramSpec], index) => {
               const faderParam = {
                 name: paramName,
-                value: paramSpec.default,
+                value: paramValues[paramName] !== undefined ? paramValues[paramName] : paramSpec.default,
                 range: [paramSpec.minval, paramSpec.maxval],
                 units: paramSpec.units || '',
                 index: index,
@@ -680,7 +696,7 @@ function App() {
                 <div key={`${currentAudioSource}-${paramName}`}>
                   <ParamFader 
                     param={faderParam} 
-                    onParamChange={() => {}} // Prop must be satisfied, but we no longer need to track changes here
+                    onParamChange={handleParamChange}
                     useRotatedLabels={useRotatedLabels}
                   />
                 </div>

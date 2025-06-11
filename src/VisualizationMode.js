@@ -9,7 +9,8 @@ function VisualizationMode({
   currentShaderContent,
   onOpenAudioSelect, 
   onOpenVisualSelect,
-  devMode
+  devMode,
+  paramValues
 }) {
   const [isLoadingEffect, setIsLoadingEffect] = useState(false);
 
@@ -56,6 +57,7 @@ function VisualizationMode({
         currentShaderContent={currentShaderContent}
         onEffectLoaded={handleEffectLoaded}
         devMode={devMode}
+        paramValues={paramValues}
       />
       {isLoadingEffect && <div className="loading-overlay">Loading Effect...</div>}
     </div>

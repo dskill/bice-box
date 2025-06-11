@@ -45,7 +45,8 @@ function VisualizationCanvas({
   currentShaderPath,    // New prop
   currentShaderContent, // New prop
   onEffectLoaded,
-  devMode // <-- New prop for dev mode
+  devMode, // <-- New prop for dev mode
+  paramValues // <-- New prop for parameter values
 }) {
   const canvasRef = useRef(null);
   const p5InstanceRef = useRef(null);
@@ -58,7 +59,7 @@ function VisualizationCanvas({
   const rmsInputRef = useRef(0);
   const rmsOutputRef = useRef(0);
   const iRMSTimeRef = useRef(0); // New: Ref for accumulated RMS time
-  const tunerDataRef = useRef(0);
+  const tunerDataRef = useRef({ freq: 0, gain: 0, note: 60, cents: 0, confidence: 0 });
   // Add new refs for FFT data
   const fft0DataRef = useRef([]);
   const fft1DataRef = useRef([]);
@@ -506,6 +507,7 @@ function VisualizationCanvas({
           newP5Instance.combinedData = combinedDataRef.current;
           newP5Instance.webGLCapabilities = webGLCapabilities;
           newP5Instance.isPlatformRaspberryPi = isPlatformRaspberryPi;
+          newP5Instance.params = paramValues; // <-- Set params on creation
 
           newP5Instance.sendOscToSc = (address, ...args) => {
             if (window.electron && window.electron.ipcRenderer) {
@@ -534,6 +536,13 @@ function VisualizationCanvas({
     loadAndCreateSketch();
 
   }, [currentVisualContent, currentShaderContent, cleanupP5Instance, cleanupShaderToyInstance, onEffectLoaded, webGLCapabilities, isPlatformRaspberryPi]);
+
+  // Effect to update p.params when the values change
+  useEffect(() => {
+    if (p5InstanceRef.current && paramValues) {
+      p5InstanceRef.current.params = paramValues;
+    }
+  }, [paramValues]);
 
   // Effect to update audio texture when combined data or waveform data changes
   useEffect(() => {
