@@ -570,6 +570,7 @@ function VisualizationCanvas({
         waveformData = waveform0Data.length > 0 ? waveform0Data : [];
       }
 
+      /*
       // Debug logging (only log occasionally to avoid spam)
       if (Math.random() < 0.01) { // Log ~1% of the time
         console.log('Audio texture update:', {
@@ -582,6 +583,7 @@ function VisualizationCanvas({
           rmsOutput: rmsOutputRef.current
         });
       }
+      */
 
       // Fill row 0 with FFT data (frequency spectrum)
       // FFT data now contains pre-computed magnitudes from SuperCollider (no longer complex pairs)
