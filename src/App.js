@@ -44,6 +44,7 @@ function App() {
   const [devMode, setDevMode] = useState(false);
   const [paramValues, setParamValues] = useState({});
   const wasHeld = useRef(false);
+  const initLoad = useRef(false);
 
   // --- State for Claude Voice Interaction ---
   const [isClaudeConsoleOpen, setIsClaudeConsoleOpen] = useState(false);
@@ -98,6 +99,109 @@ function App() {
     return Array.from(sources.values()).sort((a, b) => a.name.localeCompare(b.name));
   }, [synths]);
 
+  const reloadEffectList = useCallback(() => {
+    return new Promise((resolve, reject) => {
+      console.log("Loading audio effects from SC files...");
+      if (electron) {
+        electron.ipcRenderer.send('reload-all-effects'); 
+        electron.ipcRenderer.once('effects-data', (event, data) => {
+          console.log("Received audio effects data:", data);
+          if (Array.isArray(data) && data.length > 0) {
+            setSynths(data);
+            const firstEffect = data[0];
+            setCurrentAudioSource(firstEffect.scFilePath);
+            setCurrentAudioParams(firstEffect.params || {});
+            
+            // Don't set any visual sources - keep them independent
+            console.log("Initial audio effect set:", { 
+              audio: firstEffect.scFilePath
+            });
+            
+            resolve(data);
+          } else {
+            const errorMessage = "Received empty or invalid audio effects data";
+            console.warn(errorMessage, data);
+            reject(new Error(errorMessage));
+          }
+        });
+
+        electron.ipcRenderer.once('effects-error', (event, error) => {
+          console.error('Error loading audio effects:', error);
+          reject(new Error(error));
+        });
+
+        // Add a timeout in case the IPC call doesn't respond
+        setTimeout(() => {
+          reject(new Error("Timeout while waiting for audio effects data"));
+        }, 5000);
+      } else {
+        console.warn('Electron is not available');
+        reject(new Error("Electron not available"));
+      }
+    });
+  }, []);
+
+  const checkEffectsRepoStatus = useCallback(async () => {
+    if (!electron) return;
+    
+    setEffectsRepoStatus(prev => ({ 
+      ...prev, 
+      isChecking: true,
+      error: null
+    }));
+    
+    try {
+      // The actual data from main.js will be the second argument to the listener
+      const statusPayload = await new Promise((resolve, reject) => {
+        electron.ipcRenderer.send('check-effects-repo');
+        
+        const timeout = setTimeout(() => {
+          // Clean up listeners to prevent memory leaks if timeout occurs
+          electron.ipcRenderer.removeAllListeners('effects-repo-status');
+          electron.ipcRenderer.removeAllListeners('effects-repo-error');
+          reject(new Error('Request to check effects repo timed out'));
+        }, 10000); // 10 second timeout
+
+        electron.ipcRenderer.once('effects-repo-status', (event, data) => {
+          clearTimeout(timeout);
+          electron.ipcRenderer.removeAllListeners('effects-repo-error'); // Clean up other listener
+          console.log('App.js: Received effects-repo-status with data:', data);
+          if (typeof data === 'object' && data !== null && typeof data.hasUpdates === 'boolean') {
+            resolve(data); // Resolve with the actual data object { hasUpdates: ... }
+          } else {
+            console.warn('App.js: Invalid data received for effects-repo-status', data);
+            reject(new Error('Invalid data received for effects repo status'));
+          }
+        });
+        
+        electron.ipcRenderer.once('effects-repo-error', (event, errorDetails) => {
+          clearTimeout(timeout);
+          electron.ipcRenderer.removeAllListeners('effects-repo-status'); // Clean up other listener
+          console.error('App.js: Received effects-repo-error with details:', errorDetails);
+          // errorDetails is expected to be { error: errorMessage, needsAttention: true }
+          reject(errorDetails); 
+        });
+      });
+
+      console.log('App.js: Promise resolved with statusPayload:', statusPayload);
+      setEffectsRepoStatus({
+        hasUpdates: Boolean(statusPayload.hasUpdates), // Now statusPayload should be the {hasUpdates: ...} object
+        lastChecked: new Date(), // Set lastChecked to now
+        isChecking: false,
+        error: null
+      });
+    } catch (errorObject) { // Renamed to errorObject to avoid confusion
+      console.error('App.js: Error in checkEffectsRepoStatus catch block:', errorObject);
+      setEffectsRepoStatus(prev => ({
+        ...prev,
+        isChecking: false,
+        // If errorObject is from effects-repo-error, it has an 'error' property with the message
+        // Otherwise, it might be the timeout Error object, which has a 'message' property
+        error: errorObject.error || errorObject.message || 'Failed to check for updates'
+      }));
+    }
+  }, []);
+
   const handleScReady = useCallback((event) => {
     console.log('SuperCollider is ready');
     // When SC is ready, ensure the current audio source is loaded
@@ -124,6 +228,9 @@ function App() {
   }, [currentAudioSource, currentAudioParams, synths, electron]); // Added electron to dependencies
 
   useEffect(() => {
+    if (initLoad.current) return;
+    initLoad.current = true;
+    
     // Initial effects load and repo check
     Promise.all([
       reloadEffectList(),
@@ -133,12 +240,8 @@ function App() {
       setError("Failed to initialize. Check the console for more details.");
     });
 
-    // Set up periodic check (every 30 minutes)
-    const checkInterval = setInterval(() => {
-      checkEffectsRepoStatus();
-    }, 30 * 60 * 1000);
 
-    return () => clearInterval(checkInterval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -283,50 +386,6 @@ function App() {
     }
   }, [currentAudioParams]);
 
-  const reloadEffectList = () => {
-    return new Promise((resolve, reject) => {
-      console.log("Loading audio effects from SC files...");
-      if (electron) {
-        electron.ipcRenderer.send('reload-all-effects'); 
-        electron.ipcRenderer.once('effects-data', (event, data) => {
-          console.log("Received audio effects data:", data);
-          if (Array.isArray(data) && data.length > 0) {
-            setSynths(data);
-            const firstEffect = data[0];
-            setCurrentAudioSource(firstEffect.scFilePath);
-            setCurrentAudioParams(firstEffect.params || {});
-            
-            // Don't set any visual sources - keep them independent
-            console.log("Initial audio effect set:", { 
-              audio: firstEffect.scFilePath
-            });
-            
-            resolve(data);
-          } else {
-            const errorMessage = "Received empty or invalid audio effects data";
-            console.warn(errorMessage, data);
-            reject(new Error(errorMessage));
-          }
-        });
-
-        electron.ipcRenderer.once('effects-error', (event, error) => {
-          console.error('Error loading audio effects:', error);
-          reject(new Error(error));
-        });
-
-        // Add a timeout in case the IPC call doesn't respond
-        setTimeout(() => {
-          reject(new Error("Timeout while waiting for audio effects data"));
-        }, 5000);
-      } else {
-        console.warn('Electron is not available');
-        reject(new Error("Electron not available"));
-      }
-    });
-  };
-
-  // --- New Handlers for Audio/Visual Selection ---
-
   const handleAudioSelect = (scFilePath) => {
     if (!scFilePath) {
       console.log('Audio selection cancelled or invalid path');
@@ -413,67 +472,6 @@ function App() {
         reject(new Error("Electron not available"));
       }
     });
-  };
-
-  const checkEffectsRepoStatus = async () => {
-    if (!electron) return;
-    
-    setEffectsRepoStatus(prev => ({ 
-      ...prev, 
-      isChecking: true,
-      error: null
-    }));
-    
-    try {
-      // The actual data from main.js will be the second argument to the listener
-      const statusPayload = await new Promise((resolve, reject) => {
-        electron.ipcRenderer.send('check-effects-repo');
-        
-        const timeout = setTimeout(() => {
-          // Clean up listeners to prevent memory leaks if timeout occurs
-          electron.ipcRenderer.removeAllListeners('effects-repo-status');
-          electron.ipcRenderer.removeAllListeners('effects-repo-error');
-          reject(new Error('Request to check effects repo timed out'));
-        }, 10000); // 10 second timeout
-
-        electron.ipcRenderer.once('effects-repo-status', (event, data) => {
-          clearTimeout(timeout);
-          electron.ipcRenderer.removeAllListeners('effects-repo-error'); // Clean up other listener
-          console.log('App.js: Received effects-repo-status with data:', data);
-          if (typeof data === 'object' && data !== null && typeof data.hasUpdates === 'boolean') {
-            resolve(data); // Resolve with the actual data object { hasUpdates: ... }
-          } else {
-            console.warn('App.js: Invalid data received for effects-repo-status', data);
-            reject(new Error('Invalid data received for effects repo status'));
-          }
-        });
-        
-        electron.ipcRenderer.once('effects-repo-error', (event, errorDetails) => {
-          clearTimeout(timeout);
-          electron.ipcRenderer.removeAllListeners('effects-repo-status'); // Clean up other listener
-          console.error('App.js: Received effects-repo-error with details:', errorDetails);
-          // errorDetails is expected to be { error: errorMessage, needsAttention: true }
-          reject(errorDetails); 
-        });
-      });
-
-      console.log('App.js: Promise resolved with statusPayload:', statusPayload);
-      setEffectsRepoStatus({
-        hasUpdates: Boolean(statusPayload.hasUpdates), // Now statusPayload should be the {hasUpdates: ...} object
-        lastChecked: new Date(), // Set lastChecked to now
-        isChecking: false,
-        error: null
-      });
-    } catch (errorObject) { // Renamed to errorObject to avoid confusion
-      console.error('App.js: Error in checkEffectsRepoStatus catch block:', errorObject);
-      setEffectsRepoStatus(prev => ({
-        ...prev,
-        isChecking: false,
-        // If errorObject is from effects-repo-error, it has an 'error' property with the message
-        // Otherwise, it might be the timeout Error object, which has a 'message' property
-        error: errorObject.error || errorObject.message || 'Failed to check for updates'
-      }));
-    }
   };
 
   // Handler for 'shader-effect-updated' IPC messages
@@ -572,25 +570,23 @@ function App() {
   };
 
   // --- Handlers for Claude Voice Interaction ---
-  const handleOpenConsole = () => {
+  const handleOpenConsole = useCallback(() => {
     setIsClaudeConsoleOpen(true);
-  };
+  }, []);
 
-  const handleCloseClaudeConsole = () => {
+  const handleCloseClaudeConsole = useCallback(() => {
     setIsClaudeConsoleOpen(false);
-  };
+  }, []);
 
-  const handleInteractionStart = (e) => {
+  const handleInteractionStart = useCallback((e) => {
     e.preventDefault(); // Stop touch from firing mouse events
     setIsRecording(true);
-  };
+  }, []);
 
-  const handleInteractionEnd = (e) => {
+  const handleInteractionEnd = useCallback((e) => {
     e.preventDefault();
-    if (isRecording) {
-      setIsRecording(false);
-    }
-  };
+    setIsRecording(false);
+  }, []);
 
   // --- Handlers for SC/Effects ---
   const handleTranscriptionComplete = useCallback((text) => {
@@ -606,8 +602,6 @@ function App() {
       electron.ipcRenderer.send('send-osc-to-sc', { address: '/effect/param/set', args: [paramName, value] });
     }
   }, []);
-
-
 
   if (error) {
     return <div className="error-message">{error}</div>;

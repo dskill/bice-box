@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import './ClaudeConsole.css';
 
 const ClaudeConsole = ({ 
@@ -23,20 +23,20 @@ const ClaudeConsole = ({
     }
   }, [claudeOutput]);
 
+  const handleClaudeResponse = useCallback((event, data) => {
+    setClaudeOutput(prev => prev + data);
+  }, []); // Empty dependency array ensures this function is created only once.
+
   // Listen for Claude responses
   useEffect(() => {
     if (electron) {
-      const handleClaudeResponse = (event, data) => {
-        setClaudeOutput(prev => prev + data);
-      };
-
       electron.ipcRenderer.on('claude-response', handleClaudeResponse);
 
       return () => {
-        electron.ipcRenderer.removeListener('claude-response', handleClaudeResponse);
+        electron.ipcRenderer.removeAllListeners('claude-response');
       };
     }
-  }, [electron]);
+  }, [electron, handleClaudeResponse]);
 
   const handleSendToClaude = (e) => {
     e.preventDefault();
