@@ -569,14 +569,53 @@ function reloadEffectForChangedFile(changedPath)
   }
 }
 
+function loadScFileAndRequestSpecs(filePath) {
+    console.log(`Loading SC file and requesting specs for: ${filePath}`);
+    
+    // Load the SC file
+    return loadScFile(filePath, getEffectsRepoPath, mainWindow)
+        .then(() => {
+            console.log(`SC file ${filePath} loaded successfully. Requesting specs...`);
+            
+            // Extract effect name from file path (remove .sc extension and path)
+            const effectName = path.basename(filePath, '.sc');
+            console.log(`Using effect name: ${effectName} for OSC request`);
+            
+            // Add a small delay to ensure SuperCollider has time to register the specs
+            setTimeout(() => {
+                // Request specs via OSC to SC
+                if (oscManager && oscManager.oscServer) {
+                    oscManager.oscServer.send({
+                        address: '/effect/get_specs',
+                        args: [{ type: 's', value: effectName }] 
+                    }, '127.0.0.1', 57120);
+                    console.log(`Sent /effect/get_specs for ${effectName} to SC.`);
+                } else {
+                    console.error('OSC Manager or oscServer not available to request specs.');
+                }
+            }, 100); // 100ms delay to let SuperCollider finish registration
+        })
+        .catch(error => {
+            console.error(`Error loading SC file ${filePath}:`, error);
+            // Re-throw the error to be caught by the caller if needed
+            throw error;
+        });
+}
+
 function reloadAudioEffect(scFilePath)
 {
   console.log(`Reloading audio effect (checking active): ${scFilePath}`);
   let reloaded = false;
 
+  const reloadAndRequest = (filePath) => {
+    loadScFileAndRequestSpecs(filePath).catch(err => {
+      console.error(`Error in reloadAudioEffect for ${filePath}:`, err);
+    });
+  };
+
   if (activeAudioSourcePath && activeAudioSourcePath.toLowerCase() === scFilePath.toLowerCase()) {
     console.log(`Changed SC file ${scFilePath} matches activeAudioSourcePath. Reloading.`);
-    loadScFile(scFilePath, getEffectsRepoPath, mainWindow); // Pass the function, not its result
+    reloadAndRequest(scFilePath);
     reloaded = true;
   } else {
     console.log(`Changed SC file ${scFilePath} does not match activeAudioSourcePath (${activeAudioSourcePath}).`);
@@ -589,7 +628,7 @@ function reloadAudioEffect(scFilePath)
     const affectedEffect = synths.find(synth => synth.scFilePath && synth.scFilePath.toLowerCase() === scFilePath.toLowerCase());
     if (affectedEffect) {
       console.log(`Fallback: Reloading audio for effect defined in preset: ${affectedEffect.name} as ${scFilePath}`);
-      loadScFile(scFilePath, getEffectsRepoPath, mainWindow); // Pass the function, not its result
+      reloadAndRequest(scFilePath);
     } else {
       console.log(`No active audio source or preset found using SC file: ${scFilePath}`);
     }
@@ -1113,31 +1152,9 @@ ipcMain.on('load-sc-file-and-request-specs', (event, filePath) => {
     activeAudioSourcePath = filePath;
     console.log(`Updated activeAudioSourcePath to: ${activeAudioSourcePath}`);
     
-    // Load the SC file
-    loadScFile(filePath, getEffectsRepoPath, mainWindow)
-        .then(() => {
-            console.log(`SC file ${filePath} loaded successfully. Requesting specs...`);
-            
-            // Extract effect name from file path (remove .sc extension and path)
-            const effectName = path.basename(filePath, '.sc');
-            console.log(`Using effect name: ${effectName} for OSC request`);
-            
-            // Add a small delay to ensure SuperCollider has time to register the specs
-            setTimeout(() => {
-                // Request specs via OSC to SC
-                if (oscManager && oscManager.oscServer) {
-                    oscManager.oscServer.send({
-                        address: '/effect/get_specs',
-                        args: [{ type: 's', value: effectName }] 
-                    }, '127.0.0.1', 57120);
-                    console.log(`Sent /effect/get_specs for ${effectName} to SC.`);
-                } else {
-                    console.error('OSC Manager or oscServer not available to request specs.');
-                }
-            }, 100); // 100ms delay to let SuperCollider finish registration
-        })
+    loadScFileAndRequestSpecs(filePath)
         .catch(error => {
-            console.error(`Error loading SC file ${filePath}:`, error);
+            console.error(`Error in IPC handler for loading SC file ${filePath}:`, error);
         });
 });
 
