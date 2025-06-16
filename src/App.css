@@ -1359,6 +1359,25 @@ button:disabled {
   color: #ff4d4d;
 }
 
+.claude-console-close {
+  background: none;
+  border: 1px solid rgba(198, 202, 224, 0.3);
+  color: #999;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 4px 10px;
+  line-height: 1.5;
+  border-radius: 5px;
+  height: 60px;
+  width: 60px;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+.claude-console-close:hover {
+  color: #fff;
+  background-color: rgba(198, 202, 224, 0.1);
+}
+
 .claude-console {
   position: absolute;
   top: 70px; /* Below the button */
@@ -1378,38 +1397,56 @@ button:disabled {
   text-align: left;
 }
 
-.claude-console-close {
-  /* No longer absolute */
-  background: none;
-  border: 1px solid rgba(198, 202, 224, 0.3);
-  color: #999;
-  font-size: 20px;
-  cursor: pointer;
-  padding: 4px 10px;
-  line-height: 1.5;
-  border-radius: 5px;
-  height: 60px;
-  width: 60px;
-  transition: background-color 0.3s, color 0.3s;
-}
 
-.claude-console-close:hover {
-  color: #fff;
-  background-color: rgba(198, 202, 224, 0.1);
-}
 
 .claude-console pre {
   margin: 0;
-  font-family: inherit;
-  font-size: inherit;
+  padding: 10px;
+  text-align: left;
+}
+
+
+
+.claude-input-form {
+  display: flex;
+  padding: 10px;
+  gap: 10px;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.claude-input {
+  flex: 1;
+  background: rgba(0, 0, 0, 0.7);
+  border: 1px solid #333;
+  color: #00ff00;
+  padding: 8px;
+  border-radius: 3px;
+  font-family: 'Inconsolata', monospace;
+}
+
+.claude-input:focus {
+  outline: none;
+  border-color: #00ff00;
+  box-shadow: 0 0 5px rgba(0, 255, 0, 0.3);
+}
+
+.claude-send-button {
+  background: rgba(0, 255, 0, 0.1);
+  border: 1px solid #00ff00;
+  color: #00ff00;
+  padding: 8px 16px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.claude-send-button:hover {
+  background: rgba(0, 255, 0, 0.2);
 }
 
 .effect-nav-buttons-container {
   position: absolute;
-  bottom: 40px;
-  left: 0;
-  width: 100%;
-  z-index: 3; /* Above console */
+  bottom: 0;
 }
 
 .claude-ui-container {

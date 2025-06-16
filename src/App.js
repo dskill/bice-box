@@ -48,6 +48,7 @@ function App() {
   const [isClaudeConsoleOpen, setIsClaudeConsoleOpen] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [claudeOutput, setClaudeOutput] = useState('');
+  const [claudeInput, setClaudeInput] = useState('');
 
   // --- State for Faders ---
   const [useRotatedLabels, setUseRotatedLabels] = useState(false);
@@ -574,33 +575,41 @@ function App() {
   // --- Handlers for Claude Voice Interaction ---
   const handleOpenConsole = () => {
     setIsClaudeConsoleOpen(true);
-    setClaudeOutput('Ready. Hold the button to talk.');
+  };
+
+  const handleCloseClaudeConsole = () => {
+    setIsClaudeConsoleOpen(false);
   };
 
   const handleInteractionStart = (e) => {
     e.preventDefault(); // Stop touch from firing mouse events
     setIsRecording(true);
-    setClaudeOutput('Listening...');
+    setClaudeOutput(prev => prev + 'Listening...\n');
   };
 
   const handleInteractionEnd = (e) => {
     e.preventDefault();
     if (isRecording) {
       setIsRecording(false);
-      setClaudeOutput('Transcribing...');
+      setClaudeOutput(prev => prev + 'Transcribing...\n');
     }
   };
 
-  const handleCloseClaudeConsole = () => {
-    setIsClaudeConsoleOpen(false);
-    setClaudeOutput('');
-    setIsRecording(false); // Ensure all states are reset
+  const handleSendToClaude = (e) => {
+    e.preventDefault();
+    if (claudeInput.trim() && electron) {
+        const message = claudeInput.trim();
+        electron.ipcRenderer.send('send-to-claude', message);
+        setClaudeInput('');
+    }
   };
 
   // --- Handlers for SC/Effects ---
   const handleTranscriptionComplete = useCallback((text) => {
     console.log("Transcription complete:", text);
-    setClaudeOutput(text);
+    if (electron) {
+      electron.ipcRenderer.send('send-to-claude', text);
+    }
   }, []);
 
   const handleParamChange = useCallback((paramName, value) => {
@@ -609,6 +618,23 @@ function App() {
       electron.ipcRenderer.send('send-osc-to-sc', { address: '/effect/param/set', args: [paramName, value] });
     }
   }, []);
+
+  // Effect to manage Claude session
+  useEffect(() => {
+    if (electron) {
+        // Listen for Claude responses
+        const handleClaudeResponse = (event, data) => {
+            setClaudeOutput(prev => prev + data);
+        };
+
+        electron.ipcRenderer.on('claude-response', handleClaudeResponse);
+
+        // Cleanup listeners on unmount
+        return () => {
+            electron.ipcRenderer.removeListener('claude-response', handleClaudeResponse);
+        };
+    }
+  }, []); // Empty array means this runs once on mount and cleanup on unmount
 
   if (error) {
     return <div className="error-message">{error}</div>;
@@ -662,7 +688,18 @@ function App() {
 
       {isClaudeConsoleOpen && (
         <div className="claude-console">
-          <pre>{claudeOutput}</pre>
+            <pre className="claude-output">{claudeOutput}</pre>
+            <form onSubmit={handleSendToClaude} className="claude-input-form">
+                <input
+                  type="text"
+                  className="claude-input"
+                  value={claudeInput}
+                  onChange={(e) => setClaudeInput(e.target.value)}
+                  placeholder="Type to Claude..."
+                  autoFocus
+                />
+                <button type="submit" className="claude-send-button">Send</button>
+            </form>
         </div>
       )}
 
