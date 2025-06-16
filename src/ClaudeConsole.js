@@ -21,10 +21,7 @@ const ClaudeConsole = ({
   // Auto-scroll to bottom when new output is added
   useEffect(() => {
     if (outputRef.current) {
-      const shouldScroll = outputRef.current.scrollTop + outputRef.current.clientHeight >= outputRef.current.scrollHeight - 10;
-      if (shouldScroll) {
-        outputRef.current.scrollTop = outputRef.current.scrollHeight;
-      }
+      outputRef.current.scrollTop = outputRef.current.scrollHeight;
     }
   }, [claudeOutput]);
 
