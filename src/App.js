@@ -4,6 +4,7 @@ import EffectSelectScreen from './EffectSelectScreen';
 import Whisper from './Whisper';
 import ParamFader from './ParamFader';
 import EffectManagement from './EffectManagement';
+import ClaudeConsole from './ClaudeConsole';
 import './App.css';
 
 // Add this style to your existing CSS or create a new style block
@@ -47,8 +48,6 @@ function App() {
   // --- State for Claude Voice Interaction ---
   const [isClaudeConsoleOpen, setIsClaudeConsoleOpen] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
-  const [claudeOutput, setClaudeOutput] = useState('');
-  const [claudeInput, setClaudeInput] = useState('');
 
   // --- State for Faders ---
   const [useRotatedLabels, setUseRotatedLabels] = useState(false);
@@ -584,23 +583,12 @@ function App() {
   const handleInteractionStart = (e) => {
     e.preventDefault(); // Stop touch from firing mouse events
     setIsRecording(true);
-    setClaudeOutput(prev => prev + 'Listening...\n');
   };
 
   const handleInteractionEnd = (e) => {
     e.preventDefault();
     if (isRecording) {
       setIsRecording(false);
-      setClaudeOutput(prev => prev + 'Transcribing...\n');
-    }
-  };
-
-  const handleSendToClaude = (e) => {
-    e.preventDefault();
-    if (claudeInput.trim() && electron) {
-        const message = claudeInput.trim();
-        electron.ipcRenderer.send('send-to-claude', message);
-        setClaudeInput('');
     }
   };
 
@@ -619,22 +607,7 @@ function App() {
     }
   }, []);
 
-  // Effect to manage Claude session
-  useEffect(() => {
-    if (electron) {
-        // Listen for Claude responses
-        const handleClaudeResponse = (event, data) => {
-            setClaudeOutput(prev => prev + data);
-        };
 
-        electron.ipcRenderer.on('claude-response', handleClaudeResponse);
-
-        // Cleanup listeners on unmount
-        return () => {
-            electron.ipcRenderer.removeListener('claude-response', handleClaudeResponse);
-        };
-    }
-  }, []); // Empty array means this runs once on mount and cleanup on unmount
 
   if (error) {
     return <div className="error-message">{error}</div>;
@@ -653,55 +626,15 @@ function App() {
         onTranscriptionComplete={handleTranscriptionComplete}
       />
 
-      <div className="claude-ui-container">
-        {devMode && (
-          isClaudeConsoleOpen ? (
-            // Button to show when the console is OPEN
-            <button
-              className={`claude-button ${isRecording ? 'recording' : ''}`}
-              // Mouse events
-              onMouseDown={handleInteractionStart}
-              onMouseUp={handleInteractionEnd}
-              onMouseLeave={handleInteractionEnd}
-              // Touch events
-              onTouchStart={handleInteractionStart}
-              onTouchEnd={handleInteractionEnd}
-            >
-              {isRecording ? 'Listening...' : 'Hold to Talk'}
-            </button>
-          ) : (
-            // Button to show when the console is CLOSED
-            <button
-              className="claude-button"
-              onClick={handleOpenConsole}
-            >
-              Claude
-            </button>
-          )
-        )}
-        {devMode && isClaudeConsoleOpen && (
-          <button className="claude-console-close" onClick={handleCloseClaudeConsole}>
-            ×
-          </button>
-        )}
-      </div>
-
-      {isClaudeConsoleOpen && (
-        <div className="claude-console">
-            <pre className="claude-output">{claudeOutput}</pre>
-            <form onSubmit={handleSendToClaude} className="claude-input-form">
-                <input
-                  type="text"
-                  className="claude-input"
-                  value={claudeInput}
-                  onChange={(e) => setClaudeInput(e.target.value)}
-                  placeholder="Type to Claude..."
-                  autoFocus
-                />
-                <button type="submit" className="claude-send-button">Send</button>
-            </form>
-        </div>
-      )}
+      <ClaudeConsole
+        isOpen={isClaudeConsoleOpen}
+        onOpen={handleOpenConsole}
+        onClose={handleCloseClaudeConsole}
+        isRecording={isRecording}
+        onRecordingStart={handleInteractionStart}
+        onRecordingEnd={handleInteractionEnd}
+        devMode={devMode}
+      />
 
       <VisualizationMode
         // Pass necessary state and handlers

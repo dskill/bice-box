@@ -296,6 +296,9 @@ function createWindow()
 
     // Check for updates periodically
     checkForAppUpdate();
+
+    // Initialize Claude manager
+    initializeClaudeManager();
     
   } catch (error)
   {
@@ -1460,142 +1463,29 @@ ipcMain.on('load-sc-file', (event, filePath) => {
 });
 
 // --- Claude Code SDK Integration ---
-let currentClaudeSessionId = null;
+const ClaudeManager = require('./claudeManager');
+let claudeManager;
 
-async function sendToClaudeSDK(message) {
-    console.log(`Sending message to Claude SDK: ${message}`);
-    
-    const claudeCommand = 'claude'; // Use command name instead of full path
-    const escapedMessage = message.replace(/"/g, '\\"');
-    
-    const args = [
-        '-p', 
-        `"${escapedMessage}"`,
-        '--output-format', 
-        'json'
-    ];
-
-    if (currentClaudeSessionId) {
-        args.push('--resume', currentClaudeSessionId);
+// Initialize Claude manager
+function initializeClaudeManager() {
+    claudeManager = new ClaudeManager(getEffectsRepoPath());
+    if (mainWindow) {
+        claudeManager.setMainWindow(mainWindow);
     }
-
-    console.log(`Executing: ${claudeCommand} ${args.join(' ')}`);
-    console.log(`Working directory: ${getEffectsRepoPath()}`);
-    
-    // Create clean environment with explicit values
-    const cleanEnv = {
-        ...process.env,                 // now contains fixed PATH from fix-path
-        ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY, // ensure it's explicitly set
-        NODE_OPTIONS: ''                // blank out flags that break child Node
-    };
-
-    return new Promise((resolve, reject) => {
-        const claudeProcess = spawn(claudeCommand, args, {
-            stdio: ['ignore', 'pipe', 'pipe'], // ignore stdin, pipe stdout/stderr
-            cwd: getEffectsRepoPath(),
-            env: cleanEnv,
-            shell: '/bin/zsh' // explicit shell for compatibility
-        });
-
-        let stdout = '';
-        let stderr = '';
-
-        // Increased timeout for network latency and model processing
-        const timeout = setTimeout(() => {
-            if (!claudeProcess.killed) {
-                console.log('Claude process timeout, killing...');
-                claudeProcess.kill('SIGTERM');
-                reject(new Error('Claude process timed out after 120 seconds'));
-            }
-        }, 120000); // 2 minutes for complex requests
-
-        claudeProcess.stdout.on('data', (data) => {
-            const chunk = data.toString();
-            console.log(`Claude stdout chunk: ${chunk}`);
-            stdout += chunk;
-        });
-        
-        claudeProcess.stderr.on('data', (data) => {
-            const chunk = data.toString();
-            console.log(`Claude stderr chunk: ${chunk}`);
-            stderr += chunk;
-        });
-        
-        claudeProcess.on('close', (code) => {
-            clearTimeout(timeout); // Clear the timeout
-            console.log(`Claude process closed with code: ${code}`);
-            console.log(`Full stdout: ${stdout}`);
-            console.log(`Full stderr: ${stderr}`);
-            
-            if (code === 0) {
-                try {
-                    const response = JSON.parse(stdout);
-                    console.log(`Parsed response:`, response);
-                    // Store the session ID for future requests
-                    if (response.session_id) {
-                        currentClaudeSessionId = response.session_id;
-                        console.log(`Stored session ID: ${currentClaudeSessionId}`);
-                    }
-                    resolve(response);
-                } catch (error) {
-                    console.error('Failed to parse Claude response JSON:', error);
-                    console.error('Raw stdout:', stdout);
-                    reject(new Error(`Failed to parse response: ${error.message}`));
-                }
-            } else {
-                console.error(`Claude process failed with code ${code}`);
-                console.error('stderr:', stderr);
-                reject(new Error(`Claude failed with code ${code}: ${stderr}`));
-            }
-        });
-        
-        claudeProcess.on('error', (error) => {
-            console.error('Failed to spawn Claude process:', error);
-            reject(error);
-        });
-    });
 }
-
-function resetClaudeSession() {
-    console.log('Resetting Claude session');
-    currentClaudeSessionId = null;
-}
-
-
-
-
 
 // Add main Claude message handler
 ipcMain.on('send-to-claude', async (event, message) => {
-    try {
-        if (mainWindow) {
-            mainWindow.webContents.send('claude-response', `\nYou: ${message}\n`);
-            mainWindow.webContents.send('claude-response', 'Claude is thinking...\n');
-        }
-        
-        const response = await sendToClaudeSDK(message);
-        
-        if (mainWindow) {
-            // Send the main response
-            mainWindow.webContents.send('claude-response', `\nClaude: ${response.result}\n`);
-            
-            // Send metadata if available
-            if (response.cost_usd) {
-                mainWindow.webContents.send('claude-response', `\n💰 Cost: $${response.cost_usd.toFixed(4)} | Duration: ${response.duration_ms}ms | Turns: ${response.num_turns}\n`);
-            }
-        }
-    } catch (error) {
-        console.error('Error sending message to Claude:', error);
-        if (mainWindow) {
-            mainWindow.webContents.send('claude-response', `\n❌ Error: ${error.message}\n`);
-        }
+    if (!claudeManager) {
+        initializeClaudeManager();
     }
+    await claudeManager.handleMessage(message);
 });
 
 // Add session reset handler
 ipcMain.on('reset-claude-session', () => {
-    resetClaudeSession();
-    if (mainWindow) {
-        mainWindow.webContents.send('claude-response', '\n🔄 Session reset\n');
+    if (!claudeManager) {
+        initializeClaudeManager();
     }
+    claudeManager.handleSessionReset();
 });
