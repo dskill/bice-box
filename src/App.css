@@ -482,7 +482,7 @@ button:active {
   bottom: 0;
   width: 100%;  
   height: 100%;
-  z-index: 100;
+  z-index: 1000;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
@@ -1329,5 +1329,7 @@ button:disabled {
 
 .effect-nav-buttons-container {
   position: absolute;
-  bottom: 0;
+  bottom: 20px;
+  z-index: 200; /* Ensure faders are above Claude console */
+  width: 100%; /* Ensure it spans the width for centering */
 }

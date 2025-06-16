@@ -89,6 +89,8 @@
   border: 1px solid var(--fader-color);
   font-size: 20px;
   font-weight: bold;
+  text-align: center;
+  z-index: 205;
 }
 
 .param-fader:not(.rotated-layout) .fader-label.dragging {
