@@ -21,7 +21,8 @@ class ClaudeManager {
             '-p', 
             `"${escapedMessage}"`,
             '--output-format', 
-            'json'
+            'stream-json',
+            '--verbose'
         ];
 
         if (this.currentSessionId) {
@@ -46,8 +47,10 @@ class ClaudeManager {
                 shell: '/bin/zsh'
             });
 
-            let stdout = '';
+            let buffer = '';
             let stderr = '';
+            let resultMessage = null;
+            let hasError = false;
 
             // 2 minute timeout for complex requests
             const timeout = setTimeout(() => {
@@ -59,9 +62,27 @@ class ClaudeManager {
             }, 120000);
 
             claudeProcess.stdout.on('data', (data) => {
-                const chunk = data.toString();
-                console.log(`Claude stdout chunk: ${chunk}`);
-                stdout += chunk;
+                buffer += data.toString();
+                
+                // Process complete JSON lines
+                const lines = buffer.split('\n');
+                buffer = lines.pop() || ''; // Keep incomplete line in buffer
+                
+                for (const line of lines) {
+                    if (line.trim()) {
+                        try {
+                            const message = JSON.parse(line);
+                            this.handleStreamMessage(message);
+                            
+                            // Store result message for final processing
+                            if (message.type === 'result') {
+                                resultMessage = message;
+                            }
+                        } catch (parseError) {
+                            console.warn('Failed to parse JSON line:', line.substring(0, 100));
+                        }
+                    }
+                }
             });
             
             claudeProcess.stderr.on('data', (data) => {
@@ -73,25 +94,21 @@ class ClaudeManager {
             claudeProcess.on('close', (code) => {
                 clearTimeout(timeout);
                 console.log(`Claude process closed with code: ${code}`);
-                console.log(`Full stdout: ${stdout}`);
                 console.log(`Full stderr: ${stderr}`);
                 
-                if (code === 0) {
-                    try {
-                        const response = JSON.parse(stdout);
-                        console.log(`Parsed response:`, response);
-                        
-                        // Store the session ID for future requests
-                        if (response.session_id) {
-                            this.currentSessionId = response.session_id;
-                            console.log(`Stored session ID: ${this.currentSessionId}`);
-                        }
-                        resolve(response);
-                    } catch (error) {
-                        console.error('Failed to parse Claude response JSON:', error);
-                        console.error('Raw stdout:', stdout);
-                        reject(new Error(`Failed to parse response: ${error.message}`));
+                if (code === 0 && resultMessage) {
+                    // Store the session ID for future requests
+                    if (resultMessage.session_id) {
+                        this.currentSessionId = resultMessage.session_id;
+                        console.log(`Stored session ID: ${this.currentSessionId}`);
                     }
+                    
+                    // Send final metadata
+                    if (resultMessage.total_cost_usd) {
+                        this.sendToRenderer(`\n💰 Cost: $${resultMessage.total_cost_usd.toFixed(4)} | Duration: ${resultMessage.duration_ms}ms | Turns: ${resultMessage.num_turns}\n`);
+                    }
+                    
+                    resolve(resultMessage);
                 } else {
                     console.error(`Claude process failed with code ${code}`);
                     console.error('stderr:', stderr);
@@ -104,6 +121,41 @@ class ClaudeManager {
                 reject(error);
             });
         });
+    }
+
+    handleStreamMessage(message) {
+        console.log(`Stream message type: ${message.type}, subtype: ${message.subtype || 'N/A'}`);
+        
+        switch (message.type) {
+            case 'system':
+                if (message.subtype === 'init') {
+                    console.log(`Claude session initialized with model: ${message.model}`);
+                }
+                break;
+                
+            case 'user':
+                // User message - already displayed when we sent it
+                break;
+                
+            case 'assistant':
+                const content = message.message?.content?.[0];
+                if (content?.type === 'text' && content.text) {
+                    // Stream the assistant's text response in real-time
+                    this.sendToRenderer(content.text);
+                } else if (content?.type === 'tool_use') {
+                    this.sendToRenderer(`\n🔧 Using tool: ${content.name}\n`);
+                }
+                break;
+                
+            case 'result':
+                if (message.is_error) {
+                    this.sendToRenderer(`\n❌ Error: ${message.error || 'Unknown error'}\n`);
+                }
+                break;
+                
+            default:
+                console.log(`Unhandled stream message type: ${message.type}`);
+        }
     }
 
     resetSession() {
@@ -121,17 +173,13 @@ class ClaudeManager {
     async handleMessage(message) {
         try {
             this.sendToRenderer(`\nYou: ${message}\n`);
-            this.sendToRenderer('Claude is thinking...\n');
+            this.sendToRenderer('\nClaude: ');
             
             const response = await this.sendMessage(message);
             
-            // Send the main response
-            this.sendToRenderer(`\nClaude: ${response.result}\n`);
+            // Final newline after streaming is complete
+            this.sendToRenderer('\n');
             
-            // Send metadata if available
-            if (response.cost_usd) {
-                this.sendToRenderer(`\n💰 Cost: $${response.cost_usd.toFixed(4)} | Duration: ${response.duration_ms}ms | Turns: ${response.num_turns}\n`);
-            }
         } catch (error) {
             console.error('Error sending message to Claude:', error);
             this.sendToRenderer(`\n❌ Error: ${error.message}\n`);

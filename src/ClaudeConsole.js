@@ -12,16 +12,41 @@ const ClaudeConsole = ({
 }) => {
   const [claudeOutput, setClaudeOutput] = useState('');
   const [claudeInput, setClaudeInput] = useState('');
+  const [isClaudeResponding, setIsClaudeResponding] = useState(false);
   const outputRef = useRef(null);
+  const lastOutputLength = useRef(0);
 
   const electron = window.electron;
 
   // Auto-scroll to bottom when new output is added
   useEffect(() => {
     if (outputRef.current) {
-      outputRef.current.scrollTop = outputRef.current.scrollHeight;
+      const shouldScroll = outputRef.current.scrollTop + outputRef.current.clientHeight >= outputRef.current.scrollHeight - 10;
+      if (shouldScroll) {
+        outputRef.current.scrollTop = outputRef.current.scrollHeight;
+      }
     }
   }, [claudeOutput]);
+
+  // Track when Claude starts and stops responding
+  useEffect(() => {
+    const currentLength = claudeOutput.length;
+    if (currentLength > lastOutputLength.current) {
+      // New content added
+      const newContent = claudeOutput.slice(lastOutputLength.current);
+      
+      // Check if Claude just started responding
+      if (newContent.includes('\nClaude: ') && !isClaudeResponding) {
+        setIsClaudeResponding(true);
+      }
+      
+      // Check if Claude finished responding (cost info or error indicates end)
+      if ((newContent.includes('💰 Cost:') || newContent.includes('❌ Error:')) && isClaudeResponding) {
+        setIsClaudeResponding(false);
+      }
+    }
+    lastOutputLength.current = currentLength;
+  }, [claudeOutput, isClaudeResponding]);
 
   const handleClaudeResponse = useCallback((event, data) => {
     setClaudeOutput(prev => prev + data);
@@ -42,6 +67,7 @@ const ClaudeConsole = ({
     e.preventDefault();
     if (claudeInput.trim() && electron) {
       const message = claudeInput.trim();
+      setIsClaudeResponding(true);
       electron.ipcRenderer.send('send-to-claude', message);
       setClaudeInput('');
     }
@@ -49,12 +75,15 @@ const ClaudeConsole = ({
 
   const handleClearOutput = () => {
     setClaudeOutput('');
+    setIsClaudeResponding(false);
+    lastOutputLength.current = 0;
   };
 
   const handleResetSession = () => {
     if (electron) {
       electron.ipcRenderer.send('reset-claude-session');
     }
+    setIsClaudeResponding(false);
   };
 
   if (!devMode) {
@@ -72,8 +101,9 @@ const ClaudeConsole = ({
           onMouseLeave={onRecordingEnd}
           onTouchStart={onRecordingStart}
           onTouchEnd={onRecordingEnd}
+          disabled={isClaudeResponding}
         >
-          {isRecording ? 'Listening...' : 'Hold to Talk'}
+          {isRecording ? 'Listening...' : isClaudeResponding ? 'Claude responding...' : 'Hold to Talk'}
         </button>
       ) : (
         // Show Claude button when console is closed
@@ -98,6 +128,7 @@ const ClaudeConsole = ({
               className="claude-action-button" 
               onClick={handleClearOutput}
               title="Clear console output"
+              disabled={isClaudeResponding}
             >
               🗑️ Clear
             </button>
@@ -105,9 +136,16 @@ const ClaudeConsole = ({
               className="claude-action-button" 
               onClick={handleResetSession}
               title="Start a new conversation"
+              disabled={isClaudeResponding}
             >
               🔄 Reset
             </button>
+            {isClaudeResponding && (
+              <div className="claude-status-indicator">
+                <span className="claude-thinking-dots">●●●</span>
+                <span>Claude is responding...</span>
+              </div>
+            )}
           </div>
           
           <pre 
@@ -125,9 +163,14 @@ const ClaudeConsole = ({
               onChange={(e) => setClaudeInput(e.target.value)}
               placeholder="Type to Claude..."
               autoFocus
+              disabled={isClaudeResponding}
             />
-            <button type="submit" className="claude-send-button">
-              Send
+            <button 
+              type="submit" 
+              className="claude-send-button"
+              disabled={isClaudeResponding || !claudeInput.trim()}
+            >
+              {isClaudeResponding ? '...' : 'Send'}
             </button>
           </form>
         </div>
