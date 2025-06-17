@@ -60,6 +60,7 @@ function WifiSettings({ onClose }) {
             const statusListener = (event, status) => {
                 setIsConnected(status.connected);
                 setCurrentNetwork(status.ssid);
+                setIsConnecting(false);
             };
             
             const connectionStatusListener = (event, status) => {
@@ -143,6 +144,12 @@ function WifiSettings({ onClose }) {
         setShowKeyboard(false);
     };
 
+    const handleRescan = () => {
+        if (window.electron && window.electron.ipcRenderer) {
+            window.electron.ipcRenderer.send('scan-wifi');
+        }
+    };
+
     return (
         <>
             <div className="wifi-settings-overlay" onClick={onClose}></div>
@@ -172,6 +179,9 @@ function WifiSettings({ onClose }) {
                 </div>
                 {!selectedNetwork ? (
                     <ul>
+                        {networks.length === 0 && !isConnecting && (
+                            <div className="status-disconnected" style={{ padding: '1rem 0' }}>No networks found.</div>
+                        )}
                         {networks.map(network => (
                             <li key={network.ssid} onClick={() => handleNetworkSelect(network)}>
                                 {network.ssid}
@@ -220,6 +230,14 @@ function WifiSettings({ onClose }) {
                                 />
                             </div>
                         )}
+                    </div>
+                )}
+                {!selectedNetwork && (
+                    <div className="wifi-settings-button-container">
+                        <button onClick={handleRescan}>
+                            <FaSync style={{ marginRight: '8px' }} />
+                            Refresh
+                        </button>
                     </div>
                 )}
             </div>
