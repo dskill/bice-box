@@ -597,6 +597,14 @@ function loadScFileAndRequestSpecs(filePath) {
         })
         .catch(error => {
             console.error(`Error loading SC file ${filePath}:`, error);
+
+            if (claudeManager && claudeManager.hasActiveSession()) {
+                console.log('Active Claude session detected. Sending compilation error to Claude.');
+                let errorMessage = 'The SuperCollider file at "' + filePath + '" failed to compile. The error was:\\n';
+                errorMessage += error.message || error.toString();
+                claudeManager.handleFileError(filePath, errorMessage);
+            }
+            
             // Re-throw the error to be caught by the caller if needed
             throw error;
         });

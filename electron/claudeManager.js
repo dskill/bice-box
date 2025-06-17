@@ -11,25 +11,34 @@ class ClaudeManager {
         this.mainWindow = mainWindow;
     }
 
+    hasActiveSession() {
+        return !!this.currentSessionId;
+    }
+
     async sendMessage(message) {
         console.log(`Sending message to Claude SDK: ${message}`);
         
         const claudeCommand = 'claude';
-        const escapedMessage = message.replace(/"/g, '\\"');
         
-        const args = [
-            '-p', 
-            `"${escapedMessage}"`,
-            '--output-format', 
+        // Escape for POSIX shells by replacing every ' with '\'' and wrapping in ''
+        const escapedMessage = `'${message.replace(/'/g, "'\\''")}'`;
+
+        const commandParts = [
+            claudeCommand,
+            '-p',
+            escapedMessage,
+            '--output-format',
             'stream-json',
             '--verbose'
         ];
 
         if (this.currentSessionId) {
-            args.push('--resume', this.currentSessionId);
+            commandParts.push('--resume', this.currentSessionId);
         }
 
-        console.log(`Executing: ${claudeCommand} ${args.join(' ')}`);
+        const fullCommand = commandParts.join(' ');
+
+        console.log(`Executing: ${fullCommand}`);
         console.log(`Working directory: ${this.effectsRepoPath}`);
         
         // Create clean environment with explicit values
@@ -40,7 +49,7 @@ class ClaudeManager {
         };
 
         return new Promise((resolve, reject) => {
-            const claudeProcess = spawn(claudeCommand, args, {
+            const claudeProcess = spawn(fullCommand, [], {
                 stdio: ['ignore', 'pipe', 'pipe'],
                 cwd: this.effectsRepoPath,
                 env: cleanEnv,
@@ -170,9 +179,27 @@ class ClaudeManager {
         }
     }
 
-    async handleMessage(message) {
+    async handleFileError(filePath, errorMessage) {
+        if (!this.hasActiveSession()) {
+            console.log('Claude session not active, not sending compilation error report.');
+            this.sendToRenderer(`\n[System] SuperCollider compilation failed for ${filePath}. Start a Claude session to get automated help.\n`);
+            return;
+        }
+
+        const cleanedErrorMessage = errorMessage
+            .split('\n')
+            .filter(line => !line.includes('-> nil') && !line.includes('sc3>'))
+            .join('\n')
+            .trim();
+
+        const prompt = `${cleanedErrorMessage}`;
+        
+        await this.handleMessage(prompt, '[System]');
+    }
+
+    async handleMessage(message, sender = 'You') {
         try {
-            this.sendToRenderer(`\nYou: ${message}\n`);
+            this.sendToRenderer(`\n${sender}: ${message}\n`);
             this.sendToRenderer('\nClaude: ');
             
             const response = await this.sendMessage(message);
@@ -192,4 +219,4 @@ class ClaudeManager {
     }
 }
 
-module.exports = ClaudeManager; 
+module.exports = ClaudeManager;
