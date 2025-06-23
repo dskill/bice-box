@@ -215,11 +215,13 @@ function createWindow()
 
     // Initialize OSC Server after creating the window
     const handleEffectSpecs = ({ name: effectName, params, error }) => {
+      // --- ADD THESE LINES ---
       console.log(`=== CALLBACK: handleEffectSpecs called ===`);
       console.log(`Effect name: ${effectName}`);
       console.log(`Params:`, params);
       console.log(`Error:`, error);
-      
+      // -----------------------
+    
       if (error) {
         console.error(`Received error with specs for ${effectName}: ${error}`);
         return;
@@ -238,7 +240,7 @@ function createWindow()
         synths[effectIndex].params = params || {}; 
         console.log(`CALLBACK: After update - synths[${effectIndex}].params:`, synths[effectIndex].params);
         console.log(`Updated params for ${effectName} in synths array:`, synths[effectIndex].params);
-
+    
         const currentActiveEffect = getCurrentEffect();
         console.log(`CALLBACK: Current active effect:`, currentActiveEffect ? currentActiveEffect.name : 'none');
         console.log(`CALLBACK: Active audio source path:`, activeAudioSourcePath);
@@ -249,14 +251,18 @@ function createWindow()
                                    activeAudioSourcePath.toLowerCase() === synths[effectIndex].scFilePath.toLowerCase();
         
         if (isActiveAudioSource) {
+          // --- ADD THIS LINE ---
           console.log(`CALLBACK: This effect matches the active audio source - updating UI`);
+          // ---------------------
           // Update the current effect to include the new params
           setCurrentEffect(synths[effectIndex]); 
           console.log('Updated currentEffect with new params from SC.');
           if (mainWindow && mainWindow.webContents) {
+            // --- ADD THESE LINES ---
             console.log(`CALLBACK: Sending effect-updated to renderer for active audio source ${effectName}`);
             mainWindow.webContents.send('effect-updated', synths[effectIndex]);
             console.log(`Sent effect-updated for ${effectName} with new SC params to renderer.`);
+            // -----------------------
           } else {
             console.error(`CALLBACK: mainWindow or webContents not available!`);
           }
@@ -270,11 +276,13 @@ function createWindow()
           } else if (synths[effectIndex].p5SketchPath) {
             activeVisualSourcePath = synths[effectIndex].p5SketchPath;
           }
-
+    
           if (mainWindow && mainWindow.webContents) {
+            // --- ADD THESE LINES ---
             console.log(`CALLBACK: Sending effect-updated to renderer for initial effect ${effectName}`);
             mainWindow.webContents.send('effect-updated', synths[effectIndex]);
             console.log(`Sent effect-updated for initial effect ${effectName} with new SC params to renderer.`);
+            // -----------------------
           } else {
             console.error(`CALLBACK: mainWindow or webContents not available for initial effect!`);
           }
@@ -285,7 +293,9 @@ function createWindow()
         console.warn(`Received specs for unknown effect: ${effectName}`);
         console.log(`Available effects: ${synths.map(s => s.name).join(', ')}`);
       }
+      // --- ADD THIS LINE ---
       console.log(`=== END CALLBACK: handleEffectSpecs ===`);
+      // -------------------
     };
 
     oscManager = new OSCManager(mainWindow, handleEffectSpecs);
