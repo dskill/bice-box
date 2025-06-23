@@ -492,7 +492,7 @@ ipcMain.on('send-osc-to-sc', (event, { address, args }) => {
   if (oscManager && oscManager.oscServer) { // Check for oscServer directly
     try {
       const scHost = '127.0.0.1';
-      const scPort = 57120; // Default SuperCollider server port
+      const scPort = 57122; // SuperCollider language port for OSC messages
 
       // Map arguments to the format expected by the osc library
       const typedArgs = args.map(arg => {
@@ -597,20 +597,20 @@ function loadScFileAndRequestSpecs(filePath) {
                 if (oscManager && oscManager.oscServer) {
                     console.log(`=== ELECTRON: About to send /effect/get_specs for ${effectName} ===`);
                     console.log(`ELECTRON: OSC Manager state - oscServer exists: ${!!oscManager.oscServer}`);
-                    console.log(`ELECTRON: Sending to SC at 127.0.0.1:57120`);
+                    console.log(`ELECTRON: Sending to SC at 127.0.0.1:57122`);
                     
                     // First send a test message to verify OSC communication
                     oscManager.oscServer.send({
                         address: '/test',
                         args: [{ type: 's', value: 'test_from_electron' }] 
-                    }, '127.0.0.1', 57120);
+                    }, '127.0.0.1', 57122);
                     console.log(`ELECTRON: Test OSC message sent to /test`);
                     
                     // Then send the actual specs request
                     oscManager.oscServer.send({
                         address: '/effect/get_specs',
                         args: [{ type: 's', value: effectName }] 
-                    }, '127.0.0.1', 57120);
+                    }, '127.0.0.1', 57122);
                     console.log(`ELECTRON: /effect/get_specs message sent for ${effectName}`);
                 } else {
                     console.error('ELECTRON: OSC Manager or oscServer not available to request specs.');
