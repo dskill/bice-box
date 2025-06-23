@@ -207,7 +207,7 @@ function App() {
     // When SC is ready, ensure the current audio source is loaded
     if (currentAudioSource) {
       console.log(`SC ready, activating current audio source: ${currentAudioSource}`);
-      electron.ipcRenderer.send('load-sc-file', currentAudioSource);
+      electron.ipcRenderer.send('load-sc-file-and-request-specs', currentAudioSource);
       // Also apply params from the original preset if it exists
        if (Array.isArray(currentAudioParams)) {
           currentAudioParams.forEach(param => {
@@ -221,7 +221,7 @@ function App() {
     } else if (synths.length > 0 && synths[0].scFilePath) {
         // Fallback to loading the preset's audio if no override is set
          console.log(`SC ready, activating preset audio source: ${synths[0].scFilePath}`);
-         electron.ipcRenderer.send('load-sc-file', synths[0].scFilePath);
+         electron.ipcRenderer.send('load-sc-file-and-request-specs', synths[0].scFilePath);
     } else {
       console.log('SC ready, but no current audio source to activate');
     }
