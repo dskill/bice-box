@@ -20,7 +20,7 @@ class OSCManager
     initialize()
     {
         this.oscServer = new OSC.UDPPort({
-            localAddress: '0.0.0.0',
+            localAddress: '127.0.0.1',
             localPort: 57121,
             metadata: true
         });

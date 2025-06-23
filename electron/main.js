@@ -593,7 +593,7 @@ function loadScFileAndRequestSpecs(filePath) {
                 } else {
                     console.error('OSC Manager or oscServer not available to request specs.');
                 }
-            }, 100); // 100ms delay to let SuperCollider finish registration
+            }, 250); // 250ms delay to let SuperCollider finish registration
         })
         .catch(error => {
             console.error(`Error loading SC file ${filePath}:`, error);
