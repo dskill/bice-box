@@ -599,6 +599,14 @@ function loadScFileAndRequestSpecs(filePath) {
                     console.log(`ELECTRON: OSC Manager state - oscServer exists: ${!!oscManager.oscServer}`);
                     console.log(`ELECTRON: Sending to SC at 127.0.0.1:57120`);
                     
+                    // First send a test message to verify OSC communication
+                    oscManager.oscServer.send({
+                        address: '/test',
+                        args: [{ type: 's', value: 'test_from_electron' }] 
+                    }, '127.0.0.1', 57120);
+                    console.log(`ELECTRON: Test OSC message sent to /test`);
+                    
+                    // Then send the actual specs request
                     oscManager.oscServer.send({
                         address: '/effect/get_specs',
                         args: [{ type: 's', value: effectName }] 
