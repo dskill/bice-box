@@ -15,7 +15,6 @@ const throttle = (func, limit) => {
 };
 
 const ParamFader = ({ param, onParamChange, useRotatedLabels }) => {
-  console.log(`[ParamFader] Creating fader for:`, param);
   const { name, value, range, units } = param;
   const [faderValue, setFaderValue] = useState(value);
   const [isDragging, setIsDragging] = useState(false);
