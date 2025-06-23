@@ -595,13 +595,17 @@ function loadScFileAndRequestSpecs(filePath) {
             setTimeout(() => {
                 // Request specs via OSC to SC
                 if (oscManager && oscManager.oscServer) {
+                    console.log(`=== ELECTRON: About to send /effect/get_specs for ${effectName} ===`);
+                    console.log(`ELECTRON: OSC Manager state - oscServer exists: ${!!oscManager.oscServer}`);
+                    console.log(`ELECTRON: Sending to SC at 127.0.0.1:57120`);
+                    
                     oscManager.oscServer.send({
                         address: '/effect/get_specs',
                         args: [{ type: 's', value: effectName }] 
                     }, '127.0.0.1', 57120);
-                    console.log(`Sent /effect/get_specs for ${effectName} to SC.`);
+                    console.log(`ELECTRON: /effect/get_specs message sent for ${effectName}`);
                 } else {
-                    console.error('OSC Manager or oscServer not available to request specs.');
+                    console.error('ELECTRON: OSC Manager or oscServer not available to request specs.');
                 }
             }, 250); // 250ms delay to let SuperCollider finish registration
         })
