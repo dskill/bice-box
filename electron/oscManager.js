@@ -110,6 +110,26 @@ class OSCManager
                     }
                     break;
 
+                case '/sc/config':
+                    // SuperCollider is sending us its port configuration
+                    if (oscMsg.args.length >= 6) {
+                        const serverPort = oscMsg.args[1].value;
+                        const langPort = oscMsg.args[3].value;
+                        const electronPort = oscMsg.args[5].value;
+                        console.log(`OSCManager: Received SC port config - Server: ${serverPort}, Lang: ${langPort}, Electron: ${electronPort}`);
+                        
+                        // Store the configuration globally for use in main.js
+                        global.scPortConfig = {
+                            server: serverPort,
+                            lang: langPort,
+                            electron: electronPort
+                        };
+                        
+                        // Notify main process that port config is available
+                        this.mainWindow.webContents.send('sc-port-config', global.scPortConfig);
+                    }
+                    break;
+
                 default:
                     // Forward any unhandled OSC messages to the renderer
                     //console.log('Non Standard OSC message:', oscMsg.address);

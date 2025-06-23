@@ -490,11 +490,17 @@ app.on('will-quit', async () =>
 // IPC listener for OSC messages from p5.js sketches
 ipcMain.on('send-osc-to-sc', (event, { address, args }) => {
   if (oscManager && oscManager.oscServer) { // Check for oscServer directly
-    try {
-      const scHost = '127.0.0.1';
-      const scPort = 57122; // SuperCollider language port for OSC messages
+        try {
+        const scHost = '127.0.0.1';
+        
+        if (!global.scPortConfig) {
+            throw new Error('SuperCollider port configuration not received. Cannot send OSC messages.');
+        }
+        
+        const scPort = global.scPortConfig.lang;
+        //console.log(`Using SC port config: ${JSON.stringify(global.scPortConfig)}`);
 
-      // Map arguments to the format expected by the osc library
+        // Map arguments to the format expected by the osc library
       const typedArgs = args.map(arg => {
         if (typeof arg === 'number') {
           return { type: 'f', value: arg }; // Assume float for numbers
@@ -595,22 +601,21 @@ function loadScFileAndRequestSpecs(filePath) {
             setTimeout(() => {
                 // Request specs via OSC to SC
                 if (oscManager && oscManager.oscServer) {
-                    console.log(`=== ELECTRON: About to send /effect/get_specs for ${effectName} ===`);
-                    console.log(`ELECTRON: OSC Manager state - oscServer exists: ${!!oscManager.oscServer}`);
-                    console.log(`ELECTRON: Sending to SC at 127.0.0.1:57122`);
+                    const scHost = '127.0.0.1';
                     
-                    // First send a test message to verify OSC communication
-                    oscManager.oscServer.send({
-                        address: '/test',
-                        args: [{ type: 's', value: 'test_from_electron' }] 
-                    }, '127.0.0.1', 57122);
-                    console.log(`ELECTRON: Test OSC message sent to /test`);
+                    if (!global.scPortConfig) {
+                        console.error('SuperCollider port configuration not received. Cannot request specs.');
+                        return;
+                    }
                     
-                    // Then send the actual specs request
+                    const scPort = global.scPortConfig.lang;
+                    console.log(`ELECTRON: Requesting specs for ${effectName} on ${scHost}:${scPort}`);
+                    
+                    // Send the specs request
                     oscManager.oscServer.send({
                         address: '/effect/get_specs',
                         args: [{ type: 's', value: effectName }] 
-                    }, '127.0.0.1', 57122);
+                    }, scHost, scPort);
                     console.log(`ELECTRON: /effect/get_specs message sent for ${effectName}`);
                 } else {
                     console.error('ELECTRON: OSC Manager or oscServer not available to request specs.');
