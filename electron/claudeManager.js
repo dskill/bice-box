@@ -78,9 +78,9 @@ class ClaudeManager {
                 if (!claudeProcess.killed) {
                     console.log('Claude process timeout, killing...');
                     claudeProcess.kill('SIGTERM');
-                    reject(new Error('Claude process timed out after 120 seconds'));
+                    reject(new Error('Claude process timed out after 220 seconds'));
                 }
-            }, 120000);
+            }, 220000);
 
             claudeProcess.stdout.on('data', (data) => {
                 buffer += data.toString();
