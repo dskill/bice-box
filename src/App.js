@@ -100,45 +100,41 @@ function App() {
   }, [synths]);
 
   const reloadEffectList = useCallback(() => {
-    return new Promise((resolve, reject) => {
-      console.log("Loading audio effects from SC files...");
-      if (electron) {
-        electron.ipcRenderer.send('reload-all-effects'); 
-        electron.ipcRenderer.once('effects-data', (event, data) => {
-          console.log("Received audio effects data:", data);
-          if (Array.isArray(data) && data.length > 0) {
-            setSynths(data);
-            const firstEffect = data[0];
-            setCurrentAudioSource(firstEffect.scFilePath);
-            setCurrentAudioParams(firstEffect.params || {});
-            
-            // Don't set any visual sources - keep them independent
-            console.log("Initial audio effect set:", { 
-              audio: firstEffect.scFilePath
-            });
-            
-            resolve(data);
-          } else {
-            const errorMessage = "Received empty or invalid audio effects data";
-            console.warn(errorMessage, data);
-            reject(new Error(errorMessage));
-          }
-        });
-
-        electron.ipcRenderer.once('effects-error', (event, error) => {
-          console.error('Error loading audio effects:', error);
-          reject(new Error(error));
-        });
-
-        // Add a timeout in case the IPC call doesn't respond
-        setTimeout(() => {
-          reject(new Error("Timeout while waiting for audio effects data"));
-        }, 5000);
-      } else {
+    console.log("Requesting a reload of all effects...");
+    if (electron) {
+        electron.ipcRenderer.send('reload-all-effects');
+    } else {
         console.warn('Electron is not available');
-        reject(new Error("Electron not available"));
-      }
-    });
+    }
+  }, []);
+
+  useEffect(() => {
+    const handleEffectsData = (event, data) => {
+        console.log("Received effects-data:", data);
+        if (Array.isArray(data)) {
+            setSynths(prevSynths => {
+                // Only set initial effect if the synths list was previously empty
+                if (prevSynths.length === 0 && data.length > 0) {
+                    const firstEffect = data[0];
+                    setCurrentAudioSource(firstEffect.scFilePath);
+                    setCurrentAudioParams(firstEffect.params || {});
+                    console.log("Initial audio effect set:", { 
+                        audio: firstEffect.scFilePath
+                    });
+                }
+                return data;
+            });
+        } else {
+            console.warn("Received invalid audio effects data", data);
+        }
+    };
+
+    if (electron) {
+        electron.ipcRenderer.on('effects-data', handleEffectsData);
+        return () => {
+            electron.ipcRenderer.removeListener('effects-data', handleEffectsData);
+        };
+    }
   }, []);
 
   const checkEffectsRepoStatus = useCallback(async () => {
@@ -228,21 +224,14 @@ function App() {
   }, [currentAudioSource, currentAudioParams, synths, electron]); // Added electron to dependencies
 
   useEffect(() => {
-    if (initLoad.current) return;
-    initLoad.current = true;
-    
-    // Initial effects load and repo check
-    Promise.all([
-      reloadEffectList(),
-      checkEffectsRepoStatus()
-    ]).catch(err => {
+    // The initLoad ref is no longer needed here as the listener handles the initial setup.
+    reloadEffectList();
+    checkEffectsRepoStatus()
+    .catch(err => {
       console.error("Failed to initialize:", err);
       setError("Failed to initialize. Check the console for more details.");
     });
-
-
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [reloadEffectList, checkEffectsRepoStatus]);
 
   useEffect(() => {
     const handleEffectUpdate = (event, updatedEffect) => {
@@ -457,10 +446,9 @@ function App() {
         electron.ipcRenderer.send('pull-effects-repo');
         electron.ipcRenderer.once('pull-effects-repo-success', (event, message) => {
           console.log('Effects repo pulled successfully:', message);
-          // After successful pull, reload the effects list
-          reloadEffectList()
-            .then(resolve)
-            .catch(reject);
+          // After pull, main.js reloads effects and sends 'effects-data' automatically.
+          // The persistent listener will update the state.
+          resolve(message);
         });
         electron.ipcRenderer.once('pull-effects-repo-error', (event, error) => {
           console.error('Error pulling effects repo:', error);

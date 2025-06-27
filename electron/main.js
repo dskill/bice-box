@@ -556,8 +556,23 @@ function setupEffectsWatcher()
     reloadEffectForChangedFile(changedPath);
   }, 300); // in ms
 
-  watcher.on('change', debouncedReloadEffect);
+  watcher
+    .on('change', debouncedReloadEffect)
+    .on('add', (filePath) => {
+        console.log(`File added: ${filePath}. Reloading effects list.`);
+        debouncedReloadEffectList();
+    })
+    .on('unlink', (filePath) => {
+        console.log(`File removed: ${filePath}. Reloading effects list.`);
+        debouncedReloadEffectList();
+    });
 }
+
+const debouncedReloadEffectList = debounce(() => {
+    console.log('Reloading full effects list due to file addition/deletion.');
+    loadEffectsList(mainWindow, getEffectsRepoPath, getEffectsPath);
+    // Note: We could also reload visualizers here if needed in the future
+}, 300);
 
 function reloadEffectForChangedFile(changedPath)
 {
