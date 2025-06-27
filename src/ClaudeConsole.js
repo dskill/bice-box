@@ -100,7 +100,7 @@ const ClaudeConsole = ({
           onTouchEnd={onRecordingEnd}
           disabled={isClaudeResponding}
         >
-          {isRecording ? 'Listening...' : isClaudeResponding ? 'Claude responding...' : 'Hold to Talk'}
+          {isRecording ? 'Listening...' : isClaudeResponding ? 'AI is responding...' : 'Hold to Talk'}
         </button>
       ) : (
         // Show Claude button when console is closed
@@ -108,7 +108,7 @@ const ClaudeConsole = ({
           className="claude-button"
           onClick={onOpen}
         >
-          Claude
+          Vibe
         </button>
       )}
       
@@ -140,7 +140,7 @@ const ClaudeConsole = ({
             {isClaudeResponding && (
               <div className="claude-status-indicator">
                 <span className="claude-thinking-dots">●●●</span>
-                <span>Claude is responding...</span>
+                <span>AI is responding...</span>
               </div>
             )}
           </div>
@@ -158,7 +158,7 @@ const ClaudeConsole = ({
               className="claude-input"
               value={claudeInput}
               onChange={(e) => setClaudeInput(e.target.value)}
-              placeholder="Type to Claude..."
+              placeholder="Type to AI..."
               autoFocus
               disabled={isClaudeResponding}
             />

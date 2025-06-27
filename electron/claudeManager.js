@@ -1,4 +1,5 @@
 const { spawn } = require('child_process');
+const path = require('path');
 
 class ClaudeManager {
     constructor(effectsRepoPath) {
@@ -41,9 +42,20 @@ class ClaudeManager {
         console.log(`Executing: ${fullCommand}`);
         console.log(`Working directory: ${this.effectsRepoPath}`);
         
+        const homeDir = process.env.HOME;
+        const nvmBinPath = process.env.NVM_BIN;
+
+        const extendedPath = [
+            process.env.PATH,
+            nvmBinPath, // Add NVM's binary path if available
+            homeDir ? path.join(homeDir, '.local', 'bin') : null,
+            '/usr/local/bin',
+        ].filter(Boolean).join(path.delimiter);
+
         // Create clean environment with explicit values
         const cleanEnv = {
             ...process.env,
+            PATH: extendedPath,
             ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
             NODE_OPTIONS: ''
         };
