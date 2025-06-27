@@ -53,7 +53,7 @@ class ClaudeManager {
                 stdio: ['ignore', 'pipe', 'pipe'],
                 cwd: this.effectsRepoPath,
                 env: cleanEnv,
-                shell: '/bin/sh'
+                shell: true
             });
 
             let buffer = '';
