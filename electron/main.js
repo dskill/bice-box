@@ -42,6 +42,7 @@ const {
 } = require('./superColliderManager');
 const generativeEffectManager = require('./generativeEffectManager');
 const wifi = require('node-wifi');
+const { startHttpServer, stopHttpServer } = require('./httpServer');
 
 let mainWindow;
 let oscManager;
@@ -399,6 +400,18 @@ app.whenReady().then(() =>
     createWindow();
     console.log('Window creation initiated.');
 
+    // Start the MCP HTTP server
+    const getState = {
+        getCurrentEffect: getCurrentEffect,
+        getActiveVisualSourcePath: () => activeVisualSourcePath,
+        getSynths: () => synths,
+        getAvailableVisualizers: () => getAvailableVisualizers(getEffectsRepoPath()),
+        getLogDir: () => logDir,
+        fs: fs,
+        path: path
+    };
+    startHttpServer(getState);
+
     // Call the test function if --generate flag is present
     if (runGenerator) { 
       console.log('--generate flag detected. Running generation process...');
@@ -471,6 +484,9 @@ ipcMain.on('reboot-server', (event) =>
 app.on('will-quit', async () =>
 {
   console.log('Application shutting down...');
+
+  // Stop the HTTP server
+  stopHttpServer();
 
   // Kill SuperCollider servers
   await killSuperCollider();
