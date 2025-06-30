@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import VisualizationMode from './VisualizationMode';
 import EffectSelectScreen from './EffectSelectScreen';
 import Whisper from './Whisper';
@@ -43,8 +43,6 @@ function App() {
   const [shaderError, setShaderError] = useState(null);
   const [devMode, setDevMode] = useState(false);
   const [paramValues, setParamValues] = useState({});
-  const wasHeld = useRef(false);
-  const initLoad = useRef(false);
 
   // --- State for Claude Voice Interaction ---
   const [isClaudeConsoleOpen, setIsClaudeConsoleOpen] = useState(false);
@@ -282,6 +280,127 @@ function App() {
     }
   }, [currentAudioSource]); // Add currentAudioSource to dependency array
 
+  const handleVisualSelect = useCallback(async (selectedVisual, options = {}) => { // Expects the full visual object
+    const { fromMcp = false } = options;
+    if (!selectedVisual || !selectedVisual.path || !selectedVisual.type) {
+      console.log('Visual selection cancelled or invalid item');
+      if (!fromMcp) setShowVisualSelector(false);
+      return;
+    }
+
+    const { path: visualPath, type: visualType } = selectedVisual;
+    console.log(`Selecting visual source: ${visualPath} (type: ${visualType})`);
+
+    if (electron) {
+      try {
+        // Use the shared visualizer loading logic
+        const result = await electron.ipcRenderer.invoke('load-visualizer-content', visualPath);
+        
+        if (result.type === 'p5') {
+          setCurrentVisualSource(visualPath);
+          setCurrentVisualContent(result.content);
+          setCurrentShaderPath(null); // Clear shader if p5 is selected
+          setCurrentShaderContent('');
+          if (!fromMcp) electron.ipcRenderer.send('set-current-visual-source', visualPath); // For hot-reloading p5
+          console.log(`P5 sketch content loaded successfully.`);
+        } else if (result.type === 'shader') {
+          setCurrentShaderPath(visualPath);
+          setCurrentShaderContent(result.content);
+          setCurrentVisualSource(null); // Clear p5 if shader is selected
+          setCurrentVisualContent('');
+          if (!fromMcp) electron.ipcRenderer.send('set-current-visual-source', visualPath); // For hot-reloading shader
+          console.log(`Shader content loaded successfully.`);
+        } else {
+          console.warn(`Unknown visualizer result type: ${result.type}`);
+          setError(`Unknown visualizer result type: ${result.type}`);
+        }
+      } catch (error) {
+        console.error(`Error loading selected visual:`, error);
+        // Clear relevant visual state on error
+        if (visualType === 'p5') {
+          setCurrentVisualSource(null);
+          setCurrentVisualContent('');
+        } else if (visualType === 'shader') {
+          setCurrentShaderPath(null);
+          setCurrentShaderContent('');
+        }
+        setError(`Failed to load visual: ${error.message}`);
+      }
+    }
+    if (!fromMcp) setShowVisualSelector(false);
+  }, [setCurrentVisualSource, setCurrentVisualContent, setCurrentShaderPath, setCurrentShaderContent, setError, setShowVisualSelector]);
+
+  const pullEffectsRepo = () => {
+    return new Promise((resolve, reject) => {
+      if (electron) {
+        electron.ipcRenderer.send('pull-effects-repo');
+        electron.ipcRenderer.once('pull-effects-repo-success', (event, message) => {
+          console.log('Effects repo pulled successfully:', message);
+          // After pull, main.js reloads effects and sends 'effects-data' automatically.
+          // The persistent listener will update the state.
+          resolve(message);
+        });
+        electron.ipcRenderer.once('pull-effects-repo-error', (event, error) => {
+          console.error('Error pulling effects repo:', error);
+          setError(`Failed to pull effects repo: ${error}`); 
+          reject(new Error(error));
+        });
+      } else {
+        console.warn('Electron is not available for pullEffectsRepo');
+        reject(new Error("Electron not available"));
+      }
+    });
+  };
+
+  // Handler for 'auto-visualizer-loaded' IPC messages (from SC file comments)
+  const handleAutoVisualizerLoaded = useCallback((event, data) => {
+    console.log(`App.js: Received auto-visualizer-loaded. Raw data:`, data);
+    if (data && data.type && data.path && data.content !== undefined) {
+      const { type, path, content } = data;
+      console.log(`App.js: Auto-loading visualizer: ${path} (type: ${type})`);
+      
+      if (type === 'p5') {
+        setCurrentVisualSource(path);
+        setCurrentVisualContent(content);
+        setCurrentShaderPath(null); // Clear shader if p5 is auto-loaded
+        setCurrentShaderContent('');
+        // Also send to main for hot-reloading
+        electron.ipcRenderer.send('set-current-visual-source', path);
+        console.log(`Auto-loaded p5 visualizer: ${path}`);
+      } else if (type === 'shader') {
+        setCurrentShaderPath(path);
+        setCurrentShaderContent(content);
+        setCurrentVisualSource(null); // Clear p5 if shader is auto-loaded
+        setCurrentVisualContent('');
+        // Also send to main for hot-reloading
+        electron.ipcRenderer.send('set-current-visual-source', path);
+        console.log(`Auto-loaded shader visualizer: ${path}`);
+      } else {
+        console.warn(`App.js: Unknown auto-visualizer type: ${type}`);
+      }
+    } else {
+      console.warn('App.js: Received auto-visualizer-loaded with invalid or missing data payload.', data);
+    }
+  }, [setCurrentVisualSource, setCurrentVisualContent, setCurrentShaderPath, setCurrentShaderContent]);
+
+  useEffect(() => {
+    const handleMcpVisualSourceChanged = async (event, selectedVisual) => {
+      console.log('MCP visual source changed to:', selectedVisual);
+      if (!selectedVisual || !selectedVisual.path || !selectedVisual.type) {
+        console.log('MCP visual selection invalid.');
+        return;
+      }
+      await handleVisualSelect(selectedVisual, { fromMcp: true });
+    };
+
+    if (electron) {
+      electron.ipcRenderer.on('mcp-visual-source-changed', handleMcpVisualSourceChanged);
+      return () => {
+        electron.ipcRenderer.removeListener('mcp-visual-source-changed', handleMcpVisualSourceChanged);
+      };
+    }
+  }, [handleVisualSelect]);
+
   const handleVisualEffectUpdate = useCallback((event, payload) => {
     if (!payload) {
         console.warn('App.js: visual-effect-updated received no payload.');
@@ -382,7 +501,7 @@ function App() {
     }
   }, [currentAudioParams]);
 
-  const handleAudioSelect = (scFilePath) => {
+  const handleAudioSelect = useCallback((scFilePath) => {
     if (!scFilePath) {
       console.log('Audio selection cancelled or invalid path');
       setShowAudioSelector(false);
@@ -396,143 +515,7 @@ function App() {
       electron.ipcRenderer.send('set-current-audio-source', scFilePath); // Inform main process
     }
     setShowAudioSelector(false);
-  };
-
-  const handleVisualSelect = async (selectedVisual) => { // Expects the full visual object
-    if (!selectedVisual || !selectedVisual.path || !selectedVisual.type) {
-      console.log('Visual selection cancelled or invalid item');
-      setShowVisualSelector(false);
-      return;
-    }
-
-    const { path: visualPath, type: visualType } = selectedVisual;
-    console.log(`Selecting visual source: ${visualPath} (type: ${visualType})`);
-
-    if (electron) {
-      try {
-        // Use the shared visualizer loading logic
-        const result = await electron.ipcRenderer.invoke('load-visualizer-content', visualPath);
-        
-        if (result.type === 'p5') {
-          setCurrentVisualSource(visualPath);
-          setCurrentVisualContent(result.content);
-          setCurrentShaderPath(null); // Clear shader if p5 is selected
-          setCurrentShaderContent('');
-          electron.ipcRenderer.send('set-current-visual-source', visualPath); // For hot-reloading p5
-          console.log(`P5 sketch content loaded successfully.`);
-        } else if (result.type === 'shader') {
-          setCurrentShaderPath(visualPath);
-          setCurrentShaderContent(result.content);
-          setCurrentVisualSource(null); // Clear p5 if shader is selected
-          setCurrentVisualContent('');
-          electron.ipcRenderer.send('set-current-visual-source', visualPath); // For hot-reloading shader
-          console.log(`Shader content loaded successfully.`);
-        } else {
-          console.warn(`Unknown visualizer result type: ${result.type}`);
-          setError(`Unknown visualizer result type: ${result.type}`);
-        }
-      } catch (error) {
-        console.error(`Error loading selected visual:`, error);
-        // Clear relevant visual state on error
-        if (visualType === 'p5') {
-          setCurrentVisualSource(null);
-          setCurrentVisualContent('');
-        } else if (visualType === 'shader') {
-          setCurrentShaderPath(null);
-          setCurrentShaderContent('');
-        }
-        setError(`Failed to load visual: ${error.message}`);
-      }
-    }
-    setShowVisualSelector(false);
-  };
-
-  const pullEffectsRepo = () => {
-    return new Promise((resolve, reject) => {
-      if (electron) {
-        electron.ipcRenderer.send('pull-effects-repo');
-        electron.ipcRenderer.once('pull-effects-repo-success', (event, message) => {
-          console.log('Effects repo pulled successfully:', message);
-          // After pull, main.js reloads effects and sends 'effects-data' automatically.
-          // The persistent listener will update the state.
-          resolve(message);
-        });
-        electron.ipcRenderer.once('pull-effects-repo-error', (event, error) => {
-          console.error('Error pulling effects repo:', error);
-          setError(`Failed to pull effects repo: ${error}`); 
-          reject(new Error(error));
-        });
-      } else {
-        console.warn('Electron is not available for pullEffectsRepo');
-        reject(new Error("Electron not available"));
-      }
-    });
-  };
-
-  // Handler for 'shader-effect-updated' IPC messages
-  const handleShaderEffectUpdated = useCallback((event, data) => {
-    console.log(`App.js: Received shader-effect-updated. Raw data:`, data);
-    if (data && data.shaderPath !== undefined && data.shaderContent !== undefined) {
-      const { shaderPath, shaderContent } = data; // Destructure here after check
-      console.log(`App.js: Processing shader-effect-updated for ${shaderPath}`);
-      // Check if the updated shader is the currently active one
-      if (currentShaderPath === shaderPath) {
-        console.log('Updated shader is active, applying new content.');
-        setCurrentShaderContent(shaderContent);
-      } else {
-        console.log('Updated shader is not the active one. New content stored if its preset is reloaded.');
-      }
-    } else {
-      console.warn('App.js: Received shader-effect-updated with invalid or missing data payload.', data);
-    }
-  }, [currentShaderPath, setCurrentShaderContent]); // Dependency: currentShaderPath, setCurrentShaderContent
-
-  // Handler for 'auto-visualizer-loaded' IPC messages (from SC file comments)
-  const handleAutoVisualizerLoaded = useCallback((event, data) => {
-    console.log(`App.js: Received auto-visualizer-loaded. Raw data:`, data);
-    if (data && data.type && data.path && data.content !== undefined) {
-      const { type, path, content } = data;
-      console.log(`App.js: Auto-loading visualizer: ${path} (type: ${type})`);
-      
-      if (type === 'p5') {
-        setCurrentVisualSource(path);
-        setCurrentVisualContent(content);
-        setCurrentShaderPath(null); // Clear shader if p5 is auto-loaded
-        setCurrentShaderContent('');
-        // Also send to main for hot-reloading
-        electron.ipcRenderer.send('set-current-visual-source', path);
-        console.log(`Auto-loaded p5 visualizer: ${path}`);
-      } else if (type === 'shader') {
-        setCurrentShaderPath(path);
-        setCurrentShaderContent(content);
-        setCurrentVisualSource(null); // Clear p5 if shader is auto-loaded
-        setCurrentVisualContent('');
-        // Also send to main for hot-reloading
-        electron.ipcRenderer.send('set-current-visual-source', path);
-        console.log(`Auto-loaded shader visualizer: ${path}`);
-      } else {
-        console.warn(`App.js: Unknown auto-visualizer type: ${type}`);
-      }
-    } else {
-      console.warn('App.js: Received auto-visualizer-loaded with invalid or missing data payload.', data);
-    }
-  }, [setCurrentVisualSource, setCurrentVisualContent, setCurrentShaderPath, setCurrentShaderContent]);
-
-  // Effect for general IPC listeners (like settings, wifi, etc.)
-  useEffect(() => {
-    electron.ipcRenderer.on('shader-effect-updated', handleShaderEffectUpdated);
-    return () => {
-        electron.ipcRenderer.removeAllListeners('shader-effect-updated');
-    };
-  }, [handleShaderEffectUpdated, electron]); // Add electron to dependency array
-
-  // Effect for auto-visualizer-loaded IPC listener
-  useEffect(() => {
-    electron.ipcRenderer.on('auto-visualizer-loaded', handleAutoVisualizerLoaded);
-    return () => {
-        electron.ipcRenderer.removeAllListeners('auto-visualizer-loaded');
-    };
-  }, [handleAutoVisualizerLoaded, electron]);
+  }, [setCurrentAudioSource, setShowAudioSelector]);
 
   // Opens the audio selector
   const openAudioSelect = () => {
@@ -597,6 +580,43 @@ function App() {
       electron.ipcRenderer.send('send-osc-to-sc', { address: '/effect/param/set', args: [paramName, value] });
     }
   }, []);
+
+  // Handler for 'shader-effect-updated' IPC messages (GLSL hot-reload)
+  const handleShaderEffectUpdated = useCallback((event, data) => {
+    console.log('App.js: Received shader-effect-updated. Raw data:', data);
+
+    // Validate the payload shape coming from main.js
+    if (!data || typeof data !== 'object' || data.shaderPath === undefined || data.shaderContent === undefined) {
+      console.warn('App.js: shader-effect-updated received with invalid payload.', data);
+      return;
+    }
+
+    const { shaderPath, shaderContent } = data;
+
+    // Only update the shader that is currently active in the UI
+    if (currentShaderPath && currentShaderPath.toLowerCase() === shaderPath.toLowerCase()) {
+      console.log('App.js: Updated shader matches active shader – applying new content.');
+      setCurrentShaderContent(shaderContent);
+    } else {
+      console.log('App.js: Updated shader does not match the active shader – ignoring.');
+    }
+  }, [currentShaderPath, setCurrentShaderContent]);
+
+  // Effect for general IPC listeners (like settings, wifi, etc.)
+  useEffect(() => {
+    electron.ipcRenderer.on('shader-effect-updated', handleShaderEffectUpdated);
+    return () => {
+        electron.ipcRenderer.removeAllListeners('shader-effect-updated');
+    };
+  }, [handleShaderEffectUpdated, electron]); // Add electron to dependency array
+
+  // Effect for auto-visualizer-loaded IPC listener
+  useEffect(() => {
+    electron.ipcRenderer.on('auto-visualizer-loaded', handleAutoVisualizerLoaded);
+    return () => {
+        electron.ipcRenderer.removeAllListeners('auto-visualizer-loaded');
+    };
+  }, [handleAutoVisualizerLoaded, electron]);
 
   if (error) {
     return <div className="error-message">{error}</div>;

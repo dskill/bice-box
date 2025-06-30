@@ -92,7 +92,7 @@ function startHttpServer(getState) {
                             },
                             {
                                 name: 'set_effect_parameters',
-                                description: 'Set multiple parameters for the current effect at once.',
+                                description: 'Set multiple parameters for the current effect at once. This only affects the live values for the current session. If the user wants to change the default values, you must edit the corresponding .sc file.',
                                 inputSchema: {
                                     type: 'object',
                                     properties: {
@@ -362,37 +362,17 @@ async function handleToolCall(params, getState) {
 
                 console.log(`[MCP] Switching to visualizer: ${visualizerName} at path: ${visualizer.path}`);
                 
-                // Load the visualizer content and send it to the frontend
-                try {
-                    const { loadVisualizerContent, getEffectsRepoPath, setActiveVisualSourcePath } = getState;
-                    if (loadVisualizerContent && getEffectsRepoPath) {
-                        const result = loadVisualizerContent(visualizer.path, getEffectsRepoPath());
-                        
-                        if (result && !result.error) {
-                            // Set the backend state
-                            if (setActiveVisualSourcePath) {
-                                setActiveVisualSourcePath(visualizer.path);
-                            }
-                            
-                            // Send the visualizer data to the frontend using existing IPC patterns
-                            if (mainWindow && mainWindow.webContents) {
-                                console.log(`[MCP] Sending visualizer content to frontend: ${visualizerName} (type: ${result.type})`);
-                                
-                                // Use the existing auto-visualizer-loaded message that App.js already handles
-                                mainWindow.webContents.send('auto-visualizer-loaded', {
-                                    type: result.type,
-                                    path: visualizer.path,
-                                    content: result.content
-                                });
-                            }
-                        } else {
-                            console.error(`[MCP] Error loading visualizer content: ${result.error}`);
-                        }
-                    } else {
-                        console.error('[MCP] loadVisualizerContent or getEffectsRepoPath function not available');
+                // Set the backend state and notify the frontend to fetch the content.
+                const { setActiveVisualSourcePath } = getState;
+                if (setActiveVisualSourcePath) {
+                    setActiveVisualSourcePath(visualizer.path);
+                    
+                    if (mainWindow && mainWindow.webContents) {
+                        console.log(`[MCP] Notifying frontend about visualizer change to: ${visualizer.name}`);
+                        mainWindow.webContents.send('mcp-visual-source-changed', visualizer);
                     }
-                } catch (error) {
-                    console.error(`[MCP] Error in visualizer switching:`, error);
+                } else {
+                    console.error('[MCP] setActiveVisualSourcePath function not available');
                 }
                 
                 return {
