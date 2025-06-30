@@ -23,6 +23,7 @@
     "react-scripts": "5.0.1",
     "react-simple-keyboard": "^3.8.27",
     "web-vitals": "^2.1.4",
+    "ws": "^8.18.3",
     "zod": "^3.25.67"
   },
   "scripts": {

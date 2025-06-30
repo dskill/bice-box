@@ -192,7 +192,7 @@ function loadVisualizerContent(visualizerPath, getEffectsRepoPath) {
     }
 }
 
-function parseAndLoadShaderFromComment(scFileContent, getEffectsRepoPath, mainWindow) {
+function parseAndLoadShaderFromComment(scFileContent, getEffectsRepoPath, mainWindow, broadcastCallback = null) {
     /**
      * Parse SC file for shader comments and auto-load the specified shader
      * Expected comment format: //shader: shadername (assumes shaders/ path prefix)
@@ -319,12 +319,25 @@ function parseAndLoadShaderFromComment(scFileContent, getEffectsRepoPath, mainWi
 
         // Successfully loaded shader content
         if (shaderContent) {
-            mainWindow.webContents.send('auto-visualizer-loaded', {
+            const shaderData = {
                 type: 'shader',
                 path: shaderPath,
                 content: shaderContent
-            });
+            };
+            mainWindow.webContents.send('auto-visualizer-loaded', shaderData);
             console.log(`Auto-loaded ${shaderType} shader: ${shaderName} -> ${shaderPath}`);
+            
+            // Also broadcast to remote visualizer clients
+            if (broadcastCallback) {
+                broadcastCallback({
+                    type: 'shaderUpdate',
+                    payload: {
+                        shaderPath: shaderPath,
+                        shaderContent: shaderContent
+                    }
+                });
+                console.log(`Broadcasted auto-loaded shader to remote clients: ${shaderPath}`);
+            }
         } else {
             const errorMsg = `Shader "${shaderName}" loaded but content is null or undefined`;
             console.error(errorMsg);
@@ -346,7 +359,7 @@ function parseAndLoadShaderFromComment(scFileContent, getEffectsRepoPath, mainWi
     }
 }
 
-function loadScFile(filePath, getEffectsRepoPath, mainWindow) {
+function loadScFile(filePath, getEffectsRepoPath, mainWindow, broadcastCallback = null) {
     // Check if filePath is already absolute. If not, join with effects repo path.
     const scFilePath = path.isAbsolute(filePath) ? filePath : path.join(getEffectsRepoPath(), filePath);
     console.log(`Loading SC file: ${scFilePath}`); // Path will now be correct for temp files too
@@ -354,7 +367,7 @@ function loadScFile(filePath, getEffectsRepoPath, mainWindow) {
     // Read the SC file content to look for shader comments
     try {
         const scFileContent = fs.readFileSync(scFilePath, 'utf-8');
-        parseAndLoadShaderFromComment(scFileContent, getEffectsRepoPath, mainWindow);
+        parseAndLoadShaderFromComment(scFileContent, getEffectsRepoPath, mainWindow, broadcastCallback);
     } catch (readError) {
         console.warn(`Could not read SC file for shader parsing: ${readError.message}`);
     }

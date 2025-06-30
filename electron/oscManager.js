@@ -2,10 +2,11 @@ const OSC = require('osc');
 
 class OSCManager
 {
-    constructor(mainWindow, onEffectSpecsReceived = null)
+    constructor(mainWindow, onEffectSpecsReceived = null, broadcastFunction = null)
     {
         this.mainWindow = mainWindow;
         this.onEffectSpecsReceived = onEffectSpecsReceived; // Callback for effect specs
+        this.broadcastFunction = broadcastFunction; // Callback for WebSocket broadcasting
         this.oscServer = null;
         this.isClosing = false;
         this.oscMessageCount = 0;
@@ -70,6 +71,16 @@ class OSCManager
                     const combinedData = oscMsg.args.map(arg => arg.value);
                     // Combined data now contains 1026 samples: first 512 are waveform, next 512 are FFT, then RMS input, then RMS output.
                     this.mainWindow.webContents.send('combined-data', combinedData);
+                    
+                    // Also broadcast to remote visualizer clients via WebSocket
+                    if (this.broadcastFunction) {
+                        this.broadcastFunction({
+                            type: 'audioData',
+                            payload: {
+                                combinedData: combinedData
+                            }
+                        });
+                    }
                     break;
 
                 case '/tuner_data':

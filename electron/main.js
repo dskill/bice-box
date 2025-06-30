@@ -42,7 +42,7 @@ const {
 } = require('./superColliderManager');
 const generativeEffectManager = require('./generativeEffectManager');
 const wifi = require('node-wifi');
-const { startHttpServer, stopHttpServer } = require('./httpServer');
+const { startHttpServer, stopHttpServer, broadcast } = require('./httpServer');
 
 let mainWindow;
 let oscManager;
@@ -260,9 +260,12 @@ function createWindow()
           console.log('Updated currentEffect with new params from SC.');
           if (mainWindow && mainWindow.webContents) {
             // --- ADD THESE LINES ---
-            console.log(`CALLBACK: Sending effect-updated to renderer for active audio source ${effectName}`);
-            mainWindow.webContents.send('effect-updated', synths[effectIndex]);
-            console.log(`Sent effect-updated for ${effectName} with new SC params to renderer.`);
+                      console.log(`CALLBACK: Sending effect-updated to renderer for active audio source ${effectName}`);
+          mainWindow.webContents.send('effect-updated', synths[effectIndex]);
+          console.log(`Sent effect-updated for ${effectName} with new SC params to renderer.`);
+          
+          // Broadcast current shader to remote visualizer clients
+          broadcastCurrentShader(synths[effectIndex]);
             // -----------------------
           } else {
             console.error(`CALLBACK: mainWindow or webContents not available!`);
@@ -283,6 +286,9 @@ function createWindow()
             console.log(`CALLBACK: Sending effect-updated to renderer for initial effect ${effectName}`);
             mainWindow.webContents.send('effect-updated', synths[effectIndex]);
             console.log(`Sent effect-updated for initial effect ${effectName} with new SC params to renderer.`);
+            
+            // Broadcast current shader to remote visualizer clients
+            broadcastCurrentShader(synths[effectIndex]);
             // -----------------------
           } else {
             console.error(`CALLBACK: mainWindow or webContents not available for initial effect!`);
@@ -299,8 +305,11 @@ function createWindow()
       // -------------------
     };
 
-    oscManager = new OSCManager(mainWindow, handleEffectSpecs);
+    oscManager = new OSCManager(mainWindow, handleEffectSpecs, broadcast);
     oscManager.initialize();
+    
+    // Set up WebSocket broadcasting for remote visualizer
+    setupRemoteVisualizerBroadcasting();
 
     // Set up file watcher for hot reloading
     setupEffectsWatcher();
@@ -634,7 +643,7 @@ function loadScFileAndRequestSpecs(filePath) {
     console.log(`Loading SC file and requesting specs for: ${filePath}`);
     
     // Load the SC file
-    return loadScFile(filePath, getEffectsRepoPath, mainWindow)
+    return loadScFile(filePath, getEffectsRepoPath, mainWindow, broadcast)
         .then(() => {
             console.log(`SC file ${filePath} loaded successfully. Requesting specs...`);
             
@@ -799,11 +808,18 @@ function reloadShaderEffect(glslFilePath) {
             try {
                 const updatedShaderContent = fs.readFileSync(fullChangedGlslPath, 'utf-8');
                 if (mainWindow && mainWindow.webContents) {
-                    mainWindow.webContents.send('shader-effect-updated', {
+                    const shaderUpdateData = {
                         shaderPath: glslFilePath,
                         shaderContent: updatedShaderContent
-                    });
+                    };
+                    mainWindow.webContents.send('shader-effect-updated', shaderUpdateData);
                     console.log(`Sent shader-effect-updated for active single-pass shader: ${glslFilePath}`);
+                    
+                    // Also broadcast to remote visualizer clients
+                    broadcast({
+                        type: 'shaderUpdate',
+                        payload: shaderUpdateData
+                    });
                 }
                 reloadedViaActive = true;
             } catch (error) {
@@ -820,11 +836,18 @@ function reloadShaderEffect(glslFilePath) {
                     const updatedMultiPassConfig = loadMultiPassShader(activeVisualSourcePath, effectsRepoPath);
                     
                     if (mainWindow && mainWindow.webContents) {
-                        mainWindow.webContents.send('shader-effect-updated', {
+                        const shaderUpdateData = {
                             shaderPath: activeVisualSourcePath, // Base name
                             shaderContent: updatedMultiPassConfig // Entire multi-pass object
-                        });
+                        };
+                        mainWindow.webContents.send('shader-effect-updated', shaderUpdateData);
                         console.log(`Sent shader-effect-updated for active multi-pass shader: ${activeVisualSourcePath}`);
+                        
+                        // Also broadcast to remote visualizer clients
+                        broadcast({
+                            type: 'shaderUpdate',
+                            payload: shaderUpdateData
+                        });
                     }
                     reloadedViaActive = true;
                 } catch (error) {
@@ -851,11 +874,18 @@ function reloadShaderEffect(glslFilePath) {
                     const currentPresetEffect = getCurrentEffect();
                     if (currentPresetEffect && currentPresetEffect.name === synth.name) {
                          if (mainWindow && mainWindow.webContents) {
-                            mainWindow.webContents.send('shader-effect-updated', {
+                            const shaderUpdateData = {
                                 shaderPath: synth.shaderPath,
                                 shaderContent: updatedContent
-                            });
+                            };
+                            mainWindow.webContents.send('shader-effect-updated', shaderUpdateData);
                             console.log(`Sent shader-effect-updated for preset (single-pass): ${synth.shaderPath}`);
+                            
+                            // Also broadcast to remote visualizer clients
+                            broadcast({
+                                type: 'shaderUpdate',
+                                payload: shaderUpdateData
+                            });
                         }
                     }
                 } catch (error) {
@@ -877,11 +907,18 @@ function reloadShaderEffect(glslFilePath) {
                         const currentPresetEffect = getCurrentEffect();
                         if (currentPresetEffect && currentPresetEffect.name === synth.name) {
                             if (mainWindow && mainWindow.webContents) {
-                                mainWindow.webContents.send('shader-effect-updated', {
+                                const shaderUpdateData = {
                                     shaderPath: synth.shaderPath,
                                     shaderContent: updatedMultiPassConfig
-                                });
+                                };
+                                mainWindow.webContents.send('shader-effect-updated', shaderUpdateData);
                                 console.log(`Sent shader-effect-updated for preset (multi-pass): ${synth.shaderPath}`);
+                                
+                                // Also broadcast to remote visualizer clients
+                                broadcast({
+                                    type: 'shaderUpdate',
+                                    payload: shaderUpdateData
+                                });
                             }
                         }
                     } catch (error) {
@@ -1556,7 +1593,7 @@ ipcMain.handle('load-visualizer-content', async (event, visualizerPath) => {
 
 // Handler for loading SC files
 ipcMain.on('load-sc-file', (event, filePath) => {
-    loadScFile(filePath, getEffectsRepoPath, mainWindow);
+    loadScFile(filePath, getEffectsRepoPath, mainWindow, broadcast);
 });
 
 // --- Claude Code SDK Integration ---
@@ -1586,3 +1623,45 @@ ipcMain.on('reset-claude-session', () => {
     }
     claudeManager.handleSessionReset();
 });
+
+function setupRemoteVisualizerBroadcasting() {
+  console.log('[RemoteBroadcast] Setting up WebSocket broadcasting for remote visualizer');
+  
+  // Listen for visualizer changes and broadcast shader updates
+  ipcMain.on('broadcast-shader-update', (event, shaderData) => {
+    console.log('[RemoteBroadcast] Broadcasting shader update:', shaderData.shaderPath);
+    broadcast({
+      type: 'shaderUpdate',
+      payload: shaderData
+    });
+  });
+  
+  console.log('[RemoteBroadcast] WebSocket broadcasting setup complete');
+}
+
+// Helper function to broadcast current shader when effect changes
+function broadcastCurrentShader(effect) {
+  console.log('[RemoteBroadcast] broadcastCurrentShader called with effect:', effect ? effect.name : 'null');
+  
+  if (!effect) {
+    console.log('[RemoteBroadcast] No effect provided');
+    return;
+  }
+  
+  console.log('[RemoteBroadcast] Effect has shaderPath:', effect.shaderPath);
+  console.log('[RemoteBroadcast] Effect has shaderContent:', !!effect.shaderContent);
+  
+  if (!effect.shaderPath || !effect.shaderContent) {
+    console.log('[RemoteBroadcast] No shader to broadcast for current effect');
+    return;
+  }
+  
+  console.log('[RemoteBroadcast] Broadcasting current shader:', effect.shaderPath);
+  broadcast({
+    type: 'shaderUpdate',
+    payload: {
+      shaderPath: effect.shaderPath,
+      shaderContent: effect.shaderContent
+    }
+  });
+}

@@ -1,8 +1,11 @@
 const express = require('express');
 const z = require('zod');
+const { WebSocketServer } = require('ws');
+const path = require('path');
 
 const PORT = 31337;
 let httpServerInstance = null;
+let wss = null;
 
 // Simple MCP server without SDK transport complexity
 function startHttpServer(getState) {
@@ -13,6 +16,9 @@ function startHttpServer(getState) {
 
     const app = express();
     app.use(express.json());
+
+    // Serve static files for the remote visualizer client
+    app.use(express.static(path.join(__dirname, '..', 'public')));
 
     // Handle MCP requests
     app.post('/mcp', async (req, res) => {
@@ -187,9 +193,38 @@ function startHttpServer(getState) {
     httpServerInstance = app.listen(PORT, () => {
         console.log(`Bice Box HTTP MCP server listening on port ${PORT}`);
         console.log(`MCP endpoint available at http://127.0.0.1:${PORT}/mcp`);
+        console.log(`Remote visualizer available at http://127.0.0.1:${PORT}/remote/`);
     }).on('error', (error) => {
         console.error('Error starting HTTP server:', error);
         httpServerInstance = null;
+    });
+
+    // Setup WebSocket server
+    wss = new WebSocketServer({ server: httpServerInstance });
+
+    wss.on('connection', (ws) => {
+        console.log('[WSS] Client connected');
+        ws.on('close', () => {
+            console.log('[WSS] Client disconnected');
+        });
+        ws.on('error', (error) => {
+            console.error('[WSS] WebSocket error:', error);
+        });
+    });
+}
+
+function broadcast(message) {
+    if (!wss) {
+        console.error('[WSS] WebSocket server not initialized.');
+        return;
+    }
+
+    const messageString = JSON.stringify(message);
+    const WebSocket = require('ws');
+    wss.clients.forEach(client => {
+        if (client.readyState === WebSocket.OPEN) {
+            client.send(messageString);
+        }
     });
 }
 
@@ -398,6 +433,12 @@ function stopHttpServer() {
             httpServerInstance = null;
         });
     }
+    if (wss) {
+        wss.close(() => {
+            console.log('WebSocket server stopped.');
+            wss = null;
+        });
+    }
 }
 
-module.exports = { startHttpServer, stopHttpServer }; 
+module.exports = { startHttpServer, stopHttpServer, broadcast }; 
