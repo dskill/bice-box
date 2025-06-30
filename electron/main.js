@@ -408,7 +408,17 @@ app.whenReady().then(() =>
         getAvailableVisualizers: () => getAvailableVisualizers(getEffectsRepoPath()),
         getLogDir: () => logDir,
         fs: fs,
-        path: path
+        path: path,
+        sendCodeToSclang: sendCodeToSclang,
+        mainWindow: mainWindow,
+        loadScFileAndRequestSpecs: loadScFileAndRequestSpecs,
+        loadVisualizerContent: loadVisualizerContent,
+        getEffectsRepoPath: getEffectsRepoPath,
+        setCurrentEffect: setCurrentEffect,
+        setActiveVisualSourcePath: (filePath) => {
+            activeVisualSourcePath = filePath;
+            console.log(`[MCP] Set activeVisualSourcePath to: ${activeVisualSourcePath}`);
+        }
     };
     startHttpServer(getState);
 

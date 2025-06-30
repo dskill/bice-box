@@ -265,12 +265,19 @@ function App() {
       }
     };
 
+    const handleMcpAudioSourceChanged = (event, newAudioSource) => {
+      console.log('MCP audio source changed to:', newAudioSource);
+      setCurrentAudioSource(newAudioSource);
+    };
+
     if (electron) {
-      console.log('Adding effect-updated listener for App.js');
+      console.log('Adding effect-updated and mcp-audio-source-changed listeners for App.js');
       electron.ipcRenderer.on('effect-updated', handleEffectUpdate);
+      electron.ipcRenderer.on('mcp-audio-source-changed', handleMcpAudioSourceChanged);
       return () => {
-        console.log('Removing effect-updated listener from App.js');
+        console.log('Removing effect-updated and mcp-audio-source-changed listeners from App.js');
         electron.ipcRenderer.removeListener('effect-updated', handleEffectUpdate);
+        electron.ipcRenderer.removeListener('mcp-audio-source-changed', handleMcpAudioSourceChanged);
       };
     }
   }, [currentAudioSource]); // Add currentAudioSource to dependency array
