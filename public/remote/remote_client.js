@@ -24,10 +24,8 @@ class RemoteVisualizerClient {
     initializeUI() {
         // Get UI elements
         this.connectBtn = document.getElementById('connect-btn');
-        this.disconnectBtn = document.getElementById('disconnect-btn');
-        this.statusDiv = document.getElementById('status');
-        this.shaderInfo = document.getElementById('shader-info');
-        this.connectionInfo = document.getElementById('connection-info');
+        this.connectOverlay = document.getElementById('connect-overlay');
+        this.statusMessage = document.getElementById('status-message');
         this.targetAddress = document.getElementById('target-address');
         
         // Display the target connection address
@@ -35,11 +33,16 @@ class RemoteVisualizerClient {
         
         // Set up event listeners
         this.connectBtn.addEventListener('click', () => this.connect());
-        this.disconnectBtn.addEventListener('click', () => this.disconnect());
+        
+        // Handle window resize
+        window.addEventListener('resize', () => this.handleWindowResize());
     }
     
     initializeShaderToy() {
         this.canvas = document.getElementById('visualizer-canvas');
+        
+        // Set initial canvas size to full screen
+        this.resizeCanvas();
         
         // Initialize ShaderToyLite with canvas ID, not the canvas element
         this.toy = new ShaderToyLite('visualizer-canvas');
@@ -56,26 +59,21 @@ class RemoteVisualizerClient {
         
         this.toy.setImage({ source: defaultShader });
         this.toy.play();
-        
-        this.updateShaderInfo('Default shader (waiting for connection)');
     }
     
     connect() {
         if (this.isConnected) return;
         
         const wsUrl = `ws://${this.host}:${this.port}`;
-        this.updateStatus('Connecting...', 'connecting');
-        this.updateConnectionInfo(`Connecting to ${wsUrl}`);
+        this.updateStatusMessage('Connecting...', 'connecting');
+        this.connectBtn.disabled = true;
         
         try {
             this.ws = new WebSocket(wsUrl);
             
             this.ws.onopen = () => {
                 this.isConnected = true;
-                this.updateStatus(`Connected to ${this.host}:${this.port}`, 'connected');
-                this.updateConnectionInfo(`Connected to ${wsUrl}`);
-                this.connectBtn.disabled = true;
-                this.disconnectBtn.disabled = false;
+                this.hideConnectOverlay();
                 
                 console.log('[RemoteClient] WebSocket connected');
             };
@@ -91,14 +89,14 @@ class RemoteVisualizerClient {
             
             this.ws.onerror = (error) => {
                 console.error('[RemoteClient] WebSocket error:', error);
-                this.updateStatus('Connection error', 'disconnected');
+                this.updateStatusMessage('Connection error', 'error');
                 this.handleDisconnect();
             };
             
         } catch (error) {
             console.error('[RemoteClient] Failed to create WebSocket:', error);
-            this.updateStatus('Failed to connect', 'disconnected');
-            this.updateConnectionInfo('Connection failed');
+            this.updateStatusMessage('Failed to connect', 'error');
+            this.connectBtn.disabled = false;
         }
     }
     
@@ -113,11 +111,9 @@ class RemoteVisualizerClient {
         this.isConnected = false;
         this.ws = null;
         
-        this.updateStatus('Disconnected', 'disconnected');
-        this.updateConnectionInfo('Disconnected');
-        
+        this.showConnectOverlay();
+        this.updateStatusMessage('Disconnected - Click Connect to reconnect', 'error');
         this.connectBtn.disabled = false;
-        this.disconnectBtn.disabled = true;
     }
     
     handleMessage(data) {
@@ -217,11 +213,11 @@ class RemoteVisualizerClient {
             }
             
             this.currentShader = payload.shaderPath;
-            this.updateShaderInfo(`Loaded: ${payload.shaderPath}`);
+            console.log(`[RemoteClient] Loaded shader: ${payload.shaderPath}`);
             
         } catch (error) {
             console.error('[RemoteClient] Error loading shader:', error);
-            this.updateShaderInfo(`Error loading: ${payload.shaderPath}`);
+            console.error(`[RemoteClient] Error loading shader: ${payload.shaderPath}`);
         }
     }
     
@@ -286,8 +282,8 @@ class RemoteVisualizerClient {
     }
     
     updateCanvasSize(resolutionScale) {
-        const baseWidth = 800;
-        const baseHeight = 600;
+        const baseWidth = window.innerWidth;
+        const baseHeight = window.innerHeight;
         
         const newWidth = Math.floor(baseWidth * resolutionScale);
         const newHeight = Math.floor(baseHeight * resolutionScale);
@@ -301,17 +297,35 @@ class RemoteVisualizerClient {
         }
     }
     
-    updateStatus(message, className) {
-        this.statusDiv.textContent = message;
-        this.statusDiv.className = `status ${className}`;
+    updateStatusMessage(message, type = '') {
+        this.statusMessage.textContent = message;
+        this.statusMessage.className = type ? `status-${type}` : '';
     }
-    
-    updateShaderInfo(message) {
-        this.shaderInfo.textContent = message;
+
+    showConnectOverlay() {
+        this.connectOverlay.classList.remove('hidden');
     }
-    
-    updateConnectionInfo(message) {
-        this.connectionInfo.textContent = message;
+
+    hideConnectOverlay() {
+        this.connectOverlay.classList.add('hidden');
+    }
+
+    resizeCanvas() {
+        if (this.canvas) {
+            this.canvas.width = window.innerWidth;
+            this.canvas.height = window.innerHeight;
+        }
+    }
+
+    handleWindowResize() {
+        this.resizeCanvas();
+        
+        // Refresh the shader to handle the new canvas size
+        if (this.toy && this.currentShader) {
+            // ShaderToyLite should automatically handle canvas resize,
+            // but we can trigger a refresh if needed
+            console.log('[RemoteClient] Window resized, canvas updated');
+        }
     }
 }
 
