@@ -13,6 +13,12 @@ class OSCManager
         this.lastLogTime = Date.now();
         this.shouldLogMessageRate = false;
         this.messageRateInterval = null;
+        
+        // WebSocket broadcast throttling
+        this.lastBroadcastTime = 0;
+        this.broadcastThrottleMs = 33; // ~30 FPS (1000ms / 30fps = 33ms)
+        this.lastAudioData = null;
+        
         if (this.shouldLogMessageRate) {
             this.startMessageRateLogging();
         }
@@ -72,15 +78,11 @@ class OSCManager
                     // Combined data now contains 1026 samples: first 512 are waveform, next 512 are FFT, then RMS input, then RMS output.
                     this.mainWindow.webContents.send('combined-data', combinedData);
                     
-                    // Also broadcast to remote visualizer clients via WebSocket
-                    if (this.broadcastFunction) {
-                        this.broadcastFunction({
-                            type: 'audioData',
-                            payload: {
-                                combinedData: combinedData
-                            }
-                        });
-                    }
+                    // Store the latest audio data for throttled broadcasting
+                    this.lastAudioData = combinedData;
+                    
+                    // Throttled broadcast to remote visualizer clients via WebSocket
+                    this.throttledBroadcast();
                     break;
 
                 case '/tuner_data':
@@ -154,6 +156,23 @@ class OSCManager
         } catch (error)
         {
             console.error('Error handling OSC message:', error);
+        }
+    }
+
+    throttledBroadcast() {
+        const now = Date.now();
+        
+        // Only broadcast if enough time has passed since the last broadcast
+        if (now - this.lastBroadcastTime >= this.broadcastThrottleMs) {
+            if (this.broadcastFunction && this.lastAudioData) {
+                this.broadcastFunction({
+                    type: 'audioData',
+                    payload: {
+                        combinedData: this.lastAudioData
+                    }
+                });
+                this.lastBroadcastTime = now;
+            }
         }
     }
 
