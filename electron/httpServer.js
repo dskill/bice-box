@@ -2,6 +2,8 @@ const express = require('express');
 const z = require('zod');
 const { WebSocketServer } = require('ws');
 const path = require('path');
+const fs = require('fs');
+const { app } = require('electron');
 
 const PORT = 31337;
 let httpServerInstance = null;
@@ -18,7 +20,33 @@ function startHttpServer(getState) {
     app.use(express.json());
 
     // Serve static files for the remote visualizer client
-    app.use(express.static(path.join(__dirname, '..', 'public')));
+    // In development, serve from the source public directory
+    // In production, serve from the build directory or app resources
+    let publicPath;
+    if (process.env.NODE_ENV === 'development') {
+        publicPath = path.join(__dirname, '..', 'public');
+    } else {
+        // In packaged app, try multiple possible locations
+        const possiblePaths = [
+            path.join(__dirname, '..', 'public'),  // Standard location
+            path.join(__dirname, '..', 'build'),   // Build directory
+            path.join(process.resourcesPath, 'public'), // App resources
+            path.join(process.resourcesPath, 'app', 'public'), // App resources subfolder
+        ];
+        
+        // Find the first path that exists
+        publicPath = possiblePaths.find(p => {
+            try {
+                fs.accessSync(p);
+                return true;
+            } catch {
+                return false;
+            }
+        }) || possiblePaths[0]; // Fallback to first path
+    }
+    
+    console.log(`[HTTP Server] Serving static files from: ${publicPath}`);
+    app.use(express.static(publicPath));
 
     // Handle MCP requests
     app.post('/mcp', async (req, res) => {

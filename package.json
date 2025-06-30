@@ -50,7 +50,8 @@
     "productName": "Bice-Box",
     "files": [
       "build/**/*",
-      "electron/**/*"
+      "electron/**/*",
+      "public/**/*"
     ],
     "directories": {
       "buildResources": "assets",
