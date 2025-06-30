@@ -418,6 +418,10 @@ app.whenReady().then(() =>
         setActiveVisualSourcePath: (filePath) => {
             activeVisualSourcePath = filePath;
             console.log(`[MCP] Set activeVisualSourcePath to: ${activeVisualSourcePath}`);
+        },
+        setActiveAudioSourcePath: (filePath) => {
+            activeAudioSourcePath = filePath;
+            console.log(`[MCP] Set activeAudioSourcePath to: ${activeAudioSourcePath}`);
         }
     };
     startHttpServer(getState);

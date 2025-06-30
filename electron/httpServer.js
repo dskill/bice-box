@@ -270,26 +270,27 @@ async function handleToolCall(params, getState) {
                 console.log(`[MCP] Switching to effect: ${effectName} at path: ${effect.scFilePath}`);
                 
                 // Load the SC file and set the current effect
-                const { loadScFileAndRequestSpecs, setCurrentEffect } = getState;
-                if (loadScFileAndRequestSpecs && setCurrentEffect) {
+                const { loadScFileAndRequestSpecs, setCurrentEffect, setActiveAudioSourcePath } = getState;
+                if (loadScFileAndRequestSpecs && setCurrentEffect && setActiveAudioSourcePath) {
+                    // Set the active audio source path in the main process
+                    setActiveAudioSourcePath(effect.scFilePath);
+
+                    // This will trigger the async flow to get the real parameters from SC
                     await loadScFileAndRequestSpecs(effect.scFilePath);
                     
-                    // Update the current effect state
+                    // Update the current effect state in the backend
                     setCurrentEffect(effect);
                     console.log(`[MCP] Set current effect to: ${effectName}`);
                     
-                    // Notify the React frontend about the effect change
+                    // Notify the React frontend that the source has changed.
+                    // The UI will be fully updated when the 'effect-updated' event is received
+                    // from the main process after the new parameters are fetched from SuperCollider.
                     if (mainWindow && mainWindow.webContents) {
-                        console.log(`[MCP] Notifying frontend about effect change to: ${effectName}`);
-                        
-                        // First, update the current audio source in the frontend
+                        console.log(`[MCP] Notifying frontend about audio source change to: ${effect.scFilePath}`);
                         mainWindow.webContents.send('mcp-audio-source-changed', effect.scFilePath);
-                        
-                        // Then send the effect update
-                        mainWindow.webContents.send('effect-updated', effect);
                     }
                 } else {
-                    console.error('[MCP] loadScFileAndRequestSpecs or setCurrentEffect function not available');
+                    console.error('[MCP] loadScFileAndRequestSpecs, setCurrentEffect, or setActiveAudioSourcePath function not available');
                 }
                 
                 return {
