@@ -109,16 +109,15 @@
         </div>
         
         <div class="connection-panel">
-            <label for="host-input">Host IP:</label>
-            <input type="text" id="host-input" placeholder="192.168.1.100" value="127.0.0.1">
-            <label for="port-input">Port:</label>
-            <input type="text" id="port-input" placeholder="31337" value="31337">
+            <div id="connection-target" style="margin-bottom: 10px; color: #aaa;">
+                Will connect to: <span id="target-address">ws://loading...</span>
+            </div>
             <button id="connect-btn">Connect</button>
             <button id="disconnect-btn" disabled>Disconnect</button>
         </div>
         
         <div id="status" class="status disconnected">
-            Disconnected - Enter host IP and port, then click Connect
+            Disconnected - Click Connect to mirror the visualizer
         </div>
         
         <div class="canvas-container">

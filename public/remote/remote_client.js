@@ -6,31 +6,36 @@ class RemoteVisualizerClient {
         this.isConnected = false;
         this.currentShader = null;
         
+        // Auto-detect host and port from current page URL
+        this.detectConnectionInfo();
+        
         this.initializeUI();
         this.initializeShaderToy();
     }
     
+    detectConnectionInfo() {
+        // Get the host from the current page URL
+        this.host = window.location.hostname || 'localhost';
+        this.port = '31337'; // Fixed port for WebSocket server
+        
+        console.log(`[RemoteClient] Auto-detected connection: ${this.host}:${this.port}`);
+    }
+    
     initializeUI() {
         // Get UI elements
-        this.hostInput = document.getElementById('host-input');
-        this.portInput = document.getElementById('port-input');
         this.connectBtn = document.getElementById('connect-btn');
         this.disconnectBtn = document.getElementById('disconnect-btn');
         this.statusDiv = document.getElementById('status');
         this.shaderInfo = document.getElementById('shader-info');
         this.connectionInfo = document.getElementById('connection-info');
+        this.targetAddress = document.getElementById('target-address');
+        
+        // Display the target connection address
+        this.targetAddress.textContent = `ws://${this.host}:${this.port}`;
         
         // Set up event listeners
         this.connectBtn.addEventListener('click', () => this.connect());
         this.disconnectBtn.addEventListener('click', () => this.disconnect());
-        
-        // Allow Enter key to connect
-        this.hostInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') this.connect();
-        });
-        this.portInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') this.connect();
-        });
     }
     
     initializeShaderToy() {
@@ -58,15 +63,7 @@ class RemoteVisualizerClient {
     connect() {
         if (this.isConnected) return;
         
-        const host = this.hostInput.value.trim();
-        const port = this.portInput.value.trim();
-        
-        if (!host || !port) {
-            this.updateStatus('Please enter both host IP and port', 'disconnected');
-            return;
-        }
-        
-        const wsUrl = `ws://${host}:${port}`;
+        const wsUrl = `ws://${this.host}:${this.port}`;
         this.updateStatus('Connecting...', 'connecting');
         this.updateConnectionInfo(`Connecting to ${wsUrl}`);
         
@@ -75,12 +72,10 @@ class RemoteVisualizerClient {
             
             this.ws.onopen = () => {
                 this.isConnected = true;
-                this.updateStatus(`Connected to ${host}:${port}`, 'connected');
+                this.updateStatus(`Connected to ${this.host}:${this.port}`, 'connected');
                 this.updateConnectionInfo(`Connected to ${wsUrl}`);
                 this.connectBtn.disabled = true;
                 this.disconnectBtn.disabled = false;
-                this.hostInput.disabled = true;
-                this.portInput.disabled = true;
                 
                 console.log('[RemoteClient] WebSocket connected');
             };
@@ -123,8 +118,6 @@ class RemoteVisualizerClient {
         
         this.connectBtn.disabled = false;
         this.disconnectBtn.disabled = true;
-        this.hostInput.disabled = false;
-        this.portInput.disabled = false;
     }
     
     handleMessage(data) {
