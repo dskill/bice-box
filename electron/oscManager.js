@@ -16,7 +16,7 @@ class OSCManager
         
         // WebSocket broadcast throttling
         this.lastBroadcastTime = 0;
-        this.broadcastThrottleMs = 33; // ~30 FPS (1000ms / 30fps = 33ms)
+        this.broadcastThrottleMs = 16; // ~60 FPS (1000ms / 60fps = 16ms)
         this.lastAudioData = null;
         
         if (this.shouldLogMessageRate) {
