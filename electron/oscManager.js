@@ -78,8 +78,10 @@ class OSCManager
                     // Combined data now contains 1026 samples: first 512 are waveform, next 512 are FFT, then RMS input, then RMS output.
                     this.mainWindow.webContents.send('combined-data', combinedData);
                     
-                    // Store the latest audio data for throttled broadcasting
-                    this.lastAudioData = combinedData;
+                    // Only store data if we don't already have recent data (avoid accumulation)
+                    if (!this.lastAudioData) {
+                        this.lastAudioData = combinedData;
+                    }
                     
                     // Throttled broadcast to remote visualizer clients via WebSocket
                     this.throttledBroadcast();
@@ -165,13 +167,18 @@ class OSCManager
         // Only broadcast if enough time has passed since the last broadcast
         if (now - this.lastBroadcastTime >= this.broadcastThrottleMs) {
             if (this.broadcastFunction && this.lastAudioData) {
+                // Create a copy of the data to avoid holding references
+                const dataCopy = this.lastAudioData.slice();
                 this.broadcastFunction({
                     type: 'audioData',
                     payload: {
-                        combinedData: this.lastAudioData
+                        combinedData: dataCopy
                     }
                 });
                 this.lastBroadcastTime = now;
+                
+                // Clear the reference to help GC
+                this.lastAudioData = null;
             }
         }
     }

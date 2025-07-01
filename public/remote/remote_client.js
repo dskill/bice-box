@@ -142,8 +142,11 @@ class RemoteVisualizerClient {
             return;
         }
         
-        // Prepare audio texture data (1024x2 RGBA)
-        const audioTextureData = new Uint8Array(1024 * 2 * 4);
+        // Reuse audio texture buffer to avoid allocations
+        if (!this.audioTextureData) {
+            this.audioTextureData = new Uint8Array(1024 * 2 * 4);
+        }
+        const audioTextureData = this.audioTextureData;
         const combinedData = payload.combinedData;
         
         // Extract data arrays (matching VisualizationCanvas.js logic)
