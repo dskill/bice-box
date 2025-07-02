@@ -5,6 +5,7 @@ import WifiSettings from './WifiSettings'; // Import WifiSettings
 import './App.css';
 import { FaSync, FaCheck, FaExclamationTriangle, FaDownload, FaWifi } from 'react-icons/fa';
 import ReactDOM from 'react-dom';
+import QRCode from 'react-qr-code';
 
 const electron = window.electron;
 
@@ -539,8 +540,22 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
                     )}
                 </div>
                 {errorMessage && <div className="effect-management__error">{errorMessage}</div>}
+                
+                                {/* QR Code for Remote Access */}
+                {ipAddress && (
+                    <div className="effect-management__qr-code">
+                        <QRCode 
+                            value={`http://${ipAddress}:31337/remote/`}
+                            size={80}
+                            viewBox={`0 0 256 256`}
+                        />
+                        <p className="effect-management__qr-label">
+                            {ipAddress}
+                        </p>
+                    </div>
+                )}
+                
                 <div className="effect-management__info">
-                    <p>Device IP: {ipAddress}</p>
                     <p>Version: {version}</p>
                 </div>
                 
