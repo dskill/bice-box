@@ -86,13 +86,14 @@
 
 .claude-console-header {
   display: flex;
-  justify-content: flex-end;
+  justify-content: center;
   align-items: center;
   padding: 10px;
   border-bottom: 1px solid #333;
   background: rgba(0, 255, 0, 0.05);
   gap: 10px;
   margin: -15px -15px 10px -15px;
+  min-height: 20px;
 }
 
 .claude-action-button {
@@ -122,7 +123,6 @@
   gap: 8px;
   color: #00ff00;
   font-size: 12px;
-  margin-right: auto;
 }
 
 .claude-thinking-dots {
@@ -145,6 +145,18 @@
   border: 1px solid #333;
   border-radius: 3px;
   white-space: pre-wrap;
+  /* Hide scrollbars */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* Internet Explorer 10+ */
+  /* Enable smooth touch scrolling */
+  -webkit-overflow-scrolling: touch;
+  /* Ensure touch events are handled properly */
+  touch-action: pan-y;
+}
+
+/* Hide scrollbar for webkit browsers */
+.claude-output::-webkit-scrollbar {
+  display: none;
 }
 
 .claude-input-form {

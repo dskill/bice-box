@@ -25,6 +25,13 @@ const ClaudeConsole = ({
     }
   }, [claudeOutput]);
 
+  // Scroll to bottom when console is opened
+  useEffect(() => {
+    if (isOpen && outputRef.current) {
+      outputRef.current.scrollTop = outputRef.current.scrollHeight;
+    }
+  }, [isOpen]);
+
   // Track when Claude starts and stops responding
   useEffect(() => {
     const currentLength = claudeOutput.length;
@@ -70,19 +77,6 @@ const ClaudeConsole = ({
     }
   };
 
-  const handleClearOutput = () => {
-    setClaudeOutput('');
-    setIsClaudeResponding(false);
-    lastOutputLength.current = 0;
-  };
-
-  const handleResetSession = () => {
-    if (electron) {
-      electron.ipcRenderer.send('reset-claude-session');
-    }
-    setIsClaudeResponding(false);
-  };
-
   if (!devMode) {
     return null;
   }
@@ -121,22 +115,6 @@ const ClaudeConsole = ({
       {isOpen && (
         <div className="claude-console">
           <div className="claude-console-header">
-            <button 
-              className="claude-action-button" 
-              onClick={handleClearOutput}
-              title="Clear console output"
-              disabled={isClaudeResponding}
-            >
-              🗑️ Clear
-            </button>
-            <button 
-              className="claude-action-button" 
-              onClick={handleResetSession}
-              title="Start a new conversation"
-              disabled={isClaudeResponding}
-            >
-              🔄 Reset
-            </button>
             {isClaudeResponding && (
               <div className="claude-status-indicator">
                 <span className="claude-thinking-dots">●●●</span>
