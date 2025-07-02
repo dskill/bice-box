@@ -33,7 +33,6 @@ function EffectSelectScreen({
 
   return (
     <div className="effect-select-screen" onClick={handleBackgroundClick}>
-       <button className="close-button" onClick={onClose}>×</button>
        <h2>Select {type === 'preset' ? 'Preset' : type === 'audio' ? 'Audio Source' : 'Visual Source'}</h2>
       <div className="effect-grid"> {/* Keep class name or make it generic? */} 
         {items.map((item) => {
