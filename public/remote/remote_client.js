@@ -153,22 +153,20 @@ class RemoteVisualizerClient {
         const audioTextureData = this.audioTextureData;
         const combinedData = payload.combinedData;
         
-        // Extract data arrays (matching VisualizationCanvas.js logic)
-        const waveformData = combinedData.slice(0, 1024);
-        const fftData = combinedData.slice(1024, 2048);
-        
-        // Extract RMS values (matching VisualizationCanvas.js logic)
+        // Extract RMS values first (no array allocation needed)
         const rmsMultiplier = 1.0; // Same as VisualizationCanvas.js
         const rmsInput = combinedData.length > 2048 ? combinedData[2048] * rmsMultiplier : 0;
         const rmsOutput = combinedData.length > 2049 ? combinedData[2049] * rmsMultiplier : 0;
         
-        // Fill row 0 with FFT data (frequency spectrum) - matching VisualizationCanvas.js
+        // Fill row 0 with FFT data (frequency spectrum) - no array allocation
         for (let i = 0; i < 1024; i++) {
             let fftMagnitude = 0;
             
-            if (i < fftData.length && fftData.length > 0) {
+            // Access FFT data directly from combinedData (indices 1024-2047)
+            const fftIndex = 1024 + i;
+            if (fftIndex < combinedData.length) {
                 // FFT data contains pre-computed magnitudes with logarithmic scaling applied
-                fftMagnitude = fftData[i] || 0;
+                fftMagnitude = combinedData[fftIndex] || 0;
             }
             
             // Normalize to 0-255 range for 8-bit texture (matching VisualizationCanvas.js)
@@ -182,9 +180,10 @@ class RemoteVisualizerClient {
             audioTextureData[row0Index + 3] = 255; // A (opaque)
         }
         
-        // Fill row 1 with waveform data (time domain) - matching VisualizationCanvas.js
+        // Fill row 1 with waveform data (time domain) - no array allocation
         for (let i = 0; i < 1024; i++) {
-            const waveformValue = waveformData[i] !== undefined ? waveformData[i] : 0;
+            // Access waveform data directly from combinedData (indices 0-1023)
+            const waveformValue = i < combinedData.length ? combinedData[i] : 0;
             // Normalize waveform data (assuming it's -1 to 1) to 0-255 for 8-bit texture
             // Use the same formula as VisualizationCanvas.js
             const normalizedWaveform = Math.max(0, Math.min(255, Math.round((waveformValue * 0.5 + 0.5) * 255)));
@@ -311,11 +310,14 @@ class RemoteVisualizerClient {
     }
     
     updateCanvasSize(resolutionScale) {
-        const baseWidth = window.innerWidth;
-        const baseHeight = window.innerHeight;
+        // Use CSS dimensions instead of device pixels to avoid Retina scaling issues
+        const baseWidth = document.documentElement.clientWidth;
+        const baseHeight = document.documentElement.clientHeight;
         
         const newWidth = Math.floor(baseWidth * resolutionScale);
         const newHeight = Math.floor(baseHeight * resolutionScale);
+        
+        console.log(`[RemoteClient] Setting canvas size: ${newWidth}x${newHeight} (scale: ${resolutionScale})`);
         
         this.canvas.width = newWidth;
         this.canvas.height = newHeight;
@@ -341,8 +343,10 @@ class RemoteVisualizerClient {
 
     resizeCanvas() {
         if (this.canvas) {
-            this.canvas.width = window.innerWidth;
-            this.canvas.height = window.innerHeight;
+            // Use CSS dimensions to avoid Retina scaling issues
+            this.canvas.width = document.documentElement.clientWidth;
+            this.canvas.height = document.documentElement.clientHeight;
+            console.log(`[RemoteClient] Canvas resized to: ${this.canvas.width}x${this.canvas.height}`);
         }
     }
 
