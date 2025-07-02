@@ -252,20 +252,19 @@ class RemoteVisualizerClient {
     }
     
     loadSinglePassShader(shaderSource, shaderPath) {
-        // Check for resolution metadata
-        const resolutionScale = this.getResolutionScaleFromMetadata(shaderSource);
+        // Always use full resolution on remote devices (ignore Pi scaling factor)
+        const resolutionScale = 1.0;
         this.updateCanvasSize(resolutionScale);
         
         this.toy.setImage({ source: shaderSource });
         this.toy.play();
         
-        console.log('[RemoteClient] Single-pass shader loaded:', shaderPath);
+        console.log('[RemoteClient] Single-pass shader loaded at full resolution:', shaderPath);
     }
     
     loadMultiPassShader(shaderConfig, shaderPath) {
-        // Check for resolution metadata in the image shader
-        const resolutionScale = shaderConfig.image ? 
-            this.getResolutionScaleFromMetadata(shaderConfig.image) : 1.0;
+        // Always use full resolution on remote devices (ignore Pi scaling factor)
+        const resolutionScale = 1.0;
         this.updateCanvasSize(resolutionScale);
         
         // Set up multi-pass configuration
@@ -303,7 +302,7 @@ class RemoteVisualizerClient {
         
         this.toy.play();
         
-        console.log('[RemoteClient] Multi-pass shader loaded:', shaderPath);
+        console.log('[RemoteClient] Multi-pass shader loaded at full resolution:', shaderPath);
     }
     
     getResolutionScaleFromMetadata(shaderSource) {
