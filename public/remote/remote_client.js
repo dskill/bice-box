@@ -228,10 +228,8 @@ class RemoteVisualizerClient {
         }
         
         try {
-            // Pause current shader
-            if (this.toy) {
-                this.toy.pause();
-            }
+            // Properly clean up the current shader before loading a new one
+            this.cleanupCurrentShader();
             
             if (typeof payload.shaderContent === 'string') {
                 // Single-pass shader
@@ -247,6 +245,40 @@ class RemoteVisualizerClient {
         } catch (error) {
             console.error('[RemoteClient] Error loading shader:', error);
             console.error(`[RemoteClient] Error loading shader: ${payload.shaderPath}`);
+        }
+    }
+    
+    cleanupCurrentShader() {
+        if (this.toy) {
+            console.log('[RemoteClient] Cleaning up current shader resources');
+            
+            // Pause the current shader
+            this.toy.pause();
+            
+            // Force WebGL context cleanup if available
+            if (this.toy.gl) {
+                const gl = this.toy.gl;
+                
+                // Clear any bound textures and framebuffers
+                gl.bindTexture(gl.TEXTURE_2D, null);
+                gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+                gl.bindRenderbuffer(gl.RENDERBUFFER, null);
+                
+                // Clear the canvas
+                gl.clear(gl.COLOR_BUFFER_BIT);
+                
+                // Force a flush to ensure cleanup
+                gl.flush();
+            }
+            
+            // Reset the ShaderToyLite instance by recreating it
+            // This ensures all shader programs and resources are properly cleaned up
+            const canvasId = this.canvas.id;
+            
+            // eslint-disable-next-line no-undef
+            this.toy = new ShaderToyLite(canvasId);
+            
+            console.log('[RemoteClient] ShaderToyLite instance recreated for clean state');
         }
     }
     
