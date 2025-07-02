@@ -6,6 +6,9 @@ class RemoteVisualizerClient {
         this.isConnected = false;
         this.currentShader = null;
         
+        // RMS tracking (matching VisualizationCanvas.js)
+        this.iRMSTime = 0; // Accumulated RMS time
+        
         // Auto-detect host and port from current page URL
         this.detectConnectionInfo();
         
@@ -45,6 +48,7 @@ class RemoteVisualizerClient {
         this.resizeCanvas();
         
         // Initialize ShaderToyLite with canvas ID, not the canvas element
+        // eslint-disable-next-line no-undef
         this.toy = new ShaderToyLite('visualizer-canvas');
         
         // Set up a default shader to show the canvas is working
@@ -153,6 +157,11 @@ class RemoteVisualizerClient {
         const waveformData = combinedData.slice(0, 1024);
         const fftData = combinedData.slice(1024, 2048);
         
+        // Extract RMS values (matching VisualizationCanvas.js logic)
+        const rmsMultiplier = 1.0; // Same as VisualizationCanvas.js
+        const rmsInput = combinedData.length > 2048 ? combinedData[2048] * rmsMultiplier : 0;
+        const rmsOutput = combinedData.length > 2049 ? combinedData[2049] * rmsMultiplier : 0;
+        
         // Fill row 0 with FFT data (frequency spectrum) - matching VisualizationCanvas.js
         for (let i = 0; i < 1024; i++) {
             let fftMagnitude = 0;
@@ -190,6 +199,24 @@ class RemoteVisualizerClient {
         // Update ShaderToyLite audio texture
         if (this.toy && this.toy.updateAudioTexture) {
             this.toy.updateAudioTexture(audioTextureData, 1024, 2);
+        }
+        
+        // Update RMS uniforms (matching VisualizationCanvas.js logic)
+        if (this.toy) {
+            // Set RMS input and output values
+            if (this.toy.setRMSInput) {
+                this.toy.setRMSInput(rmsInput);
+            }
+            if (this.toy.setRMSOutput) {
+                this.toy.setRMSOutput(rmsOutput);
+            }
+            
+            // Update and set iRMSTime (matching VisualizationCanvas.js)
+            // magic number to get it closer to iTime roughly
+            this.iRMSTime += rmsOutput * 0.025; // Accumulate rmsOutput
+            if (this.toy.setRmsTime) {
+                this.toy.setRmsTime(this.iRMSTime);
+            }
         }
     }
     
