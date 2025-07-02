@@ -264,8 +264,7 @@ function createWindow()
           mainWindow.webContents.send('effect-updated', synths[effectIndex]);
           console.log(`Sent effect-updated for ${effectName} with new SC params to renderer.`);
           
-          // Broadcast current shader to remote visualizer clients
-          broadcastCurrentShader(synths[effectIndex]);
+
             // -----------------------
           } else {
             console.error(`CALLBACK: mainWindow or webContents not available!`);
@@ -287,8 +286,7 @@ function createWindow()
             mainWindow.webContents.send('effect-updated', synths[effectIndex]);
             console.log(`Sent effect-updated for initial effect ${effectName} with new SC params to renderer.`);
             
-            // Broadcast current shader to remote visualizer clients
-            broadcastCurrentShader(synths[effectIndex]);
+
             // -----------------------
           } else {
             console.error(`CALLBACK: mainWindow or webContents not available for initial effect!`);
@@ -815,11 +813,7 @@ function reloadShaderEffect(glslFilePath) {
                     mainWindow.webContents.send('shader-effect-updated', shaderUpdateData);
                     console.log(`Sent shader-effect-updated for active single-pass shader: ${glslFilePath}`);
                     
-                    // Also broadcast to remote visualizer clients
-                    broadcast({
-                        type: 'shaderUpdate',
-                        payload: shaderUpdateData
-                    });
+
                 }
                 reloadedViaActive = true;
             } catch (error) {
@@ -843,11 +837,7 @@ function reloadShaderEffect(glslFilePath) {
                         mainWindow.webContents.send('shader-effect-updated', shaderUpdateData);
                         console.log(`Sent shader-effect-updated for active multi-pass shader: ${activeVisualSourcePath}`);
                         
-                        // Also broadcast to remote visualizer clients
-                        broadcast({
-                            type: 'shaderUpdate',
-                            payload: shaderUpdateData
-                        });
+
                     }
                     reloadedViaActive = true;
                 } catch (error) {
@@ -881,11 +871,7 @@ function reloadShaderEffect(glslFilePath) {
                             mainWindow.webContents.send('shader-effect-updated', shaderUpdateData);
                             console.log(`Sent shader-effect-updated for preset (single-pass): ${synth.shaderPath}`);
                             
-                            // Also broadcast to remote visualizer clients
-                            broadcast({
-                                type: 'shaderUpdate',
-                                payload: shaderUpdateData
-                            });
+
                         }
                     }
                 } catch (error) {
@@ -914,11 +900,7 @@ function reloadShaderEffect(glslFilePath) {
                                 mainWindow.webContents.send('shader-effect-updated', shaderUpdateData);
                                 console.log(`Sent shader-effect-updated for preset (multi-pass): ${synth.shaderPath}`);
                                 
-                                // Also broadcast to remote visualizer clients
-                                broadcast({
-                                    type: 'shaderUpdate',
-                                    payload: shaderUpdateData
-                                });
+
                             }
                         }
                     } catch (error) {
@@ -939,6 +921,45 @@ ipcMain.on('set-current-audio-source', (event, filePath) => {
 ipcMain.on('set-current-visual-source', (event, filePath) => {
   activeVisualSourcePath = filePath;
   console.log(`IPC: Active visual source path set to: ${activeVisualSourcePath}`);
+  
+  // Also broadcast to remote clients if it's a shader
+  if (filePath && filePath.includes('shaders/')) {
+    console.log('[RemoteBroadcast] Manual visualizer selection detected, broadcasting to remote clients');
+    try {
+      const effectsRepoPath = getEffectsRepoPath();
+      const { loadMultiPassShader } = require('./superColliderManager');
+      
+      // Check if it's a single-pass or multi-pass shader
+      if (filePath.toLowerCase().endsWith('.glsl')) {
+        // Single-pass shader
+        const fullShaderPath = path.join(effectsRepoPath, filePath);
+        const shaderContent = fs.readFileSync(fullShaderPath, 'utf-8');
+        
+        broadcast({
+          type: 'shaderUpdate',
+          payload: {
+            shaderPath: filePath,
+            shaderContent: shaderContent
+          }
+        });
+        console.log(`[RemoteBroadcast] Broadcast single-pass shader: ${filePath}`);
+      } else {
+        // Multi-pass shader (base name)
+        const multiPassConfig = loadMultiPassShader(filePath, effectsRepoPath);
+        
+        broadcast({
+          type: 'shaderUpdate',
+          payload: {
+            shaderPath: filePath,
+            shaderContent: multiPassConfig
+          }
+        });
+        console.log(`[RemoteBroadcast] Broadcast multi-pass shader: ${filePath}`);
+      }
+    } catch (error) {
+      console.error('[RemoteBroadcast] Error broadcasting manual shader selection:', error);
+    }
+  }
 });
 
 // Add this IPC handler for updating effect parameters
@@ -1625,43 +1646,34 @@ ipcMain.on('reset-claude-session', () => {
 });
 
 function setupRemoteVisualizerBroadcasting() {
-  console.log('[RemoteBroadcast] Setting up WebSocket broadcasting for remote visualizer');
+  console.log('[RemoteBroadcast] Setting up centralized WebSocket broadcasting');
   
-  // Listen for visualizer changes and broadcast shader updates
-  ipcMain.on('broadcast-shader-update', (event, shaderData) => {
-    console.log('[RemoteBroadcast] Broadcasting shader update:', shaderData.shaderPath);
-    broadcast({
-      type: 'shaderUpdate',
-      payload: shaderData
-    });
-  });
+  // Intercept all shader-related IPC messages to the frontend and auto-broadcast them
+  const originalSend = mainWindow.webContents.send;
+  mainWindow.webContents.send = function(channel, ...args) {
+    // Call the original send first
+    originalSend.call(this, channel, ...args);
+    
+    // Then check if we should broadcast to remote clients
+    if (channel === 'shader-effect-updated' || channel === 'auto-visualizer-loaded') {
+      const data = args[0];
+      if (data && (data.shaderPath || data.path) && (data.shaderContent || data.content)) {
+        console.log('[RemoteBroadcast] Auto-broadcasting shader update:', data.shaderPath || data.path);
+        broadcast({
+          type: 'shaderUpdate',
+          payload: {
+            shaderPath: data.shaderPath || data.path,
+            shaderContent: data.shaderContent || data.content
+          }
+        });
+      }
+    } else if (channel === 'visual-effect-updated') {
+      // For p5.js updates, we don't broadcast since remote only handles shaders
+      console.log('[RemoteBroadcast] P5.js visual update detected, not broadcasting (remote only supports shaders)');
+    }
+  };
   
-  console.log('[RemoteBroadcast] WebSocket broadcasting setup complete');
+  console.log('[RemoteBroadcast] Centralized broadcasting setup complete');
 }
 
-// Helper function to broadcast current shader when effect changes
-function broadcastCurrentShader(effect) {
-  console.log('[RemoteBroadcast] broadcastCurrentShader called with effect:', effect ? effect.name : 'null');
-  
-  if (!effect) {
-    console.log('[RemoteBroadcast] No effect provided');
-    return;
-  }
-  
-  console.log('[RemoteBroadcast] Effect has shaderPath:', effect.shaderPath);
-  console.log('[RemoteBroadcast] Effect has shaderContent:', !!effect.shaderContent);
-  
-  if (!effect.shaderPath || !effect.shaderContent) {
-    console.log('[RemoteBroadcast] No shader to broadcast for current effect');
-    return;
-  }
-  
-  console.log('[RemoteBroadcast] Broadcasting current shader:', effect.shaderPath);
-  broadcast({
-    type: 'shaderUpdate',
-    payload: {
-      shaderPath: effect.shaderPath,
-      shaderContent: effect.shaderContent
-    }
-  });
-}
+
