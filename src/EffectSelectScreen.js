@@ -19,18 +19,30 @@ function EffectSelectScreen({
     let startY = 0;
     let lastY = 0;
     let isDragging = false;
+    let pointerId = null;
 
-    const handleTouchStart = (e) => {
-      startY = e.touches[0].clientY;
+    const handlePointerStart = (e) => {
+      // Only handle touch/pen input, not mouse
+      if (e.pointerType === 'mouse') return;
+      
+      console.log('EffectSelectScreen: Pointer start detected', e.pointerType);
+      startY = e.clientY;
       lastY = startY;
       isDragging = true;
+      pointerId = e.pointerId;
+      
+      // Capture pointer events
+      container.setPointerCapture(e.pointerId);
+      e.preventDefault();
     };
 
-    const handleTouchMove = (e) => {
-      if (!isDragging) return;
+    const handlePointerMove = (e) => {
+      if (!isDragging || e.pointerId !== pointerId) return;
       
-      e.preventDefault(); // Prevent default scrolling behavior
-      const currentY = e.touches[0].clientY;
+      console.log('EffectSelectScreen: Pointer move detected', e.clientY);
+      e.preventDefault();
+      
+      const currentY = e.clientY;
       const deltaY = lastY - currentY;
       
       // Scroll the container
@@ -38,20 +50,31 @@ function EffectSelectScreen({
       lastY = currentY;
     };
 
-    const handleTouchEnd = () => {
+    const handlePointerEnd = (e) => {
+      if (e.pointerId !== pointerId) return;
+      
+      console.log('EffectSelectScreen: Pointer end detected');
       isDragging = false;
+      pointerId = null;
+      
+      // Release pointer capture
+      if (container.hasPointerCapture(e.pointerId)) {
+        container.releasePointerCapture(e.pointerId);
+      }
     };
 
-    // Add touch event listeners
-    container.addEventListener('touchstart', handleTouchStart, { passive: false });
-    container.addEventListener('touchmove', handleTouchMove, { passive: false });
-    container.addEventListener('touchend', handleTouchEnd, { passive: true });
+    // Add pointer event listeners
+    container.addEventListener('pointerdown', handlePointerStart);
+    container.addEventListener('pointermove', handlePointerMove);
+    container.addEventListener('pointerup', handlePointerEnd);
+    container.addEventListener('pointercancel', handlePointerEnd);
 
     // Cleanup
     return () => {
-      container.removeEventListener('touchstart', handleTouchStart);
-      container.removeEventListener('touchmove', handleTouchMove);
-      container.removeEventListener('touchend', handleTouchEnd);
+      container.removeEventListener('pointerdown', handlePointerStart);
+      container.removeEventListener('pointermove', handlePointerMove);
+      container.removeEventListener('pointerup', handlePointerEnd);
+      container.removeEventListener('pointercancel', handlePointerEnd);
     };
   }, []);
   

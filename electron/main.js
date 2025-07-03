@@ -13,6 +13,10 @@ if (!isDev) {
   app.commandLine.appendSwitch('enable-unsafe-es3-apis'); // expose WebGL2 (ES3) path
 }
 
+/* ---- Touch Events for Raspberry Pi ---- */
+app.commandLine.appendSwitch('touch-events', 'enabled');
+app.commandLine.appendSwitch('enable-pinch');
+
 /* --------------------------------- */
 
 const path = require('path');
