@@ -58,16 +58,25 @@ const ClaudeConsole = ({
   }, [isDragging]);
 
   const handlePointerDown = (e) => {
-    // Only handle touch/pen input, not mouse
-    if (e.pointerType === 'mouse') return;
+    console.log('ClaudeConsole: handlePointerDown called', {
+      pointerType: e.pointerType,
+      pointerId: e.pointerId,
+      clientX: e.clientX,
+      clientY: e.clientY,
+      target: e.target?.className,
+      currentTarget: e.currentTarget?.className
+    });
     
-    console.log('ClaudeConsole: Pointer start detected', e.pointerType);
+    // Process all pointer events - on Pi, touch shows up as 'mouse'
+    console.log('ClaudeConsole: Processing pointer down event');
     e.preventDefault();
     e.stopPropagation();
     
     setIsDragging(true);
     initialYRef.current = e.clientY;
     initialScrollTopRef.current = outputRef.current?.scrollTop || 0;
+    
+    console.log('ClaudeConsole: State updated - isDragging should be true');
   };
 
   // Auto-scroll to bottom when new output is added

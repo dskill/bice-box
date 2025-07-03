@@ -86,13 +86,8 @@ function EffectSelectScreen({
       currentTarget: e.currentTarget?.className
     });
     
-    // Only handle touch/pen input, not mouse
-    if (e.pointerType === 'mouse') {
-      console.log('EffectSelectScreen: Ignoring mouse pointer event');
-      return;
-    }
-    
-    console.log('EffectSelectScreen: Processing touch/pen pointer down');
+    // Process all pointer events - on Pi, touch shows up as 'mouse'
+    console.log('EffectSelectScreen: Processing pointer down event');
     e.preventDefault();
     e.stopPropagation();
     
@@ -142,40 +137,6 @@ function EffectSelectScreen({
       }}
     >
        <h2>Select {type === 'preset' ? 'Preset' : type === 'audio' ? 'Audio Source' : 'Visual Source'}</h2>
-       
-       {/* Debug test element */}
-       <div 
-         style={{
-           position: 'absolute',
-           top: '10px',
-           right: '10px',
-           width: '100px',
-           height: '50px',
-           background: 'red',
-           color: 'white',
-           display: 'flex',
-           alignItems: 'center',
-           justifyContent: 'center',
-           fontSize: '12px',
-           touchAction: 'none'
-         }}
-         onPointerDown={(e) => {
-           console.log('DEBUG ELEMENT: Pointer down detected!', {
-             pointerType: e.pointerType,
-             pointerId: e.pointerId,
-             clientX: e.clientX,
-             clientY: e.clientY
-           });
-         }}
-         onPointerMove={(e) => {
-           console.log('DEBUG ELEMENT: Pointer move detected!', e.clientY);
-         }}
-         onPointerUp={(e) => {
-           console.log('DEBUG ELEMENT: Pointer up detected!');
-         }}
-       >
-         Touch Test
-       </div>
        
       <div className="effect-grid"> {/* Keep class name or make it generic? */} 
         {items.map((item) => {
