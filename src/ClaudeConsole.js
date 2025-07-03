@@ -8,37 +8,69 @@ const ClaudeConsole = ({
   isRecording, 
   onRecordingStart, 
   onRecordingEnd,
-  devMode 
+  devMode,
+  conversationState,
+  onConversationStateChange
 }) => {
   const [claudeOutput, setClaudeOutput] = useState('');
   const [claudeInput, setClaudeInput] = useState('');
   const [isClaudeResponding, setIsClaudeResponding] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const outputRef = useRef(null);
   const lastOutputLength = useRef(0);
+  const hasDraggedBeyondThresholdRef = useRef(false);
   const initialYRef = useRef(null);
+  const initialXRef = useRef(null);
   const initialScrollTopRef = useRef(null);
+  const lastUpdateTimeRef = useRef(0);
+  const DRAG_THRESHOLD = 15;
 
   const electron = window.electron;
 
   // Touch scrolling handler for Raspberry Pi compatibility - matching ParamFader pattern
   useEffect(() => {
     const handlePointerMove = (e) => {
-      if (!isDragging || !outputRef.current) return;
+      if (!isDragging || !outputRef.current) {
+        return;
+      }
+      
+      // Throttle updates to 60fps like ParamFader
+      const now = performance.now();
+      if (now - lastUpdateTimeRef.current < 16) return;
+      lastUpdateTimeRef.current = now;
       
       e.preventDefault();
       
       const deltaY = e.clientY - initialYRef.current;
+      const deltaX = e.clientX - initialXRef.current;
+      const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+      
+      // Check if we've moved beyond the drag threshold (only set once)
+      if (distance > DRAG_THRESHOLD && !hasDraggedBeyondThresholdRef.current) {
+        hasDraggedBeyondThresholdRef.current = true;
+      }
+      
       const newScrollTop = initialScrollTopRef.current - deltaY;
       
-      // Scroll the container
-      outputRef.current.scrollTop = newScrollTop;
+      // Use requestAnimationFrame for smooth scrolling
+      requestAnimationFrame(() => {
+        if (outputRef.current) {
+          outputRef.current.scrollTop = newScrollTop;
+        }
+      });
     };
 
     const handlePointerUp = () => {
       setIsDragging(false);
       initialYRef.current = null;
+      initialXRef.current = null;
       initialScrollTopRef.current = null;
+      
+      // Reset drag threshold flag after a short delay to allow click prevention
+      setTimeout(() => {
+        hasDraggedBeyondThresholdRef.current = false;
+      }, 100);
     };
 
     if (isDragging) {
@@ -60,9 +92,14 @@ const ClaudeConsole = ({
     e.preventDefault();
     e.stopPropagation();
     
+    const scrollTop = outputRef.current?.scrollTop || 0;
+    
     setIsDragging(true);
+    hasDraggedBeyondThresholdRef.current = false;
     initialYRef.current = e.clientY;
-    initialScrollTopRef.current = outputRef.current?.scrollTop || 0;
+    initialXRef.current = e.clientX;
+    initialScrollTopRef.current = scrollTop;
+    lastUpdateTimeRef.current = 0; // Reset throttle timer
   };
 
   // Auto-scroll to bottom when new output is added
@@ -116,12 +153,25 @@ const ClaudeConsole = ({
 
   const handleSendToClaude = (e) => {
     e.preventDefault();
+    // Prevent submission if user has dragged beyond threshold
+    if (hasDraggedBeyondThresholdRef.current) {
+      return;
+    }
+    
     if (claudeInput.trim() && electron) {
       const message = claudeInput.trim();
       setIsClaudeResponding(true);
       electron.ipcRenderer.send('send-to-claude', message);
       setClaudeInput('');
     }
+  };
+
+  const handleCloseClick = () => {
+    // Prevent close if user has dragged beyond threshold
+    if (hasDraggedBeyondThresholdRef.current) {
+      return;
+    }
+    onClose();
   };
 
   if (!devMode) {
@@ -154,7 +204,7 @@ const ClaudeConsole = ({
       )}
       
       {isOpen && (
-        <button className="claude-console-close" onClick={onClose}>
+        <button className="claude-console-close" onClick={handleCloseClick}>
           ×
         </button>
       )}

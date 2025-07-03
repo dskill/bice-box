@@ -11,10 +11,11 @@ function EffectSelectScreen({
 }) {
   const containerRef = useRef(null);
   const [isDragging, setIsDragging] = useState(false);
-  const [hasDraggedBeyondThreshold, setHasDraggedBeyondThreshold] = useState(false);
+  const hasDraggedBeyondThresholdRef = useRef(false); // Use ref instead of state to avoid re-renders
   const initialYRef = useRef(null);
   const initialXRef = useRef(null);
   const initialScrollTopRef = useRef(null);
+  const lastUpdateTimeRef = useRef(0); // For throttling
   const DRAG_THRESHOLD = 15; // pixels - if user moves more than this, it's a drag not a tap
   
   // Touch scrolling handler for Raspberry Pi compatibility - matching ParamFader pattern
@@ -24,21 +25,30 @@ function EffectSelectScreen({
         return;
       }
       
+      // Throttle updates to 60fps like ParamFader
+      const now = performance.now();
+      if (now - lastUpdateTimeRef.current < 16) return;
+      lastUpdateTimeRef.current = now;
+      
       e.preventDefault();
       
       const deltaY = e.clientY - initialYRef.current;
       const deltaX = e.clientX - initialXRef.current;
       const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
       
-      // Check if we've moved beyond the drag threshold
-      if (distance > DRAG_THRESHOLD && !hasDraggedBeyondThreshold) {
-        setHasDraggedBeyondThreshold(true);
+      // Check if we've moved beyond the drag threshold (only set once)
+      if (distance > DRAG_THRESHOLD && !hasDraggedBeyondThresholdRef.current) {
+        hasDraggedBeyondThresholdRef.current = true;
       }
       
       const newScrollTop = initialScrollTopRef.current - deltaY;
       
-      // Scroll the container
-      containerRef.current.scrollTop = newScrollTop;
+      // Use requestAnimationFrame for smooth scrolling
+      requestAnimationFrame(() => {
+        if (containerRef.current) {
+          containerRef.current.scrollTop = newScrollTop;
+        }
+      });
     };
 
     const handlePointerUp = () => {
@@ -49,7 +59,7 @@ function EffectSelectScreen({
       
       // Reset drag threshold flag after a short delay to allow click prevention
       setTimeout(() => {
-        setHasDraggedBeyondThreshold(false);
+        hasDraggedBeyondThresholdRef.current = false;
       }, 100);
     };
 
@@ -65,7 +75,7 @@ function EffectSelectScreen({
       window.removeEventListener('pointerup', handlePointerUp);
       window.removeEventListener('pointercancel', handlePointerUp);
     };
-  }, [isDragging, hasDraggedBeyondThreshold]);
+  }, [isDragging]); // Removed hasDraggedBeyondThreshold from dependencies
 
   const handlePointerDown = (e) => {
     // Process all pointer events - on Pi, touch shows up as 'mouse'
@@ -75,15 +85,16 @@ function EffectSelectScreen({
     const scrollTop = containerRef.current?.scrollTop || 0;
     
     setIsDragging(true);
-    setHasDraggedBeyondThreshold(false);
+    hasDraggedBeyondThresholdRef.current = false;
     initialYRef.current = e.clientY;
     initialXRef.current = e.clientX;
     initialScrollTopRef.current = scrollTop;
+    lastUpdateTimeRef.current = 0; // Reset throttle timer
   };
 
   const handleButtonClick = (item, itemPath) => {
     // Prevent click if user has dragged beyond threshold
-    if (hasDraggedBeyondThreshold) {
+    if (hasDraggedBeyondThresholdRef.current) {
       return;
     }
     

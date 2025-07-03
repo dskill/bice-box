@@ -726,6 +726,9 @@ button:active {
   -ms-overflow-style: none; /* Internet Explorer 10+ */
   /* Enable smooth touch scrolling */
   -webkit-overflow-scrolling: touch;
+  /* Performance optimizations for Pi */
+  will-change: scroll-position;
+  contain: layout style paint;
 }
 
 /* Hide scrollbar for webkit browsers */
@@ -762,6 +765,10 @@ button:active {
   align-items: center;
   justify-content: center;
   padding: 10px;
+  /* Performance optimizations */
+  transform: translateZ(0); /* Force GPU layer */
+  backface-visibility: hidden;
+  will-change: transform;
 }
 
 /* Remove the ::before pseudo-element since we don't need the waveform effect anymore */
