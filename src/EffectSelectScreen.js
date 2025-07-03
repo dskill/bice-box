@@ -16,34 +16,60 @@ function EffectSelectScreen({
   
   // Touch scrolling handler for Raspberry Pi compatibility - matching ParamFader pattern
   useEffect(() => {
+    console.log('EffectSelectScreen: useEffect triggered, isDragging =', isDragging);
+    
     const handlePointerMove = (e) => {
-      if (!isDragging || !containerRef.current) return;
+      console.log('EffectSelectScreen: handlePointerMove called', {
+        isDragging,
+        hasContainer: !!containerRef.current,
+        pointerType: e.pointerType,
+        pointerId: e.pointerId,
+        clientY: e.clientY
+      });
       
-      console.log('EffectSelectScreen: Pointer move detected', e.clientY);
+      if (!isDragging || !containerRef.current) {
+        console.log('EffectSelectScreen: Skipping pointer move - isDragging:', isDragging, 'hasContainer:', !!containerRef.current);
+        return;
+      }
+      
+      console.log('EffectSelectScreen: Processing pointer move', e.clientY);
       e.preventDefault();
       
       const deltaY = e.clientY - initialYRef.current;
       const newScrollTop = initialScrollTopRef.current - deltaY;
+      
+      console.log('EffectSelectScreen: Scroll calculation', {
+        currentY: e.clientY,
+        initialY: initialYRef.current,
+        deltaY: deltaY,
+        initialScrollTop: initialScrollTopRef.current,
+        newScrollTop: newScrollTop,
+        currentScrollTop: containerRef.current.scrollTop
+      });
       
       // Scroll the container
       containerRef.current.scrollTop = newScrollTop;
     };
 
     const handlePointerUp = () => {
-      console.log('EffectSelectScreen: Pointer end detected');
+      console.log('EffectSelectScreen: handlePointerUp called');
       setIsDragging(false);
       initialYRef.current = null;
       initialScrollTopRef.current = null;
     };
 
     if (isDragging) {
+      console.log('EffectSelectScreen: Adding window event listeners for dragging');
       // Add listeners to window like ParamFader does
       window.addEventListener('pointermove', handlePointerMove, { passive: false });
       window.addEventListener('pointerup', handlePointerUp);
       window.addEventListener('pointercancel', handlePointerUp);
+    } else {
+      console.log('EffectSelectScreen: Not dragging, no listeners added');
     }
 
     return () => {
+      console.log('EffectSelectScreen: Cleaning up event listeners');
       window.removeEventListener('pointermove', handlePointerMove);
       window.removeEventListener('pointerup', handlePointerUp);
       window.removeEventListener('pointercancel', handlePointerUp);
@@ -51,16 +77,36 @@ function EffectSelectScreen({
   }, [isDragging]);
 
   const handlePointerDown = (e) => {
-    // Only handle touch/pen input, not mouse
-    if (e.pointerType === 'mouse') return;
+    console.log('EffectSelectScreen: handlePointerDown called', {
+      pointerType: e.pointerType,
+      pointerId: e.pointerId,
+      clientX: e.clientX,
+      clientY: e.clientY,
+      target: e.target?.className,
+      currentTarget: e.currentTarget?.className
+    });
     
-    console.log('EffectSelectScreen: Pointer start detected', e.pointerType);
+    // Only handle touch/pen input, not mouse
+    if (e.pointerType === 'mouse') {
+      console.log('EffectSelectScreen: Ignoring mouse pointer event');
+      return;
+    }
+    
+    console.log('EffectSelectScreen: Processing touch/pen pointer down');
     e.preventDefault();
     e.stopPropagation();
     
+    const scrollTop = containerRef.current?.scrollTop || 0;
+    console.log('EffectSelectScreen: Setting initial values', {
+      clientY: e.clientY,
+      scrollTop: scrollTop
+    });
+    
     setIsDragging(true);
     initialYRef.current = e.clientY;
-    initialScrollTopRef.current = containerRef.current?.scrollTop || 0;
+    initialScrollTopRef.current = scrollTop;
+    
+    console.log('EffectSelectScreen: State updated - isDragging should be true');
   };
   
   // Use a generic name prettifier or just display the name directly
@@ -96,6 +142,41 @@ function EffectSelectScreen({
       }}
     >
        <h2>Select {type === 'preset' ? 'Preset' : type === 'audio' ? 'Audio Source' : 'Visual Source'}</h2>
+       
+       {/* Debug test element */}
+       <div 
+         style={{
+           position: 'absolute',
+           top: '10px',
+           right: '10px',
+           width: '100px',
+           height: '50px',
+           background: 'red',
+           color: 'white',
+           display: 'flex',
+           alignItems: 'center',
+           justifyContent: 'center',
+           fontSize: '12px',
+           touchAction: 'none'
+         }}
+         onPointerDown={(e) => {
+           console.log('DEBUG ELEMENT: Pointer down detected!', {
+             pointerType: e.pointerType,
+             pointerId: e.pointerId,
+             clientX: e.clientX,
+             clientY: e.clientY
+           });
+         }}
+         onPointerMove={(e) => {
+           console.log('DEBUG ELEMENT: Pointer move detected!', e.clientY);
+         }}
+         onPointerUp={(e) => {
+           console.log('DEBUG ELEMENT: Pointer up detected!');
+         }}
+       >
+         Touch Test
+       </div>
+       
       <div className="effect-grid"> {/* Keep class name or make it generic? */} 
         {items.map((item) => {
           const itemPath = getPathForItem(item);

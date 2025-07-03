@@ -99,16 +99,39 @@ const ParamFader = ({ param, onParamChange, useRotatedLabels }) => {
   }, [faderValue, name, throttledSendOsc, throttledOnParamChange]);
 
   useEffect(() => {
+    console.log('ParamFader: useEffect triggered, isDragging =', isDragging);
+    
     const handleMouseMove = (e) => {
-      if (!isDragging) return;
+      console.log('ParamFader: handleMouseMove called', {
+        isDragging,
+        eventType: e.type,
+        pointerType: e.pointerType,
+        pointerId: e.pointerId,
+        clientY: e.clientY,
+        target: e.target?.className
+      });
+      
+      if (!isDragging) {
+        console.log('ParamFader: Skipping - not dragging');
+        return;
+      }
       
       const now = performance.now();
-      if (now - lastUpdateTime.current < 16) return; // 60fps throttle
+      if (now - lastUpdateTime.current < 16) {
+        console.log('ParamFader: Skipping - throttled');
+        return; // 60fps throttle
+      }
       lastUpdateTime.current = now;
 
-      if (!faderTrackRef.current) return;
+      if (!faderTrackRef.current) {
+        console.log('ParamFader: Skipping - no fader track ref');
+        return;
+      }
       const faderHeight = faderTrackRef.current.offsetHeight;
-      if (faderHeight === 0) return;
+      if (faderHeight === 0) {
+        console.log('ParamFader: Skipping - zero fader height');
+        return;
+      }
 
       let deltaY = (e.clientY - initialMouseYRef.current) / faderHeight;
       const valueRange = range[1] - range[0];
@@ -116,29 +139,52 @@ const ParamFader = ({ param, onParamChange, useRotatedLabels }) => {
         initialValueRef.current + -(deltaY * valueRange)
       ));
 
+      console.log('ParamFader: Value calculation', {
+        currentY: e.clientY,
+        initialY: initialMouseYRef.current,
+        faderHeight: faderHeight,
+        deltaY: deltaY,
+        valueRange: valueRange,
+        initialValue: initialValueRef.current,
+        newValue: newValue,
+        currentValue: currentValueRef.current
+      });
+
       // Use a more effective threshold based on the value range
       const threshold = Math.max(0.001, valueRange * 0.0001); // Adaptive threshold
       if (Math.abs(newValue - currentValueRef.current) > threshold) {
+        console.log('ParamFader: Setting new fader value:', newValue);
         setFaderValue(newValue);
+      } else {
+        console.log('ParamFader: Value change below threshold');
       }
     };
 
     const handleMouseUp = (e) => {
+      console.log('ParamFader: handleMouseUp called', {
+        eventType: e.type,
+        pointerType: e.pointerType,
+        pointerId: e.pointerId
+      });
       setIsDragging(false);
       initialValueRef.current = null;
       initialMouseYRef.current = null;
     };
 
     if (isDragging) {
+      console.log('ParamFader: Adding window event listeners for dragging');
       // Add both mouse and pointer events
       window.addEventListener('mousemove', handleMouseMove, { passive: false });
       window.addEventListener('pointermove', handleMouseMove, { passive: false });
       window.addEventListener('mouseup', handleMouseUp);
       window.addEventListener('pointerup', handleMouseUp);
       window.addEventListener('pointercancel', handleMouseUp); // Handle touch cancellation
+    } else {
+      console.log('ParamFader: Not dragging, no listeners added');
     }
 
     return () => {
+      console.log('ParamFader: Cleaning up event listeners');
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('pointermove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
@@ -148,11 +194,29 @@ const ParamFader = ({ param, onParamChange, useRotatedLabels }) => {
   }, [isDragging, range]);
 
   const handleMouseDown = (e) => {
+    console.log('ParamFader: handleMouseDown called', {
+      eventType: e.type,
+      pointerType: e.pointerType,
+      pointerId: e.pointerId,
+      clientX: e.clientX,
+      clientY: e.clientY,
+      target: e.target?.className,
+      currentTarget: e.currentTarget?.className
+    });
+    
     e.preventDefault();
     e.stopPropagation(); // Prevent event bubbling
+    
+    console.log('ParamFader: Setting initial values', {
+      clientY: e.clientY,
+      faderValue: faderValue
+    });
+    
     setIsDragging(true);
     initialValueRef.current = faderValue;
     initialMouseYRef.current = e.clientY;
+    
+    console.log('ParamFader: State updated - isDragging should be true');
   };
 
   const faderPosition = ((faderValue - range[0]) / (range[1] - range[0])) * 100;
