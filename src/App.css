@@ -726,6 +726,9 @@ button:active {
   -ms-overflow-style: none; /* Internet Explorer 10+ */
   /* Enable smooth touch scrolling */
   -webkit-overflow-scrolling: touch;
+  /* GPU optimization for scrolling container only */
+  transform: translateZ(0);
+  will-change: scroll-position;
 }
 
 /* Hide scrollbar for webkit browsers */
