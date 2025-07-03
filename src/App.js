@@ -249,14 +249,15 @@ function App() {
         const updatedSynths = prevSynths.map(synth => 
           synth.name === updatedEffect.name ? updatedEffect : synth
         );
-        console.log('Updated synths:', updatedSynths);
+        console.log(`Updated synths: ${updatedSynths.length} effects, updated "${updatedEffect.name}"`);
         return updatedSynths;
       });
 
       // Check if the updated effect matches the current audio source (for direct audio selection)
       if (currentAudioSource && updatedEffect.scFilePath && 
           currentAudioSource.toLowerCase() === updatedEffect.scFilePath.toLowerCase()) {
-        console.log('Updated effect matches current audio source, updating currentAudioParams:', updatedEffect.params);
+        const paramCount = updatedEffect.params ? Object.keys(updatedEffect.params).length : 0;
+        console.log(`Updated effect matches current audio source "${updatedEffect.name}": ${paramCount} parameters`);
         if (updatedEffect.params) {
           setCurrentAudioParams(updatedEffect.params);
         }
