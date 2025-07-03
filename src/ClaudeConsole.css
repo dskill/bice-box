@@ -150,11 +150,6 @@
   -ms-overflow-style: none; /* Internet Explorer 10+ */
   /* Enable smooth touch scrolling */
   -webkit-overflow-scrolling: touch;
-  /* Performance optimizations for Pi */
-  will-change: scroll-position;
-  contain: layout style paint;
-  transform: translateZ(0); /* Force GPU layer */
-  backface-visibility: hidden;
 }
 
 /* Hide scrollbar for webkit browsers */
