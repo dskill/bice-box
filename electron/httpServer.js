@@ -232,6 +232,10 @@ function startHttpServer(getState) {
 
     wss.on('connection', (ws) => {
         console.log('[WSS] Client connected');
+        
+        // Send current shader state to newly connected client
+        sendCurrentShaderToClient(ws, getState);
+        
         ws.on('close', () => {
             console.log('[WSS] Client disconnected');
         });
@@ -239,6 +243,66 @@ function startHttpServer(getState) {
             console.error('[WSS] WebSocket error:', error);
         });
     });
+}
+
+function sendCurrentShaderToClient(ws, getState) {
+    const WebSocket = require('ws');
+    
+    if (ws.readyState !== WebSocket.OPEN) {
+        return;
+    }
+    
+    try {
+        const currentEffect = getState.getCurrentEffect();
+        const { loadVisualizerContent, getActiveVisualSourcePath } = getState;
+        
+        // Try to get shader path from current effect first, then from active visual source
+        let shaderPath = null;
+        if (currentEffect && currentEffect.shaderPath) {
+            shaderPath = currentEffect.shaderPath;
+        } else if (getActiveVisualSourcePath) {
+            const activeVisualPath = getActiveVisualSourcePath();
+            if (activeVisualPath && activeVisualPath.includes('shaders/')) {
+                shaderPath = activeVisualPath;
+            }
+        }
+        
+        if (!shaderPath) {
+            console.log('[WSS] No current shader to send to new client');
+            return;
+        }
+        
+        console.log(`[WSS] Sending current shader to new client: ${shaderPath}`);
+        
+        // Load the shader content - pass the function itself, not the result
+        const result = loadVisualizerContent(shaderPath, getState.getEffectsRepoPath);
+        
+        if (result.error) {
+            console.error(`[WSS] Error loading shader content for new client: ${result.error}`);
+            return;
+        }
+        
+        // Only send if it's actually a shader (not p5.js)
+        if (result.type !== 'shader') {
+            console.log(`[WSS] Current visualizer is not a shader (${result.type}), not sending to remote client`);
+            return;
+        }
+        
+        // Send the shader to the specific client
+        const message = {
+            type: 'shaderUpdate',
+            payload: {
+                shaderPath: shaderPath,
+                shaderContent: result.content
+            }
+        };
+        
+        ws.send(JSON.stringify(message));
+        console.log(`[WSS] Sent current shader ${shaderPath} to new client`);
+        
+    } catch (error) {
+        console.error('[WSS] Error sending current shader to new client:', error);
+    }
 }
 
 function broadcast(message) {
