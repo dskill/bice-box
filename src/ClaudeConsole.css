@@ -150,8 +150,6 @@
   -ms-overflow-style: none; /* Internet Explorer 10+ */
   /* Enable smooth touch scrolling */
   -webkit-overflow-scrolling: touch;
-  /* Ensure touch events are handled properly */
-  touch-action: pan-y;
 }
 
 /* Hide scrollbar for webkit browsers */

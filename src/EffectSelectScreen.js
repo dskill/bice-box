@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 // Color import might be removed if styling changes significantly
 // import { colors } from './theme';
 
@@ -10,73 +10,58 @@ function EffectSelectScreen({
   currentSourcePath // The path of the currently active source for highlighting
 }) {
   const containerRef = useRef(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const initialYRef = useRef(null);
+  const initialScrollTopRef = useRef(null);
   
-  // Touch scrolling handler for Raspberry Pi compatibility
+  // Touch scrolling handler for Raspberry Pi compatibility - matching ParamFader pattern
   useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    let startY = 0;
-    let lastY = 0;
-    let isDragging = false;
-    let pointerId = null;
-
-    const handlePointerStart = (e) => {
-      // Only handle touch/pen input, not mouse
-      if (e.pointerType === 'mouse') return;
-      
-      console.log('EffectSelectScreen: Pointer start detected', e.pointerType);
-      startY = e.clientY;
-      lastY = startY;
-      isDragging = true;
-      pointerId = e.pointerId;
-      
-      // Capture pointer events
-      container.setPointerCapture(e.pointerId);
-      e.preventDefault();
-    };
-
     const handlePointerMove = (e) => {
-      if (!isDragging || e.pointerId !== pointerId) return;
+      if (!isDragging || !containerRef.current) return;
       
       console.log('EffectSelectScreen: Pointer move detected', e.clientY);
       e.preventDefault();
       
-      const currentY = e.clientY;
-      const deltaY = lastY - currentY;
+      const deltaY = e.clientY - initialYRef.current;
+      const newScrollTop = initialScrollTopRef.current - deltaY;
       
       // Scroll the container
-      container.scrollTop += deltaY;
-      lastY = currentY;
+      containerRef.current.scrollTop = newScrollTop;
     };
 
-    const handlePointerEnd = (e) => {
-      if (e.pointerId !== pointerId) return;
-      
+    const handlePointerUp = () => {
       console.log('EffectSelectScreen: Pointer end detected');
-      isDragging = false;
-      pointerId = null;
-      
-      // Release pointer capture
-      if (container.hasPointerCapture(e.pointerId)) {
-        container.releasePointerCapture(e.pointerId);
-      }
+      setIsDragging(false);
+      initialYRef.current = null;
+      initialScrollTopRef.current = null;
     };
 
-    // Add pointer event listeners
-    container.addEventListener('pointerdown', handlePointerStart);
-    container.addEventListener('pointermove', handlePointerMove);
-    container.addEventListener('pointerup', handlePointerEnd);
-    container.addEventListener('pointercancel', handlePointerEnd);
+    if (isDragging) {
+      // Add listeners to window like ParamFader does
+      window.addEventListener('pointermove', handlePointerMove, { passive: false });
+      window.addEventListener('pointerup', handlePointerUp);
+      window.addEventListener('pointercancel', handlePointerUp);
+    }
 
-    // Cleanup
     return () => {
-      container.removeEventListener('pointerdown', handlePointerStart);
-      container.removeEventListener('pointermove', handlePointerMove);
-      container.removeEventListener('pointerup', handlePointerEnd);
-      container.removeEventListener('pointercancel', handlePointerEnd);
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+      window.removeEventListener('pointercancel', handlePointerUp);
     };
-  }, []);
+  }, [isDragging]);
+
+  const handlePointerDown = (e) => {
+    // Only handle touch/pen input, not mouse
+    if (e.pointerType === 'mouse') return;
+    
+    console.log('EffectSelectScreen: Pointer start detected', e.pointerType);
+    e.preventDefault();
+    e.stopPropagation();
+    
+    setIsDragging(true);
+    initialYRef.current = e.clientY;
+    initialScrollTopRef.current = containerRef.current?.scrollTop || 0;
+  };
   
   // Use a generic name prettifier or just display the name directly
   const prettifyName = (name) => {
@@ -104,6 +89,11 @@ function EffectSelectScreen({
       className="effect-select-screen" 
       onClick={handleBackgroundClick}
       ref={containerRef}
+      onPointerDown={handlePointerDown}
+      style={{ 
+        touchAction: 'none', // Match ParamFader
+        cursor: isDragging ? 'grabbing' : 'grab'
+      }}
     >
        <h2>Select {type === 'preset' ? 'Preset' : type === 'audio' ? 'Audio Source' : 'Visual Source'}</h2>
       <div className="effect-grid"> {/* Keep class name or make it generic? */} 

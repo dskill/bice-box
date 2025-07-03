@@ -13,77 +13,62 @@ const ClaudeConsole = ({
   const [claudeOutput, setClaudeOutput] = useState('');
   const [claudeInput, setClaudeInput] = useState('');
   const [isClaudeResponding, setIsClaudeResponding] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const outputRef = useRef(null);
   const lastOutputLength = useRef(0);
+  const initialYRef = useRef(null);
+  const initialScrollTopRef = useRef(null);
 
   const electron = window.electron;
 
-  // Touch scrolling handler for Raspberry Pi compatibility
+  // Touch scrolling handler for Raspberry Pi compatibility - matching ParamFader pattern
   useEffect(() => {
-    const container = outputRef.current;
-    if (!container) return;
-
-    let startY = 0;
-    let lastY = 0;
-    let isDragging = false;
-    let pointerId = null;
-
-    const handlePointerStart = (e) => {
-      // Only handle touch/pen input, not mouse
-      if (e.pointerType === 'mouse') return;
-      
-      console.log('ClaudeConsole: Pointer start detected', e.pointerType);
-      startY = e.clientY;
-      lastY = startY;
-      isDragging = true;
-      pointerId = e.pointerId;
-      
-      // Capture pointer events
-      container.setPointerCapture(e.pointerId);
-      e.preventDefault();
-    };
-
     const handlePointerMove = (e) => {
-      if (!isDragging || e.pointerId !== pointerId) return;
+      if (!isDragging || !outputRef.current) return;
       
       console.log('ClaudeConsole: Pointer move detected', e.clientY);
       e.preventDefault();
       
-      const currentY = e.clientY;
-      const deltaY = lastY - currentY;
+      const deltaY = e.clientY - initialYRef.current;
+      const newScrollTop = initialScrollTopRef.current - deltaY;
       
       // Scroll the container
-      container.scrollTop += deltaY;
-      lastY = currentY;
+      outputRef.current.scrollTop = newScrollTop;
     };
 
-    const handlePointerEnd = (e) => {
-      if (e.pointerId !== pointerId) return;
-      
+    const handlePointerUp = () => {
       console.log('ClaudeConsole: Pointer end detected');
-      isDragging = false;
-      pointerId = null;
-      
-      // Release pointer capture
-      if (container.hasPointerCapture(e.pointerId)) {
-        container.releasePointerCapture(e.pointerId);
-      }
+      setIsDragging(false);
+      initialYRef.current = null;
+      initialScrollTopRef.current = null;
     };
 
-    // Add pointer event listeners
-    container.addEventListener('pointerdown', handlePointerStart);
-    container.addEventListener('pointermove', handlePointerMove);
-    container.addEventListener('pointerup', handlePointerEnd);
-    container.addEventListener('pointercancel', handlePointerEnd);
+    if (isDragging) {
+      // Add listeners to window like ParamFader does
+      window.addEventListener('pointermove', handlePointerMove, { passive: false });
+      window.addEventListener('pointerup', handlePointerUp);
+      window.addEventListener('pointercancel', handlePointerUp);
+    }
 
-    // Cleanup
     return () => {
-      container.removeEventListener('pointerdown', handlePointerStart);
-      container.removeEventListener('pointermove', handlePointerMove);
-      container.removeEventListener('pointerup', handlePointerEnd);
-      container.removeEventListener('pointercancel', handlePointerEnd);
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+      window.removeEventListener('pointercancel', handlePointerUp);
     };
-  }, []);
+  }, [isDragging]);
+
+  const handlePointerDown = (e) => {
+    // Only handle touch/pen input, not mouse
+    if (e.pointerType === 'mouse') return;
+    
+    console.log('ClaudeConsole: Pointer start detected', e.pointerType);
+    e.preventDefault();
+    e.stopPropagation();
+    
+    setIsDragging(true);
+    initialYRef.current = e.clientY;
+    initialScrollTopRef.current = outputRef.current?.scrollTop || 0;
+  };
 
   // Auto-scroll to bottom when new output is added
   useEffect(() => {
@@ -193,6 +178,11 @@ const ClaudeConsole = ({
           <pre 
             className="claude-output" 
             ref={outputRef}
+            onPointerDown={handlePointerDown}
+            style={{ 
+              touchAction: 'none', // Match ParamFader
+              cursor: isDragging ? 'grabbing' : 'default'
+            }}
           >
             {claudeOutput}
           </pre>
