@@ -18,6 +18,50 @@ const ClaudeConsole = ({
 
   const electron = window.electron;
 
+  // Touch scrolling handler for Raspberry Pi compatibility
+  useEffect(() => {
+    const container = outputRef.current;
+    if (!container) return;
+
+    let startY = 0;
+    let lastY = 0;
+    let isDragging = false;
+
+    const handleTouchStart = (e) => {
+      startY = e.touches[0].clientY;
+      lastY = startY;
+      isDragging = true;
+    };
+
+    const handleTouchMove = (e) => {
+      if (!isDragging) return;
+      
+      e.preventDefault(); // Prevent default scrolling behavior
+      const currentY = e.touches[0].clientY;
+      const deltaY = lastY - currentY;
+      
+      // Scroll the container
+      container.scrollTop += deltaY;
+      lastY = currentY;
+    };
+
+    const handleTouchEnd = () => {
+      isDragging = false;
+    };
+
+    // Add touch event listeners
+    container.addEventListener('touchstart', handleTouchStart, { passive: false });
+    container.addEventListener('touchmove', handleTouchMove, { passive: false });
+    container.addEventListener('touchend', handleTouchEnd, { passive: true });
+
+    // Cleanup
+    return () => {
+      container.removeEventListener('touchstart', handleTouchStart);
+      container.removeEventListener('touchmove', handleTouchMove);
+      container.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, []);
+
   // Auto-scroll to bottom when new output is added
   useEffect(() => {
     if (outputRef.current) {

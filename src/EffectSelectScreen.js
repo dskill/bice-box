@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 // Color import might be removed if styling changes significantly
 // import { colors } from './theme';
 
@@ -9,6 +9,51 @@ function EffectSelectScreen({
   onClose, // Function called to close the screen
   currentSourcePath // The path of the currently active source for highlighting
 }) {
+  const containerRef = useRef(null);
+  
+  // Touch scrolling handler for Raspberry Pi compatibility
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    let startY = 0;
+    let lastY = 0;
+    let isDragging = false;
+
+    const handleTouchStart = (e) => {
+      startY = e.touches[0].clientY;
+      lastY = startY;
+      isDragging = true;
+    };
+
+    const handleTouchMove = (e) => {
+      if (!isDragging) return;
+      
+      e.preventDefault(); // Prevent default scrolling behavior
+      const currentY = e.touches[0].clientY;
+      const deltaY = lastY - currentY;
+      
+      // Scroll the container
+      container.scrollTop += deltaY;
+      lastY = currentY;
+    };
+
+    const handleTouchEnd = () => {
+      isDragging = false;
+    };
+
+    // Add touch event listeners
+    container.addEventListener('touchstart', handleTouchStart, { passive: false });
+    container.addEventListener('touchmove', handleTouchMove, { passive: false });
+    container.addEventListener('touchend', handleTouchEnd, { passive: true });
+
+    // Cleanup
+    return () => {
+      container.removeEventListener('touchstart', handleTouchStart);
+      container.removeEventListener('touchmove', handleTouchMove);
+      container.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, []);
   
   // Use a generic name prettifier or just display the name directly
   const prettifyName = (name) => {
@@ -32,7 +77,11 @@ function EffectSelectScreen({
   };
 
   return (
-    <div className="effect-select-screen" onClick={handleBackgroundClick}>
+    <div 
+      className="effect-select-screen" 
+      onClick={handleBackgroundClick}
+      ref={containerRef}
+    >
        <h2>Select {type === 'preset' ? 'Preset' : type === 'audio' ? 'Audio Source' : 'Visual Source'}</h2>
       <div className="effect-grid"> {/* Keep class name or make it generic? */} 
         {items.map((item) => {
