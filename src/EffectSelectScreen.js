@@ -11,97 +11,83 @@ function EffectSelectScreen({
 }) {
   const containerRef = useRef(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [hasDraggedBeyondThreshold, setHasDraggedBeyondThreshold] = useState(false);
   const initialYRef = useRef(null);
+  const initialXRef = useRef(null);
   const initialScrollTopRef = useRef(null);
+  const DRAG_THRESHOLD = 15; // pixels - if user moves more than this, it's a drag not a tap
   
   // Touch scrolling handler for Raspberry Pi compatibility - matching ParamFader pattern
   useEffect(() => {
-    console.log('EffectSelectScreen: useEffect triggered, isDragging =', isDragging);
-    
     const handlePointerMove = (e) => {
-      console.log('EffectSelectScreen: handlePointerMove called', {
-        isDragging,
-        hasContainer: !!containerRef.current,
-        pointerType: e.pointerType,
-        pointerId: e.pointerId,
-        clientY: e.clientY
-      });
-      
       if (!isDragging || !containerRef.current) {
-        console.log('EffectSelectScreen: Skipping pointer move - isDragging:', isDragging, 'hasContainer:', !!containerRef.current);
         return;
       }
       
-      console.log('EffectSelectScreen: Processing pointer move', e.clientY);
       e.preventDefault();
       
       const deltaY = e.clientY - initialYRef.current;
-      const newScrollTop = initialScrollTopRef.current - deltaY;
+      const deltaX = e.clientX - initialXRef.current;
+      const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
       
-      console.log('EffectSelectScreen: Scroll calculation', {
-        currentY: e.clientY,
-        initialY: initialYRef.current,
-        deltaY: deltaY,
-        initialScrollTop: initialScrollTopRef.current,
-        newScrollTop: newScrollTop,
-        currentScrollTop: containerRef.current.scrollTop
-      });
+      // Check if we've moved beyond the drag threshold
+      if (distance > DRAG_THRESHOLD && !hasDraggedBeyondThreshold) {
+        setHasDraggedBeyondThreshold(true);
+      }
+      
+      const newScrollTop = initialScrollTopRef.current - deltaY;
       
       // Scroll the container
       containerRef.current.scrollTop = newScrollTop;
     };
 
     const handlePointerUp = () => {
-      console.log('EffectSelectScreen: handlePointerUp called');
       setIsDragging(false);
       initialYRef.current = null;
+      initialXRef.current = null;
       initialScrollTopRef.current = null;
+      
+      // Reset drag threshold flag after a short delay to allow click prevention
+      setTimeout(() => {
+        setHasDraggedBeyondThreshold(false);
+      }, 100);
     };
 
     if (isDragging) {
-      console.log('EffectSelectScreen: Adding window event listeners for dragging');
       // Add listeners to window like ParamFader does
       window.addEventListener('pointermove', handlePointerMove, { passive: false });
       window.addEventListener('pointerup', handlePointerUp);
       window.addEventListener('pointercancel', handlePointerUp);
-    } else {
-      console.log('EffectSelectScreen: Not dragging, no listeners added');
     }
 
     return () => {
-      console.log('EffectSelectScreen: Cleaning up event listeners');
       window.removeEventListener('pointermove', handlePointerMove);
       window.removeEventListener('pointerup', handlePointerUp);
       window.removeEventListener('pointercancel', handlePointerUp);
     };
-  }, [isDragging]);
+  }, [isDragging, hasDraggedBeyondThreshold]);
 
   const handlePointerDown = (e) => {
-    console.log('EffectSelectScreen: handlePointerDown called', {
-      pointerType: e.pointerType,
-      pointerId: e.pointerId,
-      clientX: e.clientX,
-      clientY: e.clientY,
-      target: e.target?.className,
-      currentTarget: e.currentTarget?.className
-    });
-    
     // Process all pointer events - on Pi, touch shows up as 'mouse'
-    console.log('EffectSelectScreen: Processing pointer down event');
     e.preventDefault();
     e.stopPropagation();
     
     const scrollTop = containerRef.current?.scrollTop || 0;
-    console.log('EffectSelectScreen: Setting initial values', {
-      clientY: e.clientY,
-      scrollTop: scrollTop
-    });
     
     setIsDragging(true);
+    setHasDraggedBeyondThreshold(false);
     initialYRef.current = e.clientY;
+    initialXRef.current = e.clientX;
     initialScrollTopRef.current = scrollTop;
+  };
+
+  const handleButtonClick = (item, itemPath) => {
+    // Prevent click if user has dragged beyond threshold
+    if (hasDraggedBeyondThreshold) {
+      return;
+    }
     
-    console.log('EffectSelectScreen: State updated - isDragging should be true');
+    onSelect(type === 'visual' ? item : itemPath);
   };
   
   // Use a generic name prettifier or just display the name directly
@@ -146,7 +132,7 @@ function EffectSelectScreen({
             <div className="effect-tile-wrapper" key={type === 'preset' ? item.name : itemPath}> 
               <button
                 className={`effect-tile ${isActive ? 'active' : ''}`}
-                onClick={() => onSelect(type === 'visual' ? item : itemPath)}
+                onClick={() => handleButtonClick(item, itemPath)}
                 disabled={!itemPath} // Disable if path is missing (shouldn't happen with derived lists)
               >
                 {/* Display the name from the item */}

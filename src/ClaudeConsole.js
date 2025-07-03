@@ -26,7 +26,6 @@ const ClaudeConsole = ({
     const handlePointerMove = (e) => {
       if (!isDragging || !outputRef.current) return;
       
-      console.log('ClaudeConsole: Pointer move detected', e.clientY);
       e.preventDefault();
       
       const deltaY = e.clientY - initialYRef.current;
@@ -37,7 +36,6 @@ const ClaudeConsole = ({
     };
 
     const handlePointerUp = () => {
-      console.log('ClaudeConsole: Pointer end detected');
       setIsDragging(false);
       initialYRef.current = null;
       initialScrollTopRef.current = null;
@@ -58,25 +56,13 @@ const ClaudeConsole = ({
   }, [isDragging]);
 
   const handlePointerDown = (e) => {
-    console.log('ClaudeConsole: handlePointerDown called', {
-      pointerType: e.pointerType,
-      pointerId: e.pointerId,
-      clientX: e.clientX,
-      clientY: e.clientY,
-      target: e.target?.className,
-      currentTarget: e.currentTarget?.className
-    });
-    
     // Process all pointer events - on Pi, touch shows up as 'mouse'
-    console.log('ClaudeConsole: Processing pointer down event');
     e.preventDefault();
     e.stopPropagation();
     
     setIsDragging(true);
     initialYRef.current = e.clientY;
     initialScrollTopRef.current = outputRef.current?.scrollTop || 0;
-    
-    console.log('ClaudeConsole: State updated - isDragging should be true');
   };
 
   // Auto-scroll to bottom when new output is added
