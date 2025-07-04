@@ -18,6 +18,18 @@ function startHttpServer(getState) {
 
     const app = express();
     app.use(express.json());
+    
+    // Add CORS headers for MCP requests
+    app.use('/mcp', (req, res, next) => {
+        res.header('Access-Control-Allow-Origin', '*');
+        res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+        res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+        if (req.method === 'OPTIONS') {
+            res.status(200).end();
+            return;
+        }
+        next();
+    });
 
     // Serve static files for the remote visualizer client
     // In development, serve from the source public directory
@@ -74,7 +86,10 @@ function startHttpServer(getState) {
                     result = {
                         protocolVersion: '2024-11-05',
                         capabilities: {
-                            tools: {}
+                            tools: {},
+                            authentication: {
+                                type: 'none'
+                            }
                         },
                         serverInfo: {
                             name: 'bice-box-tools',
@@ -162,6 +177,16 @@ function startHttpServer(getState) {
                 case 'tools/call':
                     result = await handleToolCall(params, getState);
                     break;
+                
+                case 'notifications/initialized':
+                    // This is a notification, so we don't send a response
+                    console.log('[MCP] Client initialized successfully');
+                    if (isNotification) return res.status(204).send();
+                    return res.json({
+                        jsonrpc: '2.0',
+                        result: {},
+                        id: id
+                    });
                     
                 default:
                     if (isNotification) return res.status(204).send();
