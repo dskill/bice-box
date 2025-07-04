@@ -1,11 +1,27 @@
 const { spawn } = require('child_process');
 const path = require('path');
 
+//
+// Import the Claude Code TypeScript SDK
+// Note: The TypeScript SDK is stateless - each query() call spawns a new Claude Code process
+// Unfortunately the shell command (via -p) is ALSO stateless.  Each call spawns a new claude process
+// each call reinitializes MPC, and other stuff. 
+// but its difficult to know where the worst latency is coming from
+//
+let claudeSDK;
+try {
+    claudeSDK = require('@anthropic-ai/claude-code');
+} catch (error) {
+    console.warn('Claude Code SDK not available, falling back to shell commands:', error.message);
+}
+
 class ClaudeManager {
     constructor(effectsRepoPath) {
         this.effectsRepoPath = effectsRepoPath;
         this.currentSessionId = null;
         this.mainWindow = null;
+        this.useTypeScriptSDK = true; // Default to shell command for session persistence
+        this.abortController = null;
     }
 
     setMainWindow(mainWindow) {
@@ -16,8 +32,117 @@ class ClaudeManager {
         return !!this.currentSessionId;
     }
 
-    async sendMessage(message) {
-        console.log(`Sending message to Claude SDK: ${message}`);
+    // New method using TypeScript SDK
+    async sendMessageWithSDK(message) {
+        if (!claudeSDK) {
+            throw new Error('Claude Code SDK not available');
+        }
+
+        console.log(`Sending message to Claude SDK (TypeScript): ${message}`);
+        console.log(`Current session ID: ${this.currentSessionId}`);
+        
+        // Cancel any previous request
+        if (this.abortController) {
+            this.abortController.abort();
+        }
+        
+        this.abortController = new AbortController();
+        
+        const options = {
+            maxTurns: 3,
+            cwd: this.effectsRepoPath
+        };
+
+        try {
+            const messages = [];
+            
+            // Prepare query parameters with session continuation
+            const queryParams = {
+                prompt: message,
+                abortController: this.abortController,
+                options
+            };
+
+            // Add session continuation if available
+            if (this.currentSessionId) {
+                queryParams.options.resume = this.currentSessionId;
+                console.log(`Added resume parameter with session ID: ${this.currentSessionId}`);
+            }
+            
+            // Stream messages from the SDK
+            for await (const sdkMessage of claudeSDK.query(queryParams)) {
+                messages.push(sdkMessage);
+                this.handleSDKStreamMessage(sdkMessage);
+            }
+
+            // Find the result message to extract session ID and metadata
+            const resultMessage = messages.find(msg => msg.type === 'result');
+            if (resultMessage) {
+                // Store session ID for future requests
+                if (resultMessage.session_id) {
+                    this.currentSessionId = resultMessage.session_id;
+                    console.log(`Stored session ID: ${this.currentSessionId}`);
+                }
+                
+                // Send final metadata
+                if (resultMessage.total_cost_usd) {
+                    this.sendToRenderer(`\n💰 Cost: $${resultMessage.total_cost_usd.toFixed(4)} | Duration: ${resultMessage.duration_ms}ms | Turns: ${resultMessage.num_turns}\n`);
+                }
+                
+                return resultMessage;
+            }
+            
+            return { type: 'result', subtype: 'success', result: 'Success' };
+            
+        } catch (error) {
+            if (error.name === 'AbortError') {
+                console.log('Claude SDK request was aborted');
+                throw new Error('Request was cancelled');
+            }
+            console.error('Claude SDK error:', error);
+            throw error;
+        }
+    }
+
+    // Handle streaming messages from TypeScript SDK
+    handleSDKStreamMessage(sdkMessage) {
+        console.log(`SDK Stream message type: ${sdkMessage.type}, subtype: ${sdkMessage.subtype || 'N/A'}`);
+        
+        switch (sdkMessage.type) {
+            case 'system':
+                if (sdkMessage.subtype === 'init') {
+                    console.log(`Claude SDK session initialized with model: ${sdkMessage.model}`);
+                }
+                break;
+                
+            case 'user':
+                // User message - already displayed when we sent it
+                break;
+                
+            case 'assistant':
+                const content = sdkMessage.message?.content?.[0];
+                if (content?.type === 'text' && content.text) {
+                    // Stream the assistant's text response in real-time
+                    this.sendToRenderer(content.text);
+                } else if (content?.type === 'tool_use') {
+                    this.sendToRenderer(`\n🔧 Using tool: ${content.name}\n`);
+                }
+                break;
+                
+            case 'result':
+                if (sdkMessage.is_error) {
+                    this.sendToRenderer(`\n❌ Error: ${sdkMessage.error || 'Unknown error'}\n`);
+                }
+                break;
+                
+            default:
+                console.log(`Unhandled SDK stream message type: ${sdkMessage.type}`);
+        }
+    }
+
+    // Original shell command implementation
+    async sendMessageWithShell(message) {
+        console.log(`Sending message to Claude SDK (Shell): ${message}`);
         
         const claudeCommand = 'claude';
         
@@ -144,6 +269,55 @@ class ClaudeManager {
         });
     }
 
+    // Main sendMessage method that tries TypeScript SDK first, then falls back to shell
+    async sendMessage(message) {
+        console.log(`Claude Manager - Using ${this.useTypeScriptSDK ? 'TypeScript SDK' : 'Shell Command'}`);
+        
+        try {
+            if (this.useTypeScriptSDK) {
+                return await this.sendMessageWithSDK(message);
+            } else {
+                return await this.sendMessageWithShell(message);
+            }
+        } catch (error) {
+            // If TypeScript SDK fails, try shell command as fallback
+            if (this.useTypeScriptSDK) {
+                console.warn('TypeScript SDK failed, falling back to shell command:', error.message);
+                this.sendToRenderer(`\n⚠️ TypeScript SDK failed, falling back to shell command...\n`);
+                return await this.sendMessageWithShell(message);
+            } else {
+                throw error;
+            }
+        }
+    }
+
+    // Method to toggle between SDK implementations
+    toggleSDKImplementation() {
+        if (claudeSDK) {
+            this.useTypeScriptSDK = !this.useTypeScriptSDK;
+            const implementation = this.useTypeScriptSDK ? 'TypeScript SDK' : 'Shell Command';
+            console.log(`Switched to ${implementation}`);
+            this.sendToRenderer(`\n🔄 Switched to ${implementation}\n`);
+        } else {
+            this.sendToRenderer(`\n❌ TypeScript SDK not available\n`);
+        }
+    }
+
+    // Method to get current implementation info
+    getImplementationInfo() {
+        const info = {
+            hasSDK: !!claudeSDK,
+            currentImplementation: this.useTypeScriptSDK ? 'TypeScript SDK' : 'Shell Command',
+            canToggle: !!claudeSDK,
+            explanation: {
+                shellCommand: 'Supports persistent sessions and conversation continuity. Each message continues the previous conversation.',
+                typeScriptSDK: 'Stateless design - each query starts a new Claude Code process. Better for single-shot operations but not for conversations.'
+            },
+            recommendation: 'Use Shell Command for chat interfaces requiring session persistence.'
+        };
+        return info;
+    }
+
     handleStreamMessage(message) {
         console.log(`Stream message type: ${message.type}, subtype: ${message.subtype || 'N/A'}`);
         
@@ -182,6 +356,12 @@ class ClaudeManager {
     resetSession() {
         console.log('Resetting Claude session');
         this.currentSessionId = null;
+        
+        // Cancel any ongoing SDK request
+        if (this.abortController) {
+            this.abortController.abort();
+            this.abortController = null;
+        }
     }
 
     // Send response to renderer if mainWindow is available
