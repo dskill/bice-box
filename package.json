@@ -2,7 +2,7 @@
   "name": "bice-box",
   "main": "electron/main.js",
   "homepage": ".",
-  "version": "0.1.156",
+  "version": "0.1.157",
   "private": true,
   "dependencies": {
     "@anthropic-ai/claude-code": "^1.0.43",
