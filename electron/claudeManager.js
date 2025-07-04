@@ -178,10 +178,12 @@ class ClaudeManager {
         
         const homeDir = process.env.HOME;
         const nvmBinPath = process.env.NVM_BIN;
+        const claudeCliPath = homeDir ? path.join(homeDir, '.claude', 'local', 'node_modules', '.bin') : null;
 
         const extendedPath = [
             process.env.PATH,
             nvmBinPath, // Add NVM's binary path if available
+            claudeCliPath, // Add Claude CLI path if available
             homeDir ? path.join(homeDir, '.local', 'bin') : null,
             '/usr/local/bin',
         ].filter(Boolean).join(path.delimiter);
