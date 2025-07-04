@@ -20,7 +20,7 @@ class ClaudeManager {
         this.effectsRepoPath = effectsRepoPath;
         this.currentSessionId = null;
         this.mainWindow = null;
-        this.useTypeScriptSDK = true; // Default to shell command for session persistence
+        this.useTypeScriptSDK = false; // Default to shell command for session persistence
         this.abortController = null;
     }
 
@@ -100,6 +100,15 @@ class ClaudeManager {
                 throw new Error('Request was cancelled');
             }
             console.error('Claude SDK error:', error);
+            console.error('SDK Error details:', {
+                message: error.message,
+                stack: error.stack,
+                code: error.code,
+                platform: process.platform,
+                arch: process.arch,
+                nodeVersion: process.version,
+                memoryUsage: process.memoryUsage()
+            });
             throw error;
         }
     }
