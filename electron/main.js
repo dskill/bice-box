@@ -1399,8 +1399,8 @@ ipcMain.on('scan-wifi', (event) =>
           }
           return unique;
         }, [])
-        // Filter out networks with weak signals (e.g., below -80 dBm)
-        .filter(network => network.signal_level > -80)
+        // Filter out networks with extremely weak signals (e.g., below -95 dBm)
+        .filter(network => network.signal_level > -95)
         // Sort by signal strength (strongest first)
         .sort((a, b) => b.signal_level - a.signal_level);
 
