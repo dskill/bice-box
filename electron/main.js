@@ -47,6 +47,7 @@ const {
 const generativeEffectManager = require('./generativeEffectManager');
 const wifi = require('node-wifi');
 const { startHttpServer, stopHttpServer, broadcast } = require('./httpServer');
+const pty = require('node-pty');
 
 let mainWindow;
 let oscManager;
@@ -55,6 +56,9 @@ let devMode = false;
 
 let activeAudioSourcePath = null; // To store the path of the user-selected audio effect
 let activeVisualSourcePath = null; // To store the path of the user-selected visual effect
+
+// Terminal management
+const terminals = new Map(); // Store terminal instances by ID
 
 const runGenerator = process.argv.includes('--generate');
 const runHeadlessTest = process.argv.includes('--headless-test');
@@ -1647,6 +1651,104 @@ ipcMain.on('reset-claude-session', () => {
         initializeClaudeManager();
     }
     claudeManager.handleSessionReset();
+});
+
+// --- Terminal Management ---
+
+// Create a new terminal
+ipcMain.on('terminal-create', (event, { id, cols, rows, cwd }) => {
+    console.log(`Creating terminal: ${id} (${cols}x${rows})`);
+    
+    try {
+        // Clean up any existing terminal with the same ID
+        if (terminals.has(id)) {
+            const existingTerminal = terminals.get(id);
+            existingTerminal.kill();
+            terminals.delete(id);
+        }
+        
+        // Create new terminal with proper shell configuration
+        const shell = process.platform === 'win32' ? 'cmd.exe' : (process.env.SHELL || 'zsh');
+        const args = process.platform === 'win32' ? [] : ['-i'];  // Interactive mode
+        
+        const terminal = pty.spawn(shell, args, {
+            name: 'xterm-256color',
+            cols: cols || 80,
+            rows: rows || 24,
+            cwd: cwd || process.cwd(),
+            env: {
+                ...process.env,
+                TERM: 'xterm-256color',
+                COLORTERM: 'truecolor'
+            },
+            encoding: 'utf8'
+        });
+        
+        // Store terminal instance
+        terminals.set(id, terminal);
+        
+        // Handle terminal output
+        terminal.onData((data) => {
+            if (mainWindow && mainWindow.webContents) {
+                mainWindow.webContents.send('terminal-output', { id, data });
+            }
+        });
+        
+        // Handle terminal exit
+        terminal.onExit((code, signal) => {
+            console.log(`Terminal ${id} exited with code ${code}, signal ${signal}`);
+            terminals.delete(id);
+            if (mainWindow && mainWindow.webContents) {
+                mainWindow.webContents.send('terminal-closed', { id, code, signal });
+            }
+        });
+        
+        console.log(`Terminal ${id} created successfully`);
+        
+    } catch (error) {
+        console.error(`Error creating terminal ${id}:`, error);
+    }
+});
+
+// Send data to terminal
+ipcMain.on('terminal-data', (event, { id, data }) => {
+    const terminal = terminals.get(id);
+    if (terminal) {
+        terminal.write(data);
+    } else {
+        console.warn(`Terminal ${id} not found for data input`);
+    }
+});
+
+// Resize terminal
+ipcMain.on('terminal-resize', (event, { id, cols, rows }) => {
+    const terminal = terminals.get(id);
+    if (terminal) {
+        terminal.resize(cols, rows);
+        console.log(`Terminal ${id} resized to ${cols}x${rows}`);
+    } else {
+        console.warn(`Terminal ${id} not found for resize`);
+    }
+});
+
+// Destroy terminal
+ipcMain.on('terminal-destroy', (event, { id }) => {
+    const terminal = terminals.get(id);
+    if (terminal) {
+        terminal.kill();
+        terminals.delete(id);
+        console.log(`Terminal ${id} destroyed`);
+    }
+});
+
+// Clean up terminals when app is closing
+app.on('before-quit', () => {
+    console.log('Cleaning up terminals...');
+    terminals.forEach((terminal, id) => {
+        console.log(`Killing terminal ${id}`);
+        terminal.kill();
+    });
+    terminals.clear();
 });
 
 function setupRemoteVisualizerBroadcasting() {

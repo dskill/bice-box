@@ -74,11 +74,10 @@
   font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
   font-size: 14px;
   padding: 15px;
-  overflow-y: auto;
+  overflow: hidden;
   z-index: 1000;
   border: 1px solid #333;
   border-radius: 8px;
-  white-space: pre-wrap;
   text-align: left;
   display: flex;
   flex-direction: column;
@@ -86,7 +85,7 @@
 
 .claude-console-header {
   display: flex;
-  justify-content: center;
+  justify-content: space-between;
   align-items: center;
   padding: 10px;
   border-bottom: 1px solid #333;
@@ -94,6 +93,12 @@
   gap: 10px;
   margin: -15px -15px 10px -15px;
   min-height: 20px;
+}
+
+.claude-console-title {
+  color: #00ff00;
+  font-weight: bold;
+  font-size: 14px;
 }
 
 .claude-action-button {
@@ -133,6 +138,36 @@
 @keyframes thinking-pulse {
   0%, 100% { opacity: 0.3; }
   50% { opacity: 1; }
+}
+
+.claude-terminal {
+  flex: 1;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 3px;
+  /* Ensure the terminal takes full dimensions */
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+/* Override xterm.js default styles to match our theme */
+.claude-terminal .xterm {
+  padding: 10px;
+  font-family: 'Menlo', 'Monaco', 'Courier New', monospace !important;
+}
+
+.claude-terminal .xterm-viewport {
+  /* Hide scrollbar */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* Internet Explorer 10+ */
+}
+
+.claude-terminal .xterm-viewport::-webkit-scrollbar {
+  display: none;
 }
 
 .claude-output {
