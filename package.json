@@ -48,7 +48,8 @@
     "test:visuals": "node scripts/visual-test-runner.js",
     "farm:audio": "node scripts/generative/farm-audio.js",
     "generate:audio": "electron . --generate",
-    "test": "electron . --headless-test"
+    "test": "electron . --headless-test",
+    "rebuild": "electron-rebuild -f -w node-pty"
   },
   "build": {
     "appId": "com.drewskillman.bicebox",
@@ -78,6 +79,8 @@
         "build/**/*"
       ]
     },
+    "nodeGypRebuild": true,
+    "buildDependenciesFromSource": true,
     "electronDownload": {
       "mirror": "https://github.com/electron/electron/releases/download/"
     },
@@ -129,5 +132,6 @@
     "wait-on": "^8.0.0"
   },
   "description": "Audiovisual Effects Processor",
-  "author": "Drew Skillman <drewskillman@gmail.com>"
+  "author": "Drew Skillman <drewskillman@gmail.com>",
+  "keywords": []
 }
