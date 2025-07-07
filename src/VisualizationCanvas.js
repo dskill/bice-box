@@ -242,7 +242,10 @@ function VisualizationCanvas({
         
         // Update and set iRMSTime.
         // magic number to get it closer to iTime roughly
-        iRMSTimeRef.current += rmsOutput * 0.025; // Accumulate rmsOutput 
+        iRMSTimeRef.current += rmsOutput; // Accumulate rmsOutput 
+        if (isNaN(iRMSTimeRef.current)) {
+          iRMSTimeRef.current = 0;
+        }
         shaderToyInstanceRef.current.setRmsTime(iRMSTimeRef.current);
       }
     } else {
