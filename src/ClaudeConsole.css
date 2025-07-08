@@ -207,4 +207,41 @@
 .claude-send-button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.claude-console-controls {
+  display: flex;
+  gap: 5px;
+  margin-left: auto;
+}
+
+.claude-toggle-button {
+  background: rgba(0, 255, 0, 0.1);
+  border: 1px solid #00ff00;
+  color: #00ff00;
+  padding: 5px 8px;
+  border-radius: 3px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.claude-toggle-button:hover {
+  background: rgba(0, 255, 0, 0.2);
+  transform: scale(1.05);
+}
+
+.claude-toggle-button.active {
+  background: rgba(255, 255, 0, 0.2);
+  border-color: #ffff00;
+  color: #ffff00;
+}
+
+.claude-toggle-button.active:hover {
+  background: rgba(255, 255, 0, 0.3);
 } 

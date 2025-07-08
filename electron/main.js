@@ -513,6 +513,12 @@ app.on('will-quit', async () =>
   // Stop the HTTP server
   stopHttpServer();
 
+  // Cleanup Claude Manager
+  if (claudeManager) {
+    claudeManager.cleanup();
+    console.log('Claude Manager cleaned up');
+  }
+
   // Kill SuperCollider servers
   await killSuperCollider();
 
@@ -1648,6 +1654,8 @@ ipcMain.on('reset-claude-session', () => {
     }
     claudeManager.handleSessionReset();
 });
+
+// Using optimized --continue approach - no toggle needed
 
 function setupRemoteVisualizerBroadcasting() {
   console.log('[RemoteBroadcast] Setting up centralized WebSocket broadcasting');

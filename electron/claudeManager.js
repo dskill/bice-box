@@ -1,27 +1,26 @@
 const { spawn } = require('child_process');
 const path = require('path');
 
-//
-// Import the Claude Code TypeScript SDK
-// Note: The TypeScript SDK is stateless - each query() call spawns a new Claude Code process
-// Unfortunately the shell command (via -p) is ALSO stateless.  Each call spawns a new claude process
-// each call reinitializes MPC, and other stuff. 
-// but its difficult to know where the worst latency is coming from
-//
-let claudeSDK;
-try {
-    claudeSDK = require('@anthropic-ai/claude-code');
-} catch (error) {
-    console.warn('Claude Code SDK not available, falling back to shell commands:', error.message);
-}
-
 class ClaudeManager {
     constructor(effectsRepoPath) {
         this.effectsRepoPath = effectsRepoPath;
         this.currentSessionId = null;
+        this.hasHadConversation = false; // Track if we've had any conversation for --continue
         this.mainWindow = null;
-        this.useTypeScriptSDK = false; // Default to shell command for session persistence
+        this.useTypeScriptSDK = false; // ❌ no SDK
         this.abortController = null;
+        
+        // Streaming JSON input process management (official Claude Code feature)
+        this.streamingProcess = null;
+        this.isStreamingProcessReady = false;
+        this.streamingProcessQueue = [];
+        this.currentStreamingRequest = null;
+        this.useStreamingProcess = true; // ✅ always use JSON-stream worker
+        this.streamingProcessBuffer = '';
+        this.streamingProcessInitialized = false;
+        
+        // Auto-start streaming process
+        this.startStreamingProcess();
     }
 
     setMainWindow(mainWindow) {
@@ -29,141 +28,57 @@ class ClaudeManager {
     }
 
     hasActiveSession() {
-        return !!this.currentSessionId;
+        return this.hasHadConversation;
     }
 
-    // New method using TypeScript SDK
-    async sendMessageWithSDK(message) {
-        if (!claudeSDK) {
-            throw new Error('Claude Code SDK not available');
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    // Start a streaming claude-code process using official streaming JSON input
+    async startStreamingProcess() {
+        if (this.streamingProcess) {
+            console.log('Streaming Claude process already running');
+            return;
         }
 
-        console.log(`Sending message to Claude SDK (TypeScript): ${message}`);
-        console.log(`Current session ID: ${this.currentSessionId}`);
+        console.log('Starting streaming Claude process with official streaming JSON input...');
         
-        // Cancel any previous request
-        if (this.abortController) {
-            this.abortController.abort();
-        }
-        
-        this.abortController = new AbortController();
-        
-        const options = {
-            maxTurns: 3,
-            cwd: this.effectsRepoPath
+        const homeDir = process.env.HOME;
+        const nvmBinPath = process.env.NVM_BIN;
+        const claudeCliPath = homeDir ? path.join(homeDir, '.claude', 'local', 'node_modules', '.bin') : null;
+
+        const extendedPath = [
+            process.env.PATH,
+            nvmBinPath,
+            claudeCliPath,
+            homeDir ? path.join(homeDir, '.local', 'bin') : null,
+            '/usr/local/bin',
+        ].filter(Boolean).join(path.delimiter);
+
+        const cleanEnv = {
+            ...process.env,
+            PATH: extendedPath,
+            ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
+            NODE_OPTIONS: ''
         };
 
-        try {
-            const messages = [];
-            
-            // Prepare query parameters with session continuation
-            const queryParams = {
-                prompt: message,
-                abortController: this.abortController,
-                options
-            };
-
-            // Add session continuation if available
-            if (this.currentSessionId) {
-                queryParams.options.resume = this.currentSessionId;
-                console.log(`Added resume parameter with session ID: ${this.currentSessionId}`);
-            }
-            
-            // Stream messages from the SDK
-            for await (const sdkMessage of claudeSDK.query(queryParams)) {
-                messages.push(sdkMessage);
-                this.handleSDKStreamMessage(sdkMessage);
-            }
-
-            // Find the result message to extract session ID and metadata
-            const resultMessage = messages.find(msg => msg.type === 'result');
-            if (resultMessage) {
-                // Store session ID for future requests
-                if (resultMessage.session_id) {
-                    this.currentSessionId = resultMessage.session_id;
-                    console.log(`Stored session ID: ${this.currentSessionId}`);
-                }
-                
-                // Send final metadata
-                if (resultMessage.total_cost_usd) {
-                    this.sendToRenderer(`\n💰 Cost: $${resultMessage.total_cost_usd.toFixed(4)} | Duration: ${resultMessage.duration_ms}ms | Turns: ${resultMessage.num_turns}\n`);
-                }
-                
-                return resultMessage;
-            }
-            
-            return { type: 'result', subtype: 'success', result: 'Success' };
-            
-        } catch (error) {
-            if (error.name === 'AbortError') {
-                console.log('Claude SDK request was aborted');
-                throw new Error('Request was cancelled');
-            }
-            console.error('Claude SDK error:', error);
-            console.error('SDK Error details:', {
-                message: error.message,
-                stack: error.stack,
-                code: error.code,
-                platform: process.platform,
-                arch: process.arch,
-                nodeVersion: process.version,
-                memoryUsage: process.memoryUsage()
-            });
-            throw error;
-        }
-    }
-
-    // Handle streaming messages from TypeScript SDK
-    handleSDKStreamMessage(sdkMessage) {
-        console.log(`SDK Stream message type: ${sdkMessage.type}, subtype: ${sdkMessage.subtype || 'N/A'}`);
-        
-        switch (sdkMessage.type) {
-            case 'system':
-                if (sdkMessage.subtype === 'init') {
-                    console.log(`Claude SDK session initialized with model: ${sdkMessage.model}`);
-                }
-                break;
-                
-            case 'user':
-                // User message - already displayed when we sent it
-                break;
-                
-            case 'assistant':
-                const content = sdkMessage.message?.content?.[0];
-                if (content?.type === 'text' && content.text) {
-                    // Stream the assistant's text response in real-time
-                    this.sendToRenderer(content.text);
-                } else if (content?.type === 'tool_use') {
-                    this.sendToRenderer(`\n🔧 Using tool: ${content.name}\n`);
-                }
-                break;
-                
-            case 'result':
-                if (sdkMessage.is_error) {
-                    this.sendToRenderer(`\n❌ Error: ${sdkMessage.error || 'Unknown error'}\n`);
-                }
-                break;
-                
-            default:
-                console.log(`Unhandled SDK stream message type: ${sdkMessage.type}`);
-        }
-    }
-
-    // Original shell command implementation
-    async sendMessageWithShell(message) {
-        console.log(`Sending message to Claude SDK (Shell): ${message}`);
-        
-        const claudeCommand = 'claude';
-        
-        // Escape for POSIX shells by replacing every ' with '\'' and wrapping in ''
-        const escapedMessage = `'${message.replace(/'/g, "'\\''")}'`;
-
+        // Start claude with streaming JSON input/output (official feature)
         const commandParts = [
-            claudeCommand,
+            'claude',
             '-p',
-            escapedMessage,
-            '--output-format',
-            'stream-json',
+            '--input-format=stream-json',
+            '--output-format=stream-json',
             '--verbose'
         ];
 
@@ -172,159 +87,314 @@ class ClaudeManager {
         }
 
         const fullCommand = commandParts.join(' ');
+        console.log(`Starting streaming process: ${fullCommand}`);
 
-        console.log(`Executing: ${fullCommand}`);
-        console.log(`Working directory: ${this.effectsRepoPath}`);
-        
-        const homeDir = process.env.HOME;
-        const nvmBinPath = process.env.NVM_BIN;
-        const claudeCliPath = homeDir ? path.join(homeDir, '.claude', 'local', 'node_modules', '.bin') : null;
-
-        const extendedPath = [
-            process.env.PATH,
-            nvmBinPath, // Add NVM's binary path if available
-            claudeCliPath, // Add Claude CLI path if available
-            homeDir ? path.join(homeDir, '.local', 'bin') : null,
-            '/usr/local/bin',
-        ].filter(Boolean).join(path.delimiter);
-
-        // Create clean environment with explicit values
-        const cleanEnv = {
-            ...process.env,
-            PATH: extendedPath,
-            ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
-            NODE_OPTIONS: ''
-        };
-
-        return new Promise((resolve, reject) => {
-            const claudeProcess = spawn(fullCommand, [], {
-                stdio: ['ignore', 'pipe', 'pipe'],
+        try {
+            this.streamingProcess = spawn(fullCommand, [], {
+                stdio: ['pipe', 'pipe', 'pipe'],
                 cwd: this.effectsRepoPath,
                 env: cleanEnv,
                 shell: true
             });
 
-            let buffer = '';
-            let stderr = '';
-            let resultMessage = null;
-            let hasError = false;
+            this.streamingProcess.on('error', (error) => {
+                console.error('Streaming Claude process error:', error);
+                this.handleStreamingProcessError(error);
+            });
 
-            // 2 minute timeout for complex requests
-            const timeout = setTimeout(() => {
-                if (!claudeProcess.killed) {
-                    console.log('Claude process timeout, killing...');
-                    claudeProcess.kill('SIGTERM');
-                    reject(new Error('Claude process timed out after 220 seconds'));
-                }
-            }, 220000);
+            this.streamingProcess.on('close', (code) => {
+                console.log(`Streaming Claude process closed with code: ${code}`);
+                this.handleStreamingProcessClose(code);
+            });
 
-            claudeProcess.stdout.on('data', (data) => {
-                buffer += data.toString();
-                
-                // Process complete JSON lines
-                const lines = buffer.split('\n');
-                buffer = lines.pop() || ''; // Keep incomplete line in buffer
-                
-                for (const line of lines) {
-                    if (line.trim()) {
-                        try {
-                            const message = JSON.parse(line);
-                            this.handleStreamMessage(message);
-                            
-                            // Store result message for final processing
-                            if (message.type === 'result') {
-                                resultMessage = message;
-                            }
-                        } catch (parseError) {
-                            console.warn('Failed to parse JSON line:', line.substring(0, 100));
+            this.streamingProcess.stdout.on('data', (data) => {
+                this.handleStreamingProcessOutput(data);
+            });
+
+            this.streamingProcess.stderr.on('data', (data) => {
+                console.log(`Streaming Claude stderr: ${data.toString()}`);
+            });
+
+            // Send an initial message to trigger initialization
+            setTimeout(() => {
+                if (this.streamingProcess && this.streamingProcess.stdin) {
+                    console.log('Sending initialization message to streaming process...');
+                    const initMessage = {
+                        type: 'user',
+                        message: {
+                            role: 'user',
+                            content: [
+                                {
+                                    type: 'text',
+                                    text: 'Ready'
+                                }
+                            ]
                         }
-                    }
+                    };
+                    this.streamingProcess.stdin.write(JSON.stringify(initMessage) + '\n');
                 }
-            });
+            }, 1000);
+
+            // Wait for the process to be ready
+            await this.waitForStreamingProcessReady();
             
-            claudeProcess.stderr.on('data', (data) => {
-                const chunk = data.toString();
-                console.log(`Claude stderr chunk: ${chunk}`);
-                stderr += chunk;
-            });
+            console.log('Streaming Claude process is ready');
+            this.sendToRenderer('\n🚀 Streaming Claude process started - instant responses enabled!\n');
             
-            claudeProcess.on('close', (code) => {
-                clearTimeout(timeout);
-                console.log(`Claude process closed with code: ${code}`);
-                console.log(`Full stderr: ${stderr}`);
-                
-                if (code === 0 && resultMessage) {
-                    // Store the session ID for future requests
-                    if (resultMessage.session_id) {
-                        this.currentSessionId = resultMessage.session_id;
-                        console.log(`Stored session ID: ${this.currentSessionId}`);
-                    }
-                    
-                    // Send final metadata
-                    if (resultMessage.total_cost_usd) {
-                        this.sendToRenderer(`\n💰 Cost: $${resultMessage.total_cost_usd.toFixed(4)} | Duration: ${resultMessage.duration_ms}ms | Turns: ${resultMessage.num_turns}\n`);
-                    }
-                    
-                    resolve(resultMessage);
+        } catch (error) {
+            console.error('Failed to start streaming Claude process:', error);
+            this.streamingProcess = null;
+            this.isStreamingProcessReady = false;
+        }
+    }
+
+    // Wait for the streaming process to be ready
+    async waitForStreamingProcessReady() {
+        return new Promise((resolve, reject) => {
+            const timeout = setTimeout(() => {
+                reject(new Error('Streaming process initialization timeout'));
+            }, 30000); // 30 second timeout
+
+            const checkReady = () => {
+                if (this.streamingProcessInitialized) {
+                    clearTimeout(timeout);
+                    this.isStreamingProcessReady = true;
+                    resolve();
                 } else {
-                    console.error(`Claude process failed with code ${code}`);
-                    console.error('stderr:', stderr);
-                    reject(new Error(`Claude failed with code ${code}: ${stderr}`));
+                    setTimeout(checkReady, 100);
                 }
-            });
-            
-            claudeProcess.on('error', (error) => {
-                console.error('Failed to spawn Claude process:', error);
-                reject(error);
-            });
+            };
+
+            checkReady();
         });
     }
 
-    // Main sendMessage method that tries TypeScript SDK first, then falls back to shell
-    async sendMessage(message) {
-        console.log(`Claude Manager - Using ${this.useTypeScriptSDK ? 'TypeScript SDK' : 'Shell Command'}`);
+    // Handle output from streaming process
+    handleStreamingProcessOutput(data) {
+        this.streamingProcessBuffer += data.toString();
         
-        try {
-            if (this.useTypeScriptSDK) {
-                return await this.sendMessageWithSDK(message);
-            } else {
-                return await this.sendMessageWithShell(message);
-            }
-        } catch (error) {
-            // If TypeScript SDK fails, try shell command as fallback
-            if (this.useTypeScriptSDK) {
-                console.warn('TypeScript SDK failed, falling back to shell command:', error.message);
-                this.sendToRenderer(`\n⚠️ TypeScript SDK failed, falling back to shell command...\n`);
-                return await this.sendMessageWithShell(message);
-            } else {
-                throw error;
+        // Process complete JSON lines
+        const lines = this.streamingProcessBuffer.split('\n');
+        this.streamingProcessBuffer = lines.pop() || '';
+        
+        for (const line of lines) {
+            if (line.trim()) {
+                try {
+                    const message = JSON.parse(line);
+                    this.handleStreamingMessage(message);
+                } catch (parseError) {
+                    console.warn('Failed to parse JSON line from streaming process:', line.substring(0, 100));
+                }
             }
         }
     }
 
-    // Method to toggle between SDK implementations
-    toggleSDKImplementation() {
-        if (claudeSDK) {
-            this.useTypeScriptSDK = !this.useTypeScriptSDK;
-            const implementation = this.useTypeScriptSDK ? 'TypeScript SDK' : 'Shell Command';
-            console.log(`Switched to ${implementation}`);
-            this.sendToRenderer(`\n🔄 Switched to ${implementation}\n`);
-        } else {
-            this.sendToRenderer(`\n❌ TypeScript SDK not available\n`);
+    // Handle stream messages from streaming process
+    handleStreamingMessage(message) {
+        // Mark process as initialized on first system message
+        if (message.type === 'system' && message.subtype === 'init') {
+            this.streamingProcessInitialized = true;
+            console.log(`Streaming Claude process initialized with model: ${message.model}`);
+            return;
         }
+
+        // Skip displaying initialization messages to user
+        if (message.type === 'result' && !this.streamingProcessInitialized) {
+            this.streamingProcessInitialized = true;
+            console.log(`Streaming Claude process initialized and ready for requests`);
+            
+            // Store session ID from initialization
+            if (message.session_id) {
+                this.currentSessionId = message.session_id;
+                console.log(`Stored session ID from initialization: ${this.currentSessionId}`);
+            }
+            return; // Don't process this message further
+        }
+
+        // Handle the message like normal stream messages only if we have a real request
+        if (this.currentStreamingRequest) {
+            this.handleStreamMessage(message);
+        }
+        
+        // Handle result messages
+        if (message.type === 'result') {
+            if (this.currentStreamingRequest) {
+                // Store session ID for future requests
+                if (message.session_id) {
+                    this.currentSessionId = message.session_id;
+                    console.log(`Stored session ID from streaming process: ${this.currentSessionId}`);
+                }
+                
+                // Send final metadata
+                if (message.total_cost_usd) {
+                    this.sendToRenderer(`\n💰 Cost: $${message.total_cost_usd.toFixed(4)} | Duration: ${message.duration_ms}ms | Turns: ${message.num_turns}\n`);
+                }
+                
+                // Resolve the current request
+                this.currentStreamingRequest.resolve(message);
+                this.currentStreamingRequest = null;
+                
+                // Process next request in queue
+                this.processNextStreamingRequest();
+            }
+        }
+    }
+
+    // Send message to streaming process using official streaming JSON input format
+    async sendMessageWithStreamingProcess(message) {
+        if (!this.streamingProcess || !this.isStreamingProcessReady) {
+            throw new Error('Streaming process not ready');
+        }
+
+        return new Promise((resolve, reject) => {
+            const request = {
+                message,
+                resolve,
+                reject,
+                timestamp: Date.now()
+            };
+
+            // Add to queue
+            this.streamingProcessQueue.push(request);
+            
+            // Process if not currently processing
+            if (!this.currentStreamingRequest) {
+                this.processNextStreamingRequest();
+            }
+        });
+    }
+
+    // Process the next request in the queue
+    processNextStreamingRequest() {
+        if (this.streamingProcessQueue.length === 0 || this.currentStreamingRequest) {
+            return;
+        }
+
+        this.currentStreamingRequest = this.streamingProcessQueue.shift();
+        
+        try {
+            // Send the message using official streaming JSON input format
+            const userMessage = {
+                type: 'user',
+                message: {
+                    role: 'user',
+                    content: [
+                        {
+                            type: 'text',
+                            text: this.currentStreamingRequest.message
+                        }
+                    ]
+                }
+            };
+            
+            const inputData = JSON.stringify(userMessage) + '\n';
+            this.streamingProcess.stdin.write(inputData);
+            
+            console.log(`Sent message to streaming process: ${this.currentStreamingRequest.message}`);
+            
+            // Set timeout for the request
+            setTimeout(() => {
+                if (this.currentStreamingRequest) {
+                    this.currentStreamingRequest.reject(new Error('Request timeout'));
+                    this.currentStreamingRequest = null;
+                    this.processNextStreamingRequest();
+                }
+            }, 120000); // 2 minute timeout
+            
+        } catch (error) {
+            console.error('Error sending message to streaming process:', error);
+            this.currentStreamingRequest.reject(error);
+            this.currentStreamingRequest = null;
+            this.processNextStreamingRequest();
+        }
+    }
+
+    // Handle streaming process errors
+    handleStreamingProcessError(error) {
+        console.error('Streaming process error:', error);
+        this.cleanupStreamingProcess();
+        
+        // Reject current request
+        if (this.currentStreamingRequest) {
+            this.currentStreamingRequest.reject(error);
+            this.currentStreamingRequest = null;
+        }
+        
+        // Reject all queued requests
+        this.streamingProcessQueue.forEach(request => {
+            request.reject(new Error('Streaming process failed'));
+        });
+        this.streamingProcessQueue = [];
+        
+        // Try to restart after a delay
+        setTimeout(() => {
+            this.startStreamingProcess();
+        }, 5000);
+    }
+
+    // Handle streaming process close
+    handleStreamingProcessClose(code) {
+        console.log(`Streaming process closed with code: ${code}`);
+        this.cleanupStreamingProcess();
+        
+        // Only restart if it wasn't intentionally stopped
+        if (code !== 0) {
+            setTimeout(() => {
+                this.startStreamingProcess();
+            }, 5000);
+        }
+    }
+
+    // Clean up streaming process state
+    cleanupStreamingProcess() {
+        this.streamingProcess = null;
+        this.isStreamingProcessReady = false;
+        this.streamingProcessInitialized = false;
+        this.streamingProcessBuffer = '';
+    }
+
+    // Stop streaming process
+    stopStreamingProcess() {
+        if (this.streamingProcess) {
+            console.log('Stopping streaming Claude process...');
+            this.streamingProcess.kill('SIGTERM');
+            this.cleanupStreamingProcess();
+        }
+    }
+
+    // Toggle streaming process usage
+    toggleStreamingProcess() {
+        this.useStreamingProcess = !this.useStreamingProcess;
+        
+        if (this.useStreamingProcess) {
+            this.sendToRenderer('\n🚀 Enabled streaming mode - starting background process...\n');
+            this.startStreamingProcess();
+        } else {
+            this.sendToRenderer('\n⏹️ Disabled streaming mode\n');
+            this.stopStreamingProcess();
+        }
+    }
+
+
+
+
+
+    // Main sendMessage method - uses optimized shell command with --continue
+    async sendMessage(message) {
+        return this.sendMessageWithStreamingProcess(message);  // single path
     }
 
     // Method to get current implementation info
     getImplementationInfo() {
         const info = {
-            hasSDK: !!claudeSDK,
-            currentImplementation: this.useTypeScriptSDK ? 'TypeScript SDK' : 'Shell Command',
-            canToggle: !!claudeSDK,
+            currentImplementation: 'Streaming Process',
+            canToggle: false,
+            useStreamingProcess: this.useStreamingProcess,
+            streamingProcessReady: this.isStreamingProcessReady,
             explanation: {
-                shellCommand: 'Supports persistent sessions and conversation continuity. Each message continues the previous conversation.',
-                typeScriptSDK: 'Stateless design - each query starts a new Claude Code process. Better for single-shot operations but not for conversations.'
+                streamingProcess: 'Uses Claude Code\'s official streaming JSON input for instant responses. Eliminates 20+ second warm-up times on slower devices.'
             },
-            recommendation: 'Use Shell Command for chat interfaces requiring session persistence.'
+            recommendation: 'Single streaming process worker for optimal performance and session continuity.'
         };
         return info;
     }
@@ -344,12 +414,16 @@ class ClaudeManager {
                 break;
                 
             case 'assistant':
-                const content = message.message?.content?.[0];
-                if (content?.type === 'text' && content.text) {
-                    // Stream the assistant's text response in real-time
-                    this.sendToRenderer(content.text);
-                } else if (content?.type === 'tool_use') {
-                    this.sendToRenderer(`\n🔧 Using tool: ${content.name}\n`);
+                const delta = message.message?.delta;
+                if (delta?.type === 'text_delta' && delta.text) {
+                    this.sendToRenderer(delta.text);           // live tokens
+                } else {
+                    const full = message.message?.content?.[0];
+                    if (full?.type === 'text' && full.text) {
+                        this.sendToRenderer(full.text);        // fallback
+                    } else if (full?.type === 'tool_use') {
+                        this.sendToRenderer(`\n🔧 Using tool: ${full.name}\n`);
+                    }
                 }
                 break;
                 
@@ -367,12 +441,23 @@ class ClaudeManager {
     resetSession() {
         console.log('Resetting Claude session');
         this.currentSessionId = null;
+        this.hasHadConversation = false;
         
         // Cancel any ongoing SDK request
         if (this.abortController) {
             this.abortController.abort();
             this.abortController = null;
         }
+        
+        // Clear streaming process queues and restart
+        this.streamingProcessQueue = [];
+        this.currentStreamingRequest = null;
+        
+        // Restart streaming process to clear session state
+        this.stopStreamingProcess();
+        setTimeout(() => {
+            this.startStreamingProcess();
+        }, 1000);
     }
 
     // Send response to renderer if mainWindow is available
@@ -419,6 +504,26 @@ class ClaudeManager {
     handleSessionReset() {
         this.resetSession();
         this.sendToRenderer('\n🔄 Session reset\n');
+    }
+
+    // Cleanup method to be called when app shuts down
+    cleanup() {
+        console.log('Cleaning up Claude Manager...');
+        
+        // Stop streaming process
+        if (this.streamingProcess) {
+            this.stopStreamingProcess();
+        }
+        
+        // Cancel any ongoing SDK request
+        if (this.abortController) {
+            this.abortController.abort();
+            this.abortController = null;
+        }
+        
+        // Clear queues
+        this.streamingProcessQueue = [];
+        this.currentStreamingRequest = null;
     }
 }
 

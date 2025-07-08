@@ -17,6 +17,7 @@ const ClaudeConsole = ({
   const [isClaudeResponding, setIsClaudeResponding] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  // Using optimized --continue approach, no toggle needed
   const outputRef = useRef(null);
   const lastOutputLength = useRef(0);
   const hasDraggedBeyondThresholdRef = useRef(false);
@@ -174,6 +175,8 @@ const ClaudeConsole = ({
     onClose();
   };
 
+  // Removed toggle functionality - using optimized --continue approach
+
   if (!devMode) {
     return null;
   }
@@ -218,6 +221,7 @@ const ClaudeConsole = ({
                 <span>AI is responding...</span>
               </div>
             )}
+            {/* Using optimized --continue approach - no toggle needed */}
           </div>
           
           <pre 
