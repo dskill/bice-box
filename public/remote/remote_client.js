@@ -210,9 +210,12 @@ class RemoteVisualizerClient {
                 this.toy.setRMSOutput(rmsOutput);
             }
             
-            // Update and set iRMSTime (matching VisualizationCanvas.js)
+            // Update and set iRMSTime (matching VisualizationCanvas.js exactly)
             // magic number to get it closer to iTime roughly
-            this.iRMSTime += rmsOutput * 0.025; // Accumulate rmsOutput
+            this.iRMSTime += rmsOutput; // Accumulate rmsOutput 
+            if (isNaN(this.iRMSTime)) {
+                this.iRMSTime = 0;
+            }
             if (this.toy.setRmsTime) {
                 this.toy.setRmsTime(this.iRMSTime);
             }
