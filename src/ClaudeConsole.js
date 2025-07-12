@@ -8,9 +8,7 @@ const ClaudeConsole = ({
   isRecording, 
   onRecordingStart, 
   onRecordingEnd,
-  devMode,
-  conversationState,
-  onConversationStateChange
+  devMode
 }) => {
   const [claudeOutput, setClaudeOutput] = useState('');
   const [claudeInput, setClaudeInput] = useState('');

@@ -7,7 +7,6 @@ class ClaudeManager {
         this.currentSessionId = null;
         this.hasHadConversation = false; // Track if we've had any conversation for --continue
         this.mainWindow = null;
-        this.useTypeScriptSDK = false; // ❌ no SDK
         this.abortController = null;
         
         // Streaming JSON input process management (official Claude Code feature)
@@ -30,20 +29,6 @@ class ClaudeManager {
     hasActiveSession() {
         return this.hasHadConversation;
     }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
     // Start a streaming claude-code process using official streaming JSON input
     async startStreamingProcess() {
@@ -361,23 +346,6 @@ class ClaudeManager {
             this.cleanupStreamingProcess();
         }
     }
-
-    // Toggle streaming process usage
-    toggleStreamingProcess() {
-        this.useStreamingProcess = !this.useStreamingProcess;
-        
-        if (this.useStreamingProcess) {
-            this.sendToRenderer('\n🚀 Enabled streaming mode - starting background process...\n');
-            this.startStreamingProcess();
-        } else {
-            this.sendToRenderer('\n⏹️ Disabled streaming mode\n');
-            this.stopStreamingProcess();
-        }
-    }
-
-
-
-
 
     // Main sendMessage method - uses optimized shell command with --continue
     async sendMessage(message) {
