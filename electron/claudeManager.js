@@ -277,15 +277,6 @@ class ClaudeManager {
             
             console.log(`Sent message to streaming process: ${this.currentStreamingRequest.message}`);
             
-            // Set timeout for the request
-            setTimeout(() => {
-                if (this.currentStreamingRequest) {
-                    this.currentStreamingRequest.reject(new Error('Request timeout'));
-                    this.currentStreamingRequest = null;
-                    this.processNextStreamingRequest();
-                }
-            }, 120000); // 2 minute timeout
-            
         } catch (error) {
             console.error('Error sending message to streaming process:', error);
             this.currentStreamingRequest.reject(error);
