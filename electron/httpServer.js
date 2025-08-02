@@ -467,29 +467,60 @@ async function handleToolCall(params, getState) {
                     };
                 }
 
-                // Send parameter updates to SuperCollider
+                // Validate and filter parameters before processing
+                const validParams = {};
+                const invalidParams = {};
+                
                 for (const [paramName, value] of Object.entries(params)) {
+                    if (paramName && value !== undefined && value !== null && !isNaN(value)) {
+                        validParams[paramName] = value;
+                    } else {
+                        invalidParams[paramName] = value;
+                        console.warn(`[MCP] Invalid parameter skipped: ${paramName} = ${value}`);
+                    }
+                }
+
+                if (Object.keys(invalidParams).length > 0) {
+                    console.warn(`[MCP] Skipped invalid parameters:`, invalidParams);
+                }
+
+                if (Object.keys(validParams).length === 0) {
+                    return {
+                        content: [{ type: 'text', text: 'No valid parameters provided. All parameters were undefined, null, or invalid.' }],
+                        isError: true
+                    };
+                }
+
+                // Send only valid parameter updates to SuperCollider
+                for (const [paramName, value] of Object.entries(validParams)) {
                     if (sendCodeToSclang) {
                         await sendCodeToSclang(`~${currentEffect.name}.set(\\${paramName}, ${value});`);
                     }
                 }
 
-                // Update the synths array and notify frontend
+                // Update the synths array with only valid parameters and notify frontend
                 const synthsArray = getSynths();
                 const effectIndex = synthsArray.findIndex(s => s.name === currentEffect.name);
                 if (effectIndex !== -1) {
-                    // Update the params in the synths array
-                    Object.assign(synthsArray[effectIndex].params || {}, params);
+                    // Ensure params object exists and only assign valid parameters
+                    if (!synthsArray[effectIndex].params) {
+                        synthsArray[effectIndex].params = {};
+                    }
+                    Object.assign(synthsArray[effectIndex].params, validParams);
                     
                     // Notify the React frontend about the parameter changes
                     if (mainWindow && mainWindow.webContents) {
-                        console.log(`[MCP] Notifying frontend about parameter changes for: ${currentEffect.name}`);
+                        console.log(`[MCP] Notifying frontend about parameter changes for: ${currentEffect.name}`, validParams);
                         mainWindow.webContents.send('effect-updated', synthsArray[effectIndex]);
                     }
                 }
                 
+                const responseText = Object.keys(invalidParams).length > 0 
+                    ? `Updated parameters for ${currentEffect.name}: ${JSON.stringify(validParams, null, 2)}\nSkipped invalid parameters: ${JSON.stringify(invalidParams, null, 2)}`
+                    : `Updated parameters for ${currentEffect.name}: ${JSON.stringify(validParams, null, 2)}`;
+                
                 return {
-                    content: [{ type: 'text', text: `Updated parameters for ${currentEffect.name}: ${JSON.stringify(params, null, 2)}` }]
+                    content: [{ type: 'text', text: responseText }]
                 };
             } catch (error) {
                 console.error('[MCP] Error in set_effect_parameters:', error);
