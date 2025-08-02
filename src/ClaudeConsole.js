@@ -173,6 +173,18 @@ const ClaudeConsole = ({
     onClose();
   };
 
+  const handleCancelClaude = () => {
+    // Prevent cancel if user has dragged beyond threshold
+    if (hasDraggedBeyondThresholdRef.current) {
+      return;
+    }
+    
+    if (electron && isClaudeResponding) {
+      setIsClaudeResponding(false);
+      electron.ipcRenderer.send('cancel-claude');
+    }
+  };
+
   // Removed toggle functionality - using optimized --continue approach
 
   if (!devMode) {
@@ -217,6 +229,13 @@ const ClaudeConsole = ({
               <div className="claude-status-indicator">
                 <span className="claude-thinking-dots">●●●</span>
                 <span>AI is responding...</span>
+                <button 
+                  className="claude-cancel-button"
+                  onClick={handleCancelClaude}
+                  title="Cancel current request"
+                >
+                  Cancel
+                </button>
               </div>
             )}
             {/* Using optimized --continue approach - no toggle needed */}

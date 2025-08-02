@@ -135,6 +135,52 @@
   50% { opacity: 1; }
 }
 
+.claude-cancel-button {
+  background: rgba(255, 68, 68, 0.1);
+  border: 1px solid #ff4444;
+  color: #ff6666;
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-left: 12px;
+  position: relative;
+  overflow: hidden;
+}
+
+.claude-cancel-button:hover {
+  background: rgba(255, 68, 68, 0.25);
+  color: #ff3333;
+  transform: scale(1.05);
+  border-color: #ff3333;
+  box-shadow: 0 2px 4px rgba(255, 68, 68, 0.2);
+}
+
+.claude-cancel-button:active {
+  transform: scale(0.98);
+  background: rgba(255, 68, 68, 0.3);
+}
+
+.claude-cancel-button:before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  transition: width 0.3s ease, height 0.3s ease;
+}
+
+.claude-cancel-button:hover:before {
+  width: 100%;
+  height: 100%;
+}
+
 .claude-output {
   flex: 1;
   margin: 0;

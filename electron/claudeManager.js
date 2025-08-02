@@ -18,6 +18,9 @@ class ClaudeManager {
         this.streamingProcessBuffer = '';
         this.streamingProcessInitialized = false;
         
+        // AbortController for proper cancellation
+        this.currentAbortController = null;
+        
         // Auto-start streaming process
         this.startStreamingProcess();
     }
@@ -218,6 +221,7 @@ class ClaudeManager {
                 // Resolve the current request
                 this.currentStreamingRequest.resolve(message);
                 this.currentStreamingRequest = null;
+                this.currentAbortController = null; // Clear the abort controller
                 
                 // Process next request in queue
                 this.processNextStreamingRequest();
@@ -232,11 +236,15 @@ class ClaudeManager {
         }
 
         return new Promise((resolve, reject) => {
+            // Create an AbortController for this specific request
+            const abortController = new AbortController();
+            
             const request = {
                 message,
                 resolve,
                 reject,
-                timestamp: Date.now()
+                timestamp: Date.now(),
+                abortController
             };
 
             // Add to queue
@@ -256,6 +264,19 @@ class ClaudeManager {
         }
 
         this.currentStreamingRequest = this.streamingProcessQueue.shift();
+        
+        // Set the current abort controller from the request
+        this.currentAbortController = this.currentStreamingRequest.abortController;
+        
+        // Check if the request was already aborted before processing
+        if (this.currentAbortController.signal.aborted) {
+            console.log('Request was already aborted, skipping...');
+            this.currentStreamingRequest.reject(new Error('Request was cancelled before processing'));
+            this.currentStreamingRequest = null;
+            this.currentAbortController = null;
+            this.processNextStreamingRequest();
+            return;
+        }
         
         try {
             // Send the message using official streaming JSON input format
@@ -281,6 +302,7 @@ class ClaudeManager {
             console.error('Error sending message to streaming process:', error);
             this.currentStreamingRequest.reject(error);
             this.currentStreamingRequest = null;
+            this.currentAbortController = null;
             this.processNextStreamingRequest();
         }
     }
@@ -296,9 +318,10 @@ class ClaudeManager {
             this.currentStreamingRequest = null;
         }
         
-        // Reject all queued requests
+        // Reject all queued requests and clean up their AbortControllers
         this.streamingProcessQueue.forEach(request => {
             request.reject(new Error('Streaming process failed'));
+            // Note: AbortControllers will be garbage collected with the request objects
         });
         this.streamingProcessQueue = [];
         
@@ -327,13 +350,86 @@ class ClaudeManager {
         this.isStreamingProcessReady = false;
         this.streamingProcessInitialized = false;
         this.streamingProcessBuffer = '';
+        this.currentAbortController = null;
     }
 
-    // Stop streaming process
+    // Cancel current Claude request using proper AbortController
+    async cancelCurrentRequest() {
+        console.log('Cancelling current Claude request...');
+        
+        if (!this.currentAbortController) {
+            console.log('No active request to cancel');
+            this.sendToRenderer('\n⚠️ No active request to cancel\n');
+            return;
+        }
+
+        try {
+            // Use AbortController to properly cancel the request
+            console.log('Aborting current request using AbortController...');
+            this.currentAbortController.abort('User cancelled the request');
+            
+            // Clear the current controller reference
+            this.currentAbortController = null;
+            
+            // Reject the current request
+            if (this.currentStreamingRequest) {
+                this.currentStreamingRequest.reject(new Error('Request cancelled by user'));
+                this.currentStreamingRequest = null;
+            }
+            
+            // Clear the queue of pending requests  
+            this.streamingProcessQueue = [];
+            
+            this.sendToRenderer('\n🛑 Request cancelled\n');
+            
+            // Process next request in queue if any
+            setTimeout(() => {
+                this.processNextStreamingRequest();
+            }, 100);
+            
+        } catch (error) {
+            console.error('Error during cancellation:', error);
+            this.sendToRenderer('\n❌ Error cancelling request\n');
+        }
+    }
+
+
+
+    // Stop streaming process gracefully
     stopStreamingProcess() {
         if (this.streamingProcess) {
-            console.log('Stopping streaming Claude process...');
-            this.streamingProcess.kill('SIGTERM');
+            console.log('Stopping streaming Claude process gracefully...');
+            
+            try {
+                // First, try to close stdin gracefully
+                if (this.streamingProcess.stdin && !this.streamingProcess.stdin.destroyed) {
+                    this.streamingProcess.stdin.end();
+                }
+                
+                // Give the process a moment to finish gracefully
+                setTimeout(() => {
+                    if (this.streamingProcess && !this.streamingProcess.killed) {
+                        console.log('Process still running, sending SIGTERM...');
+                        this.streamingProcess.kill('SIGTERM');
+                        
+                        // Last resort: SIGKILL after timeout
+                        setTimeout(() => {
+                            if (this.streamingProcess && !this.streamingProcess.killed) {
+                                console.log('Process still running, sending SIGKILL...');
+                                this.streamingProcess.kill('SIGKILL');
+                            }
+                        }, 2000);
+                    }
+                }, 500);
+                
+            } catch (error) {
+                console.error('Error during graceful shutdown:', error);
+                // Fallback to SIGTERM if graceful shutdown fails
+                if (this.streamingProcess && !this.streamingProcess.killed) {
+                    this.streamingProcess.kill('SIGTERM');
+                }
+            }
+            
             this.cleanupStreamingProcess();
         }
     }
@@ -360,6 +456,12 @@ class ClaudeManager {
 
     handleStreamMessage(message) {
         console.log(`Stream message type: ${message.type}, subtype: ${message.subtype || 'N/A'}`);
+        
+        // Skip processing if the request was aborted
+        if (this.currentAbortController && this.currentAbortController.signal.aborted) {
+            console.log('Skipping message processing - request was aborted');
+            return;
+        }
         
         switch (message.type) {
             case 'system':
@@ -401,6 +503,7 @@ class ClaudeManager {
         console.log('Resetting Claude session');
         this.currentSessionId = null;
         this.hasHadConversation = false;
+        this.currentAbortController = null;
         
         // Cancel any ongoing SDK request
         if (this.abortController) {
@@ -449,7 +552,7 @@ class ClaudeManager {
             this.sendToRenderer(`\n${sender}: ${message}\n`);
             this.sendToRenderer('\nClaude: ');
             
-            const response = await this.sendMessage(message);
+            await this.sendMessage(message);
             
             // Final newline after streaming is complete
             this.sendToRenderer('\n');
@@ -469,6 +572,12 @@ class ClaudeManager {
     cleanup() {
         console.log('Cleaning up Claude Manager...');
         
+        // Cancel current request if any
+        if (this.currentAbortController) {
+            this.currentAbortController.abort('Application shutting down');
+            this.currentAbortController = null;
+        }
+        
         // Stop streaming process
         if (this.streamingProcess) {
             this.stopStreamingProcess();
@@ -480,7 +589,13 @@ class ClaudeManager {
             this.abortController = null;
         }
         
-        // Clear queues
+        // Clear queues and abort any pending requests
+        this.streamingProcessQueue.forEach(request => {
+            if (request.abortController) {
+                request.abortController.abort('Application shutting down');
+            }
+            request.reject(new Error('Application shutting down'));
+        });
         this.streamingProcessQueue = [];
         this.currentStreamingRequest = null;
     }

@@ -1655,6 +1655,14 @@ ipcMain.on('reset-claude-session', () => {
     claudeManager.handleSessionReset();
 });
 
+// Add cancel handler
+ipcMain.on('cancel-claude', async () => {
+    if (!claudeManager) {
+        initializeClaudeManager();
+    }
+    await claudeManager.cancelCurrentRequest();
+});
+
 // Using optimized --continue approach - no toggle needed
 
 function setupRemoteVisualizerBroadcasting() {
