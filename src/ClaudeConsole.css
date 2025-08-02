@@ -163,6 +163,39 @@
   background: rgba(255, 68, 68, 0.3);
 }
 
+.claude-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.claude-reset-button {
+  background: rgba(68, 136, 255, 0.1);
+  border: 1px solid #4488ff;
+  color: #6699ff;
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.claude-reset-button:hover {
+  background: rgba(68, 136, 255, 0.25);
+  color: #4488ff;
+  transform: scale(1.05);
+  border-color: #3377ee;
+  box-shadow: 0 2px 4px rgba(68, 136, 255, 0.2);
+}
+
+.claude-reset-button:active {
+  transform: scale(0.95);
+  box-shadow: 0 1px 2px rgba(68, 136, 255, 0.1);
+}
+
 .claude-cancel-button:before {
   content: '';
   position: absolute;

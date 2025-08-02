@@ -293,6 +293,12 @@ class ClaudeManager {
                 }
             };
             
+            // Include session_id for conversation continuity (if we have one)
+            if (this.currentSessionId) {
+                userMessage.session_id = this.currentSessionId;
+                console.log(`Including session ID for continuity: ${this.currentSessionId}`);
+            }
+            
             const inputData = JSON.stringify(userMessage) + '\n';
             this.streamingProcess.stdin.write(inputData);
             
@@ -500,7 +506,12 @@ class ClaudeManager {
     }
 
     resetSession() {
-        console.log('Resetting Claude session');
+        console.log('Resetting Claude session - starting fresh conversation');
+        
+        // Send reset notification to user
+        this.sendToRenderer('\n🔄 Starting new conversation...\n');
+        
+        // Clear session state
         this.currentSessionId = null;
         this.hasHadConversation = false;
         this.currentAbortController = null;
@@ -515,10 +526,14 @@ class ClaudeManager {
         this.streamingProcessQueue = [];
         this.currentStreamingRequest = null;
         
-        // Restart streaming process to clear session state
+        // Restart streaming process to clear session state (equivalent to /clear in claude-code CLI)
         this.stopStreamingProcess();
         setTimeout(() => {
             this.startStreamingProcess();
+            // Notify when ready
+            setTimeout(() => {
+                this.sendToRenderer('✨ New conversation started! Previous context cleared.\n\n');
+            }, 500);
         }, 1000);
     }
 

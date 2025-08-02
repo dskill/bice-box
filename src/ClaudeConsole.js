@@ -185,6 +185,21 @@ const ClaudeConsole = ({
     }
   };
 
+  const handleResetClaude = () => {
+    // Prevent reset if user has dragged beyond threshold
+    if (hasDraggedBeyondThresholdRef.current) {
+      return;
+    }
+    
+    if (electron && !isClaudeResponding) {
+      // Clear the output display
+      setClaudeOutput('');
+      
+      // Send reset command to backend
+      electron.ipcRenderer.send('reset-claude-session');
+    }
+  };
+
   // Removed toggle functionality - using optimized --continue approach
 
   if (!devMode) {
@@ -235,6 +250,17 @@ const ClaudeConsole = ({
                   title="Cancel current request"
                 >
                   Cancel
+                </button>
+              </div>
+            )}
+            {!isClaudeResponding && (
+              <div className="claude-controls">
+                <button 
+                  className="claude-reset-button"
+                  onClick={handleResetClaude}
+                  title="Start a new conversation (clear history)"
+                >
+                  Reset
                 </button>
               </div>
             )}
