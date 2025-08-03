@@ -33,6 +33,103 @@ class ClaudeManager {
         return this.hasHadConversation;
     }
 
+    // Find Node.js binary in various locations
+    async findNodeBinary() {
+        const homeDir = process.env.HOME;
+        const fs = require('fs');
+        const { execSync } = require('child_process');
+        
+        // Common Node.js installation paths
+        const searchPaths = [];
+        
+        // NVM paths (check multiple versions)
+        if (homeDir) {
+            const nvmNodeDir = path.join(homeDir, '.nvm/versions/node');
+            try {
+                if (fs.existsSync(nvmNodeDir)) {
+                    const versions = fs.readdirSync(nvmNodeDir);
+                    searchPaths.push(...versions.map(version => 
+                        path.join(nvmNodeDir, version, 'bin/node')
+                    ).filter(nodePath => {
+                        try {
+                            return fs.existsSync(nodePath);
+                        } catch (e) {
+                            return false;
+                        }
+                    }));
+                }
+            } catch (e) {
+                console.log('NVM directory not accessible:', e.message);
+            }
+        }
+        
+        // Add standard system paths
+        searchPaths.push(
+            // Standard system paths
+            '/usr/local/bin/node',
+            '/usr/bin/node',
+            '/opt/homebrew/bin/node'
+        );
+        
+        // PATH-based detection
+        if (process.env.PATH) {
+            searchPaths.push(...process.env.PATH.split(path.delimiter).map(p => path.join(p, 'node')));
+        }
+
+        console.log('Searching for Node.js binary in these locations:', searchPaths);
+
+        // Collect all working Node.js versions first
+        const workingNodes = [];
+        
+        for (const nodePath of searchPaths) {
+            try {
+                if (fs.existsSync(nodePath)) {
+                    // Test if the node binary actually works
+                    const version = execSync(`"${nodePath}" --version`, { encoding: 'utf8', timeout: 5000 }).trim();
+                    console.log(`Found working Node.js at ${nodePath} (${version})`);
+                    
+                    // Parse version number for comparison
+                    const versionMatch = version.match(/v(\d+)\.(\d+)\.(\d+)/);
+                    if (versionMatch) {
+                        const [, major, minor, patch] = versionMatch.map(Number);
+                        workingNodes.push({
+                            path: nodePath,
+                            version,
+                            major,
+                            minor,
+                            patch,
+                            binDir: path.dirname(nodePath)
+                        });
+                    }
+                }
+            } catch (error) {
+                console.log(`Node.js at ${nodePath} failed test:`, error.message);
+            }
+        }
+        
+        if (workingNodes.length === 0) {
+            throw new Error('No working Node.js installations found');
+        }
+        
+        // Sort by version (newest first), prioritizing Node.js 16+ for Claude CLI compatibility
+        workingNodes.sort((a, b) => {
+            // Prioritize Node 16+ for Claude CLI compatibility
+            if (a.major >= 16 && b.major < 16) return -1;
+            if (b.major >= 16 && a.major < 16) return 1;
+            
+            // Then sort by version (newest first)
+            if (a.major !== b.major) return b.major - a.major;
+            if (a.minor !== b.minor) return b.minor - a.minor;
+            return b.patch - a.patch;
+        });
+        
+        const selectedNode = workingNodes[0];
+        console.log(`Selected Node.js ${selectedNode.version} from ${selectedNode.path} (prioritizing Node 16+ for Claude CLI)`);
+        console.log(`Available versions: ${workingNodes.map(n => n.version).join(', ')}`);
+        
+        return selectedNode.binDir;
+    }
+
     // Start a streaming claude-code process using official streaming JSON input
     async startStreamingProcess() {
         if (this.streamingProcess) {
@@ -41,49 +138,68 @@ class ClaudeManager {
         }
 
         console.log('Starting streaming Claude process with official streaming JSON input...');
+        console.log('Current environment variables:');
+        console.log('  HOME:', process.env.HOME);
+        console.log('  NVM_BIN:', process.env.NVM_BIN);
+        console.log('  PATH (first 200 chars):', process.env.PATH?.substring(0, 200));
         
-        const homeDir = process.env.HOME;
-        const nvmBinPath = process.env.NVM_BIN;
-        const claudeCliPath = homeDir ? path.join(homeDir, '.claude', 'local', 'node_modules', '.bin') : null;
-
-        const extendedPath = [
-            process.env.PATH,
-            nvmBinPath,
-            claudeCliPath,
-            homeDir ? path.join(homeDir, '.local', 'bin') : null,
-            '/usr/local/bin',
-        ].filter(Boolean).join(path.delimiter);
-
-        const cleanEnv = {
-            ...process.env,
-            PATH: extendedPath,
-            ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
-            NODE_OPTIONS: ''
-        };
-
-        // Start claude with streaming JSON input/output (official feature)
-        const commandParts = [
-            'claude',
-            '-p',
-            '--input-format=stream-json',
-            '--output-format=stream-json',
-            '--verbose'
-        ];
-
-        if (this.currentSessionId) {
-            commandParts.push('--resume', this.currentSessionId);
-        }
-
-        const fullCommand = commandParts.join(' ');
-        console.log(`Starting streaming process: ${fullCommand}`);
-
         try {
+            // Find Node.js binary first
+            const nodeBinPath = await this.findNodeBinary();
+            console.log(`Using Node.js from: ${nodeBinPath}`);
+            
+            const homeDir = process.env.HOME;
+            const nvmBinPath = process.env.NVM_BIN || nodeBinPath;
+            const claudeCliPath = homeDir ? path.join(homeDir, '.claude', 'local', 'node_modules', '.bin') : null;
+
+            const extendedPath = [
+                nodeBinPath, // Add the found Node.js path first
+                process.env.PATH,
+                nvmBinPath,
+                claudeCliPath,
+                homeDir ? path.join(homeDir, '.local', 'bin') : null,
+                '/usr/local/bin',
+            ].filter(Boolean).join(path.delimiter);
+
+            console.log('Extended PATH for Claude process:', extendedPath);
+
+            const cleanEnv = {
+                ...process.env,
+                PATH: extendedPath,
+                ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
+                NODE_OPTIONS: '',
+                // Ensure NVM variables are set if available
+                NVM_BIN: nvmBinPath,
+                NVM_PATH: process.env.NVM_PATH,
+                NODE_PATH: process.env.NODE_PATH
+            };
+
+            // Start claude with streaming JSON input/output (official feature)
+            const commandParts = [
+                'claude',
+                '-p',
+                '--input-format=stream-json',
+                '--output-format=stream-json',
+                '--verbose'
+            ];
+
+            if (this.currentSessionId) {
+                commandParts.push('--resume', this.currentSessionId);
+            }
+
+            const fullCommand = commandParts.join(' ');
+            console.log(`Starting streaming process: ${fullCommand}`);
+            console.log(`Working directory: ${this.effectsRepoPath}`);
+            console.log(`Environment PATH: ${cleanEnv.PATH}`);
+
             this.streamingProcess = spawn(fullCommand, [], {
                 stdio: ['pipe', 'pipe', 'pipe'],
                 cwd: this.effectsRepoPath,
                 env: cleanEnv,
                 shell: true
             });
+            
+            console.log(`Claude process spawned with PID: ${this.streamingProcess.pid}`);
 
             this.streamingProcess.on('error', (error) => {
                 console.error('Streaming Claude process error:', error);
@@ -100,7 +216,11 @@ class ClaudeManager {
             });
 
             this.streamingProcess.stderr.on('data', (data) => {
-                console.log(`Streaming Claude stderr: ${data.toString()}`);
+                const errorOutput = data.toString();
+                console.log(`Streaming Claude stderr: ${errorOutput}`);
+                
+                // Also send error output to UI for debugging
+                this.sendToRenderer(`\n🔍 Debug - Claude stderr: ${errorOutput}\n`);
             });
 
             // Send an initial message to trigger initialization
@@ -133,6 +253,7 @@ class ClaudeManager {
             console.error('Failed to start streaming Claude process:', error);
             this.streamingProcess = null;
             this.isStreamingProcessReady = false;
+            this.sendToRenderer(`\n❌ Failed to start Claude process: ${error.message}\n`);
         }
     }
 
