@@ -203,11 +203,13 @@ function App() {
       console.log(`SC ready, activating current audio source: ${currentAudioSource}`);
       electron.ipcRenderer.send('load-sc-file-and-request-specs', currentAudioSource);
       // Also apply params from the original preset if it exists
-       if (Array.isArray(currentAudioParams)) {
-          currentAudioParams.forEach(param => {
-              if (param && typeof param.name === 'string' && param.value !== undefined) {
+      // currentAudioParams is an object with param names as keys
+      if (currentAudioParams && typeof currentAudioParams === 'object') {
+          Object.entries(currentAudioParams).forEach(([paramName, paramSpec]) => {
+              if (paramSpec && typeof paramSpec.default !== 'undefined') {
                   if (electron && electron.ipcRenderer) {
-                    electron.ipcRenderer.send('send-osc-to-sc', { address: '/effect/param/set', args: [param.name, param.value] });
+                    console.log(`Applying initial param: ${paramName} = ${paramSpec.default}`);
+                    electron.ipcRenderer.send('send-osc-to-sc', { address: '/effect/param/set', args: [paramName, paramSpec.default] });
                   }
               }
           });
@@ -216,10 +218,21 @@ function App() {
         // Fallback to loading the preset's audio if no override is set
          console.log(`SC ready, activating preset audio source: ${synths[0].scFilePath}`);
          electron.ipcRenderer.send('load-sc-file-and-request-specs', synths[0].scFilePath);
+         // Also apply params for fallback case
+         if (synths[0].params && typeof synths[0].params === 'object') {
+             Object.entries(synths[0].params).forEach(([paramName, paramSpec]) => {
+                 if (paramSpec && typeof paramSpec.default !== 'undefined') {
+                     if (electron && electron.ipcRenderer) {
+                       console.log(`Applying fallback initial param: ${paramName} = ${paramSpec.default}`);
+                       electron.ipcRenderer.send('send-osc-to-sc', { address: '/effect/param/set', args: [paramName, paramSpec.default] });
+                     }
+                 }
+             });
+         }
     } else {
       console.log('SC ready, but no current audio source to activate');
     }
-  }, [currentAudioSource, currentAudioParams, synths, electron]); // Added electron to dependencies
+  }, [currentAudioSource, currentAudioParams, synths]);
 
   useEffect(() => {
     // The initLoad ref is no longer needed here as the listener handles the initial setup.
@@ -444,7 +457,7 @@ function App() {
         electron.ipcRenderer.removeListener('visual-effect-updated', handleVisualEffectUpdate);
       };
     }
-  }, [currentVisualSource, synths, handleVisualEffectUpdate, electron]); // Depend on currentVisualSource, synths, and the new handler + electron
+  }, [currentVisualSource, synths, handleVisualEffectUpdate]);
 
   useEffect(() => {
     // Add this new effect for sc-ready
@@ -455,7 +468,7 @@ function App() {
         electron.ipcRenderer.removeListener('sc-ready', handleScReady);
       };
     }
-  }, [currentAudioSource, synths, handleScReady, electron]); // Added handleScReady and electron to dependencies
+  }, [currentAudioSource, synths, handleScReady]);
 
   useEffect(() => {
     if (electron) {
@@ -465,7 +478,7 @@ function App() {
             electron.ipcRenderer.removeListener('sc-compilation-error', handleScErrorCallback);
         };
     }
-  }, [handleScErrorCallback, electron]); // Added handleScErrorCallback and electron
+  }, [handleScErrorCallback]);
 
   useEffect(() => {
     if (electron) {
@@ -475,7 +488,7 @@ function App() {
             electron.ipcRenderer.removeListener('shader-loading-error', handleShaderErrorCallback);
         };
     }
-  }, [handleShaderErrorCallback, electron]);
+  }, [handleShaderErrorCallback]);
 
   useEffect(() => {
     if (electron && electron.ipcRenderer) {
@@ -489,7 +502,7 @@ function App() {
         electron.ipcRenderer.removeListener('dev-mode-changed', handleDevModeChange);
       };
     }
-  }, [handleDevModeChange, electron, setDevMode]); // Added handleDevModeChange, electron, and setDevMode (as invoke uses it)
+  }, [handleDevModeChange]);
 
   // Effect to initialize parameter values when a new effect is loaded
   useEffect(() => {
@@ -609,7 +622,7 @@ function App() {
     return () => {
         electron.ipcRenderer.removeAllListeners('shader-effect-updated');
     };
-  }, [handleShaderEffectUpdated, electron]); // Add electron to dependency array
+  }, [handleShaderEffectUpdated]);
 
   // Effect for auto-visualizer-loaded IPC listener
   useEffect(() => {
@@ -617,7 +630,7 @@ function App() {
     return () => {
         electron.ipcRenderer.removeAllListeners('auto-visualizer-loaded');
     };
-  }, [handleAutoVisualizerLoaded, electron]);
+  }, [handleAutoVisualizerLoaded]);
 
   if (error) {
     return <div className="error-message">{error}</div>;
