@@ -247,7 +247,7 @@ class ClaudeManager {
             await this.waitForStreamingProcessReady();
             
             console.log('Streaming Claude process is ready');
-            this.sendToRenderer('\n🚀 Streaming Claude process started - instant responses enabled!\n');
+            this.sendToRenderer('\n🚀 Streaming Claude process started\n');
             
         } catch (error) {
             console.error('Failed to start streaming Claude process:', error);
@@ -564,21 +564,6 @@ class ClaudeManager {
     // Main sendMessage method - uses optimized shell command with --continue
     async sendMessage(message) {
         return this.sendMessageWithStreamingProcess(message);  // single path
-    }
-
-    // Method to get current implementation info
-    getImplementationInfo() {
-        const info = {
-            currentImplementation: 'Streaming Process',
-            canToggle: false,
-            useStreamingProcess: this.useStreamingProcess,
-            streamingProcessReady: this.isStreamingProcessReady,
-            explanation: {
-                streamingProcess: 'Uses Claude Code\'s official streaming JSON input for instant responses. Eliminates 20+ second warm-up times on slower devices.'
-            },
-            recommendation: 'Single streaming process worker for optimal performance and session continuity.'
-        };
-        return info;
     }
 
     handleStreamMessage(message) {
