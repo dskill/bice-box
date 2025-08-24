@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { generateColor } from './theme';
 import './ParamFader.css';
 
@@ -24,23 +24,20 @@ const ParamFader = ({ param, onParamChange, useRotatedLabels }) => {
   const lastUpdateTime = useRef(0);
   const faderTrackRef = useRef(null);
 
-  // Throttled version of sending OSC message
-  const throttledSendOsc = useCallback(
-    throttle((oscAddress, oscArgs) => {
-      if (window.electron && window.electron.ipcRenderer) {
-        window.electron.ipcRenderer.send('send-osc-to-sc', { address: oscAddress, args: oscArgs });
-      }
-    }, 16), // ~60fps (1000ms / 60fps = ~16.67ms)
-    [] // No dependencies needed for this version of throttledSendOsc
-  );
+  // Throttled version of dispatching unified param action
+  const throttledDispatchParam = throttle((paramName, paramValue) => {
+    if (window.electron && window.electron.ipcRenderer) {
+      window.electron.ipcRenderer.send('effects/actions:set_effect_parameters', { params: { [paramName]: paramValue } });
+    }
+  }, 16);
 
   // Throttled version of parent callback to prevent excessive calls during dragging
-  const throttledOnParamChange = useCallback(
-    throttle((paramName, paramValue) => {
+  const throttledOnParamChangeRef = useRef(null);
+  useEffect(() => {
+    throttledOnParamChangeRef.current = throttle((paramName, paramValue) => {
       onParamChange(paramName, paramValue);
-    }, 16), // Match OSC throttling rate
-    [onParamChange]
-  );
+    }, 16);
+  }, [onParamChange]);
 
   // Helper function to convert camelCase to Title Case
   const toTitleCase = (str) => {
@@ -87,16 +84,19 @@ const ParamFader = ({ param, onParamChange, useRotatedLabels }) => {
   // init value
   useEffect(() => {
     onParamChange(name, faderValue);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Handle SuperCollider updates
   useEffect(() => {
     if (faderValue !== currentValueRef.current) {
       currentValueRef.current = faderValue;
-      throttledSendOsc('/effect/param/set', [name, faderValue]);
-      throttledOnParamChange(name, faderValue); // Use throttled version
+      throttledDispatchParam(name, faderValue);
+      if (throttledOnParamChangeRef.current) {
+        throttledOnParamChangeRef.current(name, faderValue);
+      }
     }
-  }, [faderValue, name, throttledSendOsc, throttledOnParamChange]);
+  }, [faderValue, name, throttledDispatchParam]);
 
   useEffect(() => {
     const handleMouseMove = (e) => {

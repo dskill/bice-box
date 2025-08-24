@@ -98,7 +98,8 @@ function EffectSelectScreen({
       return;
     }
     
-    onSelect(type === 'visual' ? item : itemPath);
+    // For audio, pass the full item so caller knows the effect name
+    onSelect(type === 'visual' ? item : item);
   };
   
   // Use a generic name prettifier or just display the name directly

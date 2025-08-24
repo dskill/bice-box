@@ -28,7 +28,6 @@ function App() {
   const [currentShaderPath, setCurrentShaderPath] = useState(null); // New state for shader path
   const [currentShaderContent, setCurrentShaderContent] = useState(''); // New state for shader content
   const [error, setError] = useState(null);
-  const [currentScreen, setCurrentScreen] = useState('visualization'); // 'visualization' or 'select' - Will be replaced
   const [showAudioSelector, setShowAudioSelector] = useState(false);
   const [showVisualSelector, setShowVisualSelector] = useState(false);
   const [visualizerList, setVisualizerList] = useState([]); // State for direct visualizers
@@ -198,41 +197,21 @@ function App() {
 
   const handleScReady = useCallback((event) => {
     console.log('SuperCollider is ready');
-    // When SC is ready, ensure the current audio source is loaded
-    if (currentAudioSource) {
-      console.log(`SC ready, activating current audio source: ${currentAudioSource}`);
-      electron.ipcRenderer.send('load-sc-file-and-request-specs', currentAudioSource);
-      // Also apply params from the original preset if it exists
-      // currentAudioParams is an object with param names as keys
-      if (currentAudioParams && typeof currentAudioParams === 'object') {
-          Object.entries(currentAudioParams).forEach(([paramName, paramSpec]) => {
-              if (paramSpec && typeof paramSpec.default !== 'undefined') {
-                  if (electron && electron.ipcRenderer) {
-                    console.log(`Applying initial param: ${paramName} = ${paramSpec.default}`);
-                    electron.ipcRenderer.send('send-osc-to-sc', { address: '/effect/param/set', args: [paramName, paramSpec.default] });
-                  }
-              }
-          });
-       }
-    } else if (synths.length > 0 && synths[0].scFilePath) {
-        // Fallback to loading the preset's audio if no override is set
-         console.log(`SC ready, activating preset audio source: ${synths[0].scFilePath}`);
-         electron.ipcRenderer.send('load-sc-file-and-request-specs', synths[0].scFilePath);
-         // Also apply params for fallback case
-         if (synths[0].params && typeof synths[0].params === 'object') {
-             Object.entries(synths[0].params).forEach(([paramName, paramSpec]) => {
-                 if (paramSpec && typeof paramSpec.default !== 'undefined') {
-                     if (electron && electron.ipcRenderer) {
-                       console.log(`Applying fallback initial param: ${paramName} = ${paramSpec.default}`);
-                       electron.ipcRenderer.send('send-osc-to-sc', { address: '/effect/param/set', args: [paramName, paramSpec.default] });
-                     }
-                 }
-             });
-         }
-    } else {
-      console.log('SC ready, but no current audio source to activate');
+    // On SC ready, request activation via unified action by effect name
+    if (currentAudioSource && synths && synths.length > 0) {
+      const match = synths.find(s => s.scFilePath && s.scFilePath.toLowerCase() === currentAudioSource.toLowerCase());
+      if (match && electron && electron.ipcRenderer) {
+        electron.ipcRenderer.send('effects/actions:set_current_effect', { name: match.name });
+        console.log(`Requested activation of effect: ${match.name}`);
+      }
+    } else if (synths.length > 0) {
+      const first = synths[0];
+      if (first && electron && electron.ipcRenderer) {
+        electron.ipcRenderer.send('effects/actions:set_current_effect', { name: first.name });
+        console.log(`Requested activation of first effect: ${first.name}`);
+      }
     }
-  }, [currentAudioSource, currentAudioParams, synths]);
+  }, [currentAudioSource, synths]);
 
   useEffect(() => {
     // The initLoad ref is no longer needed here as the listener handles the initial setup.
@@ -504,29 +483,35 @@ function App() {
     }
   }, [handleDevModeChange]);
 
-  // Effect to initialize parameter values when a new effect is loaded
+  // Subscribe to unified effects/state broadcast from main
   useEffect(() => {
-    if (currentAudioParams) {
-      const defaultValues = Object.entries(currentAudioParams).reduce((acc, [name, spec]) => {
-        acc[name] = spec.default;
-        return acc;
-      }, {});
-      setParamValues(defaultValues);
+    const handleEffectsState = (event, payload) => {
+      if (!payload || !payload.effect) return;
+      const { effect } = payload;
+      if (effect.scFilePath) setCurrentAudioSource(effect.scFilePath);
+      if (effect.paramSpecs) setCurrentAudioParams(effect.paramSpecs);
+      if (effect.paramValues) setParamValues(effect.paramValues);
+    };
+    if (electron && electron.ipcRenderer) {
+      electron.ipcRenderer.on('effects/state', handleEffectsState);
+      return () => {
+        electron.ipcRenderer.removeListener('effects/state', handleEffectsState);
+      };
     }
-  }, [currentAudioParams]);
+  }, []);
 
-  const handleAudioSelect = useCallback((scFilePath) => {
-    if (!scFilePath) {
+  const handleAudioSelect = useCallback((selected) => {
+    if (!selected) {
       console.log('Audio selection cancelled or invalid path');
       setShowAudioSelector(false);
       return;
     }
+    const scFilePath = selected.scFilePath || selected;
+    const effectName = selected.name;
     console.log(`Selecting audio source: ${scFilePath}`);
-    setCurrentAudioSource(scFilePath);
-    if (electron) {
-      // Use the new handler that loads SC file AND requests specs
-      electron.ipcRenderer.send('load-sc-file-and-request-specs', scFilePath);
-      electron.ipcRenderer.send('set-current-audio-source', scFilePath); // Inform main process
+    if (scFilePath) setCurrentAudioSource(scFilePath);
+    if (electron && electron.ipcRenderer && effectName) {
+      electron.ipcRenderer.send('effects/actions:set_current_effect', { name: effectName });
     }
     setShowAudioSelector(false);
   }, [setCurrentAudioSource, setShowAudioSelector]);
@@ -591,7 +576,7 @@ function App() {
   const handleParamChange = useCallback((paramName, value) => {
     setParamValues(prev => ({ ...prev, [paramName]: value }));
     if (electron && electron.ipcRenderer) {
-      electron.ipcRenderer.send('send-osc-to-sc', { address: '/effect/param/set', args: [paramName, value] });
+      electron.ipcRenderer.send('effects/actions:set_effect_parameters', { params: { [paramName]: value } });
     }
   }, []);
 

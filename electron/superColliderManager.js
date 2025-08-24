@@ -4,18 +4,8 @@ const path = require('path');
 
 // Array to store all available synths/effects
 let synths = [];
-let currentEffect = null;
 let sclang;
 let serverBooted = false;
-
-function getCurrentEffect() {
-    return currentEffect;
-}
-
-function setCurrentEffect(effect) {
-    currentEffect = effect;
-    console.log('Current effect set to:', effect ? effect.name : 'None');
-}
 
 function loadEffectsList(mainWindow, getEffectsRepoPath, getEffectsPath) {
     console.log('Loading audio effects from SC files...');
@@ -549,8 +539,6 @@ async function killSuperCollider() {
 
 module.exports = {
     synths,
-    getCurrentEffect,
-    setCurrentEffect,
     initializeSuperCollider,
     sendCodeToSclang,
     isServerBooted,

@@ -1,9 +1,7 @@
 const express = require('express');
-const z = require('zod');
 const { WebSocketServer } = require('ws');
 const path = require('path');
 const fs = require('fs');
-const { app } = require('electron');
 
 const PORT = 31337;
 let httpServerInstance = null;
@@ -278,7 +276,7 @@ function sendCurrentShaderToClient(ws, getState) {
     }
     
     try {
-        const currentEffect = getState.getCurrentEffect();
+        const currentEffect = getState.getCurrentEffectSnapshot ? getState.getCurrentEffectSnapshot() : null;
         const { loadVisualizerContent, getActiveVisualSourcePath } = getState;
         
         // Try to get shader path from current effect first, then from active visual source
@@ -349,17 +347,14 @@ async function handleToolCall(params, getState) {
     const { name, arguments: args } = params;
     
     const {
-        getCurrentEffect,
         getSynths,
-        getAvailableVisualizers,
-        sendCodeToSclang,
-        mainWindow
+        getAvailableVisualizers
     } = getState;
     
     switch (name) {
         case 'get_current_effect':
             try {
-                const effect = getCurrentEffect();
+                const effect = getState.getCurrentEffectSnapshot ? getState.getCurrentEffectSnapshot() : null;
                 return {
                     content: [{ type: 'text', text: JSON.stringify(effect, null, 2) }]
                 };
@@ -409,42 +404,12 @@ async function handleToolCall(params, getState) {
         case 'set_current_effect':
             try {
                 const { effectName } = args;
-                const synthsArray = getSynths();
-                const effect = synthsArray.find(s => s.name === effectName);
-                
-                if (!effect) {
-                    return {
-                        content: [{ type: 'text', text: `Effect '${effectName}' not found. Available effects: ${synthsArray.map(s => s.name).join(', ')}` }],
-                        isError: true
-                    };
+                const { setCurrentEffectAction } = getState;
+                if (!setCurrentEffectAction) throw new Error('Unified action setCurrentEffectAction not available');
+                const result = setCurrentEffectAction({ name: effectName });
+                if (result && result.error) {
+                    return { content: [{ type: 'text', text: result.error }], isError: true };
                 }
-
-                console.log(`[MCP] Switching to effect: ${effectName} at path: ${effect.scFilePath}`);
-                
-                // Load the SC file and set the current effect
-                const { loadScFileAndRequestSpecs, setCurrentEffect, setActiveAudioSourcePath } = getState;
-                if (loadScFileAndRequestSpecs && setCurrentEffect && setActiveAudioSourcePath) {
-                    // Set the active audio source path in the main process
-                    setActiveAudioSourcePath(effect.scFilePath);
-
-                    // This will trigger the async flow to get the real parameters from SC
-                    await loadScFileAndRequestSpecs(effect.scFilePath);
-                    
-                    // Update the current effect state in the backend
-                    setCurrentEffect(effect);
-                    console.log(`[MCP] Set current effect to: ${effectName}`);
-                    
-                    // Notify the React frontend that the source has changed.
-                    // The UI will be fully updated when the 'effect-updated' event is received
-                    // from the main process after the new parameters are fetched from SuperCollider.
-                    if (mainWindow && mainWindow.webContents) {
-                        console.log(`[MCP] Notifying frontend about audio source change to: ${effect.scFilePath}`);
-                        mainWindow.webContents.send('mcp-audio-source-changed', effect.scFilePath);
-                    }
-                } else {
-                    console.error('[MCP] loadScFileAndRequestSpecs, setCurrentEffect, or setActiveAudioSourcePath function not available');
-                }
-                
                 return {
                     content: [{ type: 'text', text: `Switched to effect: ${effectName}` }]
                 };
@@ -459,66 +424,12 @@ async function handleToolCall(params, getState) {
         case 'set_effect_parameters':
             try {
                 const { params } = args;
-                const currentEffect = getCurrentEffect();
-                if (!currentEffect) {
-                    return {
-                        content: [{ type: 'text', text: 'No effect is currently active.' }],
-                        isError: true
-                    };
-                }
-
-                // Validate and filter parameters before processing
-                const validParams = {};
-                const invalidParams = {};
-                
-                for (const [paramName, value] of Object.entries(params)) {
-                    if (paramName && value !== undefined && value !== null && !isNaN(value)) {
-                        validParams[paramName] = value;
-                    } else {
-                        invalidParams[paramName] = value;
-                        console.warn(`[MCP] Invalid parameter skipped: ${paramName} = ${value}`);
-                    }
-                }
-
-                if (Object.keys(invalidParams).length > 0) {
-                    console.warn(`[MCP] Skipped invalid parameters:`, invalidParams);
-                }
-
-                if (Object.keys(validParams).length === 0) {
-                    return {
-                        content: [{ type: 'text', text: 'No valid parameters provided. All parameters were undefined, null, or invalid.' }],
-                        isError: true
-                    };
-                }
-
-                // Send only valid parameter updates to SuperCollider
-                for (const [paramName, value] of Object.entries(validParams)) {
-                    if (sendCodeToSclang) {
-                        await sendCodeToSclang(`~${currentEffect.name}.set(\\${paramName}, ${value});`);
-                    }
-                }
-
-                // Update the synths array with only valid parameters and notify frontend
-                const synthsArray = getSynths();
-                const effectIndex = synthsArray.findIndex(s => s.name === currentEffect.name);
-                if (effectIndex !== -1) {
-                    // Ensure params object exists and only assign valid parameters
-                    if (!synthsArray[effectIndex].params) {
-                        synthsArray[effectIndex].params = {};
-                    }
-                    Object.assign(synthsArray[effectIndex].params, validParams);
-                    
-                    // Notify the React frontend about the parameter changes
-                    if (mainWindow && mainWindow.webContents) {
-                        console.log(`[MCP] Notifying frontend about parameter changes for: ${currentEffect.name}`, validParams);
-                        mainWindow.webContents.send('effect-updated', synthsArray[effectIndex]);
-                    }
-                }
-                
-                const responseText = Object.keys(invalidParams).length > 0 
-                    ? `Updated parameters for ${currentEffect.name}: ${JSON.stringify(validParams, null, 2)}\nSkipped invalid parameters: ${JSON.stringify(invalidParams, null, 2)}`
-                    : `Updated parameters for ${currentEffect.name}: ${JSON.stringify(validParams, null, 2)}`;
-                
+                const { setEffectParametersAction } = getState;
+                if (!setEffectParametersAction) throw new Error('Unified action setEffectParametersAction not available');
+                const result = setEffectParametersAction({ params });
+                const responseText = result && (result.invalid && Object.keys(result.invalid).length > 0)
+                    ? `Updated parameters. Skipped invalid: ${JSON.stringify(result.invalid)}`
+                    : `Updated parameters.`;
                 return {
                     content: [{ type: 'text', text: responseText }]
                 };
@@ -533,31 +444,12 @@ async function handleToolCall(params, getState) {
         case 'set_visualizer':
             try {
                 const { visualizerName } = args;
-                const visualizers = getAvailableVisualizers();
-                const visualizer = visualizers.find(v => v.name === visualizerName);
-                
-                if (!visualizer) {
-                    return {
-                        content: [{ type: 'text', text: `Visualizer '${visualizerName}' not found. Available visualizers: ${visualizers.map(v => v.name).join(', ')}` }],
-                        isError: true
-                    };
+                const { setCurrentVisualizerAction } = getState;
+                if (!setCurrentVisualizerAction) throw new Error('Unified action setCurrentVisualizerAction not available');
+                const result = setCurrentVisualizerAction({ name: visualizerName });
+                if (result && result.error) {
+                    return { content: [{ type: 'text', text: result.error }], isError: true };
                 }
-
-                console.log(`[MCP] Switching to visualizer: ${visualizerName} at path: ${visualizer.path}`);
-                
-                // Set the backend state and notify the frontend to fetch the content.
-                const { setActiveVisualSourcePath } = getState;
-                if (setActiveVisualSourcePath) {
-                    setActiveVisualSourcePath(visualizer.path);
-                    
-                    if (mainWindow && mainWindow.webContents) {
-                        console.log(`[MCP] Notifying frontend about visualizer change to: ${visualizer.name}`);
-                        mainWindow.webContents.send('mcp-visual-source-changed', visualizer);
-                    }
-                } else {
-                    console.error('[MCP] setActiveVisualSourcePath function not available');
-                }
-                
                 return {
                     content: [{ type: 'text', text: `Switched to visualizer: ${visualizerName}` }]
                 };

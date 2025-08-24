@@ -23,7 +23,7 @@ const path = require('path');
 const fs = require('fs');
 const util = require('util');
 const chokidar = require('chokidar');
-const { exec, spawn } = require('child_process');
+const { exec } = require('child_process');
 const os = require('os');
 const networkInterfaces = os.networkInterfaces();
 const openaiApiKey = process.env.OPENAI_API_KEY;
@@ -33,8 +33,6 @@ const appVersion = packageJson.version;
 const axios = require('axios');
 const {
   synths,
-  getCurrentEffect,
-  setCurrentEffect,
   initializeSuperCollider,
   sendCodeToSclang,
   killSuperCollider,
@@ -214,7 +212,9 @@ function createWindow()
 
     // Initialize SuperCollider with the necessary callbacks
     const loadEffectsCallback = () => {
-      loadEffectsList(mainWindow, getEffectsRepoPath, getEffectsPath);
+      const loaded = loadEffectsList(mainWindow, getEffectsRepoPath, getEffectsPath);
+      try { (loaded || []).forEach(s => ensureEffectInStore(s.name, s.scFilePath)); } catch {}
+      broadcastEffectsState(effectsStore.activeEffectName);
     };
     initializeSuperCollider(mainWindow, getEffectsRepoPath, loadEffectsCallback);
 
@@ -246,7 +246,7 @@ function createWindow()
         console.log(`CALLBACK: After update - synths[${effectIndex}].params:`, synths[effectIndex].params);
         console.log(`Updated params for ${effectName} in synths array:`, synths[effectIndex].params);
     
-        const currentActiveEffect = getCurrentEffect();
+        const currentActiveEffect = getCurrentEffectFromStore();
         console.log(`CALLBACK: Current active effect:`, currentActiveEffect ? currentActiveEffect.name : 'none');
         console.log(`CALLBACK: Active audio source path:`, activeAudioSourcePath);
         console.log(`CALLBACK: This effect's SC file path:`, synths[effectIndex].scFilePath);
@@ -255,12 +255,23 @@ function createWindow()
         const isActiveAudioSource = activeAudioSourcePath && synths[effectIndex].scFilePath && 
                                    activeAudioSourcePath.toLowerCase() === synths[effectIndex].scFilePath.toLowerCase();
         
-        if (isActiveAudioSource) {
+        // Update central store paramSpecs/paramValues and apply values once when specs are available
+        ensureEffectInStore(effectName, synths[effectIndex].scFilePath);
+        updateParamSpecs(effectName, params || {});
+        // Initialize any missing paramValues to defaults lazily
+        initializeParamValuesFromSpecs(effectName);
+
+        const isActiveInStore = effectsStore.activeEffectName && effectsStore.activeEffectName === effectName;
+
+        if (isActiveAudioSource || isActiveInStore) {
           // --- ADD THIS LINE ---
           console.log(`CALLBACK: This effect matches the active audio source - updating UI`);
           // ---------------------
-          // Update the current effect to include the new params
-          setCurrentEffect(synths[effectIndex]); 
+          // Apply current paramValues to SC exactly once when specs are known
+          tryApplyAllParamsToSC(effectName);
+
+          // Update the current effect to include the new params (legacy structure)
+          // Legacy: no longer needed - state is updated in effectsStore 
           console.log('Updated currentEffect with new params from SC.');
           if (mainWindow && mainWindow.webContents) {
             // --- ADD THESE LINES ---
@@ -270,13 +281,16 @@ function createWindow()
           
 
             // -----------------------
+            // Also broadcast unified effects/state snapshot
+            broadcastEffectsState(effectName);
           } else {
             console.error(`CALLBACK: mainWindow or webContents not available!`);
           }
         } else if (!currentActiveEffect && synths.length > 0 && synths[0].name === effectName) {
           console.log(`CALLBACK: Setting initial effect ${effectName}`);
           // This handles the case where the very first effect (e.g. bypass or default) gets its specs
-          setCurrentEffect(synths[effectIndex]);
+          // Legacy: no longer needed - state is updated in effectsStore
+          effectsStore.activeEffectName = effectName;
           activeAudioSourcePath = synths[effectIndex].scFilePath;
           if (synths[effectIndex].shaderPath) {
             activeVisualSourcePath = synths[effectIndex].shaderPath;
@@ -292,11 +306,16 @@ function createWindow()
             
 
             // -----------------------
+            // Apply params and broadcast unified state
+            tryApplyAllParamsToSC(effectName);
+            broadcastEffectsState(effectName);
           } else {
             console.error(`CALLBACK: mainWindow or webContents not available for initial effect!`);
           }
         } else {
           console.log(`CALLBACK: Effect ${effectName} does not match active audio source. Active: ${activeAudioSourcePath}, This effect: ${synths[effectIndex].scFilePath}`);
+          // Still broadcast store state so UI/MCP can see specs for non-active effects
+          broadcastEffectsState(effectsStore.activeEffectName);
         }
       } else {
         console.warn(`Received specs for unknown effect: ${effectName}`);
@@ -413,7 +432,7 @@ app.whenReady().then(() =>
 
     // Start the MCP HTTP server
     const getState = {
-        getCurrentEffect: getCurrentEffect,
+        getCurrentEffectSnapshot: getActiveEffectSnapshot,
         getActiveVisualSourcePath: () => activeVisualSourcePath,
         getSynths: () => synths,
         getAvailableVisualizers: () => getAvailableVisualizers(getEffectsRepoPath()),
@@ -425,7 +444,11 @@ app.whenReady().then(() =>
         loadScFileAndRequestSpecs: loadScFileAndRequestSpecs,
         loadVisualizerContent: loadVisualizerContent,
         getEffectsRepoPath: getEffectsRepoPath,
-        setCurrentEffect: setCurrentEffect,
+        // New unified actions
+        setCurrentEffectAction: setCurrentEffectAction,
+        setEffectParametersAction: setEffectParametersAction,
+        setCurrentVisualizerAction: setCurrentVisualizerAction,
+        getActiveVisualizerSnapshot: getActiveVisualizerSnapshot,
         setActiveVisualSourcePath: (filePath) => {
             activeVisualSourcePath = filePath;
             console.log(`[MCP] Set activeVisualSourcePath to: ${activeVisualSourcePath}`);
@@ -490,7 +513,11 @@ ipcMain.on('reboot-server', (event) =>
     {
       setTimeout(() =>
       {
-        const loadEffectsCallback = () => loadEffectsList(mainWindow, getEffectsRepoPath, getEffectsPath);
+        const loadEffectsCallback = () => {
+          const loaded = loadEffectsList(mainWindow, getEffectsRepoPath, getEffectsPath);
+          try { (loaded || []).forEach(s => ensureEffectInStore(s.name, s.scFilePath)); } catch {}
+          broadcastEffectsState(effectsStore.activeEffectName);
+        };
         initializeSuperCollider(mainWindow, getEffectsRepoPath, loadEffectsCallback);
       }, 1000); // Wait for 1 second before rebooting
     })
@@ -500,7 +527,11 @@ ipcMain.on('reboot-server', (event) =>
       // Still attempt to reboot even if the kill command fails
       setTimeout(() =>
       {
-        const loadEffectsCallback = () => loadEffectsList(mainWindow, getEffectsRepoPath, getEffectsPath);
+        const loadEffectsCallback = () => {
+          const loaded = loadEffectsList(mainWindow, getEffectsRepoPath, getEffectsPath);
+          try { (loaded || []).forEach(s => ensureEffectInStore(s.name, s.scFilePath)); } catch {}
+          broadcastEffectsState(effectsStore.activeEffectName);
+        };
         initializeSuperCollider(mainWindow, getEffectsRepoPath, loadEffectsCallback);
       }, 1000);
     });
@@ -592,7 +623,7 @@ function setupEffectsWatcher()
 {
   const effectsPath = getEffectsRepoPath();
   const watcher = chokidar.watch(effectsPath, {
-    ignored: /(^|[\/\\])\../, // ignore dotfiles
+    ignored: /(^|[\\/])\../, // ignore dotfiles
     persistent: true,
     ignoreInitial: true
   });
@@ -617,7 +648,7 @@ function setupEffectsWatcher()
 
 const debouncedReloadEffectList = debounce(() => {
     console.log('Reloading full effects list due to file addition/deletion.');
-    loadEffectsList(mainWindow, getEffectsRepoPath, getEffectsPath);
+    loadEffectsListAndInitStore(mainWindow, getEffectsRepoPath, getEffectsPath);
     // Note: We could also reload visualizers here if needed in the future
 }, 300);
 
@@ -759,7 +790,7 @@ function reloadVisualEffect(jsFilePath)
   // Fallback: if not reloaded based on activeVisualSourcePath, check currentEffect from preset
   // This maintains previous behavior if the active path isn't directly matched but the preset uses it.
   if (!reloaded) {
-    const currentPresetEffect = getCurrentEffect();
+    const currentPresetEffect = getCurrentEffectFromStore();
     if (currentPresetEffect && currentPresetEffect.p5SketchPath && currentPresetEffect.p5SketchPath.toLowerCase() === jsFilePath.toLowerCase()) {
       console.log(`Fallback: Reloading visual for current preset effect: ${currentPresetEffect.name} from changed file: ${jsFilePath}`);
       const updatedSketchContent = loadP5SketchSync(jsFilePath, getEffectsRepoPath);
@@ -791,13 +822,13 @@ function reloadShaderEffect(glslFilePath) {
     // Extract potential base name from the changed GLSL file
     // e.g., "shaders/oscilloscope_bufferA.glsl" -> "oscilloscope"
     const fileName = path.basename(glslFilePath, '.glsl');
-    const shaderDir = path.dirname(glslFilePath);
+    // const shaderDir = path.dirname(glslFilePath);
     let potentialBaseName = null;
     let passType = null;
     
     // Check if this is a multi-pass shader file (has underscore suffix)
     const multiPassSuffixes = ['_common', '_bufferA', '_bufferB', '_bufferC', '_bufferD', '_image'];
-    const multiPassComponentPattern = /_buffer[a-d]\.glsl$|_common\.glsl$/i;
+    // const multiPassComponentPattern = /_buffer[a-d]\.glsl$|_common\.glsl$/i;
     for (const suffix of multiPassSuffixes) {
         if (fileName.endsWith(suffix)) {
             potentialBaseName = fileName.substring(0, fileName.length - suffix.length);
@@ -871,7 +902,7 @@ function reloadShaderEffect(glslFilePath) {
                     const updatedContent = fs.readFileSync(fullChangedGlslPath, 'utf-8');
                     synth.shaderContent = updatedContent;
                     
-                    const currentPresetEffect = getCurrentEffect();
+                    const currentPresetEffect = getCurrentEffectFromStore();
                     if (currentPresetEffect && currentPresetEffect.name === synth.name) {
                          if (mainWindow && mainWindow.webContents) {
                             const shaderUpdateData = {
@@ -900,7 +931,7 @@ function reloadShaderEffect(glslFilePath) {
                         const updatedMultiPassConfig = loadMultiPassShader(synth.shaderPath, effectsRepoPath);
                         synth.shaderContent = updatedMultiPassConfig;
                         
-                        const currentPresetEffect = getCurrentEffect();
+                        const currentPresetEffect = getCurrentEffectFromStore();
                         if (currentPresetEffect && currentPresetEffect.name === synth.name) {
                             if (mainWindow && mainWindow.webContents) {
                                 const shaderUpdateData = {
@@ -1269,6 +1300,8 @@ ipcMain.on('reload-all-effects', (event) =>
   try
   {
     const loadedSynths = loadEffectsList(mainWindow, getEffectsRepoPath, getEffectsPath);
+    try { (loadedSynths || []).forEach(s => ensureEffectInStore(s.name, s.scFilePath)); } catch {}
+    broadcastEffectsState(effectsStore.activeEffectName);
     const validSynths = loadedSynths.filter(synth => synth && synth.name);
     event.reply('effects-data', validSynths);
     console.log('Effects data sent to renderer process');
@@ -1695,5 +1728,318 @@ function setupRemoteVisualizerBroadcasting() {
   
   console.log('[RemoteBroadcast] Centralized broadcasting setup complete');
 }
+// ========================= Effects Store (SSOT) =========================
+// Canonical store for effects specs and live param values
+const effectsStore = {
+  byName: {},
+  activeEffectName: null
+};
+
+// Legacy compatibility helper - use getActiveEffectSnapshot() instead
+function getCurrentEffectFromStore() {
+  const snapshot = getActiveEffectSnapshot();
+  if (!snapshot) return null;
+  // Find the synth object from the synths array to maintain legacy format
+  return synths.find(s => s.name === snapshot.name) || null;
+}
+
+function ensureEffectInStore(effectName, scFilePath) {
+  if (!effectsStore.byName[effectName]) {
+    effectsStore.byName[effectName] = {
+      name: effectName,
+      scFilePath: scFilePath || null,
+      paramSpecs: {},
+      paramValues: {}
+    };
+  } else if (scFilePath && !effectsStore.byName[effectName].scFilePath) {
+    effectsStore.byName[effectName].scFilePath = scFilePath;
+  }
+}
+
+function initializeEffectsStoreFromSynths(allSynths) {
+  (allSynths || []).forEach(s => ensureEffectInStore(s.name, s.scFilePath));
+}
+
+function updateParamSpecs(effectName, specs) {
+  ensureEffectInStore(effectName);
+  effectsStore.byName[effectName].paramSpecs = specs || {};
+}
+
+function initializeParamValuesFromSpecs(effectName) {
+  const effect = effectsStore.byName[effectName];
+  if (!effect) return;
+  const specs = effect.paramSpecs || {};
+  effect.paramValues = effect.paramValues || {};
+  Object.entries(specs).forEach(([paramName, spec]) => {
+    if (typeof effect.paramValues[paramName] === 'undefined' && spec && typeof spec.default !== 'undefined') {
+      effect.paramValues[paramName] = spec.default;
+    }
+  });
+}
+
+function clampParam(effectName, paramName, value) {
+  const spec = effectsStore.byName?.[effectName]?.paramSpecs?.[paramName];
+  if (!spec) return { value, clamped: false, known: false };
+  const min = typeof spec.minval === 'number' ? spec.minval : value;
+  const max = typeof spec.maxval === 'number' ? spec.maxval : value;
+  const clampedValue = Math.max(min, Math.min(max, value));
+  return { value: clampedValue, clamped: clampedValue !== value, known: true };
+}
+
+function getActiveEffectSnapshot() {
+  const name = effectsStore.activeEffectName;
+  if (!name) return null;
+  const e = effectsStore.byName[name];
+  if (!e) return null;
+  return {
+    name: e.name,
+    scFilePath: e.scFilePath,
+    paramSpecs: e.paramSpecs || {},
+    paramValues: e.paramValues || {}
+  };
+}
+
+function broadcastEffectsState(targetEffectName) {
+  if (!mainWindow || !mainWindow.webContents) return;
+  const name = typeof targetEffectName === 'string' ? targetEffectName : effectsStore.activeEffectName;
+  const effect = name ? effectsStore.byName[name] : null;
+  const payload = {
+    activeEffectName: effectsStore.activeEffectName,
+    effect: effect ? {
+      name: effect.name,
+      scFilePath: effect.scFilePath,
+      paramSpecs: effect.paramSpecs,
+      paramValues: effect.paramValues
+    } : null
+  };
+  mainWindow.webContents.send('effects/state', payload);
+}
+
+function sendOscParamSet(paramName, value) {
+  try {
+    if (!oscManager || !oscManager.oscServer) return;
+    if (!global.scPortConfig) return;
+    const scHost = '127.0.0.1';
+    const scPort = global.scPortConfig.lang;
+    const typedArgs = [
+      { type: 's', value: String(paramName) },
+      { type: 'f', value: Number(value) }
+    ];
+    oscManager.oscServer.send({ address: '/effect/param/set', args: typedArgs }, scHost, scPort);
+  } catch (err) {
+    console.error('Error sending OSC param set:', err);
+  }
+}
+
+function tryApplyAllParamsToSC(effectName) {
+  const effect = effectsStore.byName?.[effectName];
+  if (!effect || !effect.paramValues) return;
+  Object.entries(effect.paramValues).forEach(([paramName, value]) => {
+    sendOscParamSet(paramName, value);
+  });
+}
+
+function setCurrentEffectAction({ name }) {
+  if (!name) return { error: 'Missing effect name' };
+  const found = synths.find(s => s.name === name);
+  if (!found) return { error: `Effect '${name}' not found` };
+  ensureEffectInStore(name, found.scFilePath);
+  effectsStore.activeEffectName = name;
+  activeAudioSourcePath = found.scFilePath;
+  // Load SC and request specs; apply will happen when specs are received
+  loadScFileAndRequestSpecs(found.scFilePath).catch(err => console.error('Error loading SC on set_current_effect:', err));
+  broadcastEffectsState(name);
+  return { ok: true };
+}
+
+function setEffectParametersAction({ name, params }) {
+  const targetName = name || effectsStore.activeEffectName;
+  if (!targetName) return { error: 'No active effect and no name provided' };
+  if (!params || typeof params !== 'object') return { error: 'params must be an object' };
+  ensureEffectInStore(targetName);
+  const effect = effectsStore.byName[targetName];
+  const valid = {};
+  const invalid = {};
+  const clampedInfo = {};
+  Object.entries(params).forEach(([k, v]) => {
+    if (typeof v !== 'number' || Number.isNaN(v)) {
+      invalid[k] = v;
+      return;
+    }
+    const { value, clamped, known } = clampParam(targetName, k, v);
+    if (!known) {
+      invalid[k] = v;
+      return;
+    }
+    valid[k] = value;
+    if (clamped) clampedInfo[k] = { requested: v, applied: value };
+  });
+  // Update store and send OSC for each valid change
+  Object.entries(valid).forEach(([k, v]) => {
+    effect.paramValues[k] = v;
+    sendOscParamSet(k, v);
+  });
+  broadcastEffectsState(targetName);
+  return { ok: true, invalid, clamped: clampedInfo };
+}
+
+// Wrapper to load effects and sync the central store
+function loadEffectsListAndInitStore(mainWindowArg, getEffectsRepoPathArg, getEffectsPathArg) {
+  const result = loadEffectsList(mainWindowArg, getEffectsRepoPathArg, getEffectsPathArg);
+  try { initializeEffectsStoreFromSynths(result); } catch (e) { console.warn('Failed to initialize effects store from synths:', e); }
+  broadcastEffectsState(effectsStore.activeEffectName);
+  return result;
+}
+
+// IPC: Actions and Queries for effects
+ipcMain.on('effects/actions:set_current_effect', (event, payload) => {
+  const res = setCurrentEffectAction(payload || {});
+  if (res && res.error) console.warn('[IPC] set_current_effect error:', res.error);
+});
+
+ipcMain.on('effects/actions:set_effect_parameters', (event, payload) => {
+  const res = setEffectParametersAction(payload || {});
+  if (res && res.error) console.warn('[IPC] set_effect_parameters error:', res.error);
+});
+
+ipcMain.handle('effects/queries:get_current_effect', () => {
+  return getActiveEffectSnapshot();
+});
+
+// ======================================================================
+
+// ========================= Visualizers Store (SSOT) =========================
+// Canonical store for visualizers following the same pattern as effects
+const visualizersStore = {
+  byName: {},
+  activeVisualizerName: null
+};
+
+function ensureVisualizerInStore(visualizerName, path, type) {
+  if (!visualizersStore.byName[visualizerName]) {
+    visualizersStore.byName[visualizerName] = {
+      name: visualizerName,
+      path: path || null,
+      type: type || null,
+      content: null
+    };
+  } else {
+    if (path && !visualizersStore.byName[visualizerName].path) {
+      visualizersStore.byName[visualizerName].path = path;
+    }
+    if (type && !visualizersStore.byName[visualizerName].type) {
+      visualizersStore.byName[visualizerName].type = type;
+    }
+  }
+}
+
+// Currently unused - might be useful for bulk initialization later
+// function initializeVisualizersStoreFromList(allVisualizers) {
+//   (allVisualizers || []).forEach(v => ensureVisualizerInStore(v.name, v.path, v.type));
+// }
+
+function getActiveVisualizerSnapshot() {
+  const name = visualizersStore.activeVisualizerName;
+  if (!name) return null;
+  const v = visualizersStore.byName[name];
+  if (!v) return null;
+  return {
+    name: v.name,
+    path: v.path,
+    type: v.type,
+    content: v.content
+  };
+}
+
+function broadcastVisualizersState(targetVisualizerName) {
+  if (!mainWindow || !mainWindow.webContents) return;
+  const name = typeof targetVisualizerName === 'string' ? targetVisualizerName : visualizersStore.activeVisualizerName;
+  const visualizer = name ? visualizersStore.byName[name] : null;
+  const payload = {
+    activeVisualizerName: visualizersStore.activeVisualizerName,
+    visualizer: visualizer ? {
+      name: visualizer.name,
+      path: visualizer.path,
+      type: visualizer.type,
+      content: visualizer.content
+    } : null
+  };
+  mainWindow.webContents.send('visualizers/state', payload);
+}
+
+async function loadAndBroadcastVisualizerContent(visualizerName) {
+  const v = visualizersStore.byName[visualizerName];
+  if (!v || !v.path) return;
+  
+  try {
+    const effectsRepoPath = getEffectsRepoPath();
+    const result = await loadVisualizerContent(v.path, effectsRepoPath);
+    
+    // Store content in the store
+    v.content = result;
+    
+    // Send the appropriate event based on type
+    if (v.type === 'shader') {
+      mainWindow.webContents.send('shader-effect-updated', {
+        shaderPath: v.path,
+        shaderContent: result
+      });
+    } else if (v.type === 'p5') {
+      mainWindow.webContents.send('visual-effect-updated', {
+        p5SketchPath: v.path,
+        p5SketchContent: result
+      });
+    }
+    
+    // Also broadcast the unified state
+    broadcastVisualizersState(visualizerName);
+  } catch (error) {
+    console.error('Error loading visualizer content:', error);
+  }
+}
+
+function setCurrentVisualizerAction({ name }) {
+  if (!name) return { error: 'Missing visualizer name' };
+  
+  // Get fresh list of visualizers
+  const effectsRepoPath = getEffectsRepoPath();
+  const availableVisualizers = getAvailableVisualizers(effectsRepoPath);
+  const found = availableVisualizers.find(v => v.name === name);
+  
+  if (!found) return { error: `Visualizer '${name}' not found` };
+  
+  ensureVisualizerInStore(name, found.path, found.type);
+  visualizersStore.activeVisualizerName = name;
+  activeVisualSourcePath = found.path;
+  
+  // Load content and broadcast
+  loadAndBroadcastVisualizerContent(name).catch(err => 
+    console.error('Error loading visualizer on set_current_visualizer:', err)
+  );
+  
+  broadcastVisualizersState(name);
+  return { ok: true };
+}
+
+function getVisualizersListAction() {
+  const effectsRepoPath = getEffectsRepoPath();
+  return getAvailableVisualizers(effectsRepoPath);
+}
+
+// IPC: Actions and Queries for visualizers
+ipcMain.on('visualizers/actions:set_current_visualizer', (event, payload) => {
+  const res = setCurrentVisualizerAction(payload || {});
+  if (res && res.error) console.warn('[IPC] set_current_visualizer error:', res.error);
+});
+
+ipcMain.handle('visualizers/queries:get_current_visualizer', () => {
+  return getActiveVisualizerSnapshot();
+});
+
+ipcMain.handle('visualizers/queries:list_visualizers', () => {
+  return getVisualizersListAction();
+});
+
+// ======================================================================
 
 
