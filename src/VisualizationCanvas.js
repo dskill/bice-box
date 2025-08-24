@@ -337,10 +337,7 @@ function VisualizationCanvas({
       }
 
       if (currentShaderContent && window.ShaderToyLite) {
-        const contentInfo = typeof currentShaderContent === 'string' 
-          ? `string (${currentShaderContent.length} chars)` 
-          : `object with keys: ${Object.keys(currentShaderContent).join(', ')}`;
-        console.log('Shader content found, type:', contentInfo, 'creating canvas and loading ShaderToyLite sketch...');
+        console.log('Shader content found, creating canvas and loading ShaderToyLite sketch...');
 
         // Determine resolution scale from metadata or default
         const actualResolutionScale = getResolutionScaleFromMetadata(currentShaderContent);

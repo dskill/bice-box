@@ -439,10 +439,6 @@ function App() {
       }
       
       lastVisualizerUpdateRef.current = { name: visualizer.name, timestamp: now };
-      const contentInfo = visualizer.content 
-        ? (typeof visualizer.content === 'string' ? 'string' : `object with keys: ${Object.keys(visualizer.content).join(', ')}`)
-        : 'empty';
-      console.log('App.js: Applying visualizers/state:', visualizer.name, 'type:', visualizer.type, 'content:', contentInfo);
       
       if (visualizer.type === 'shader') {
         setCurrentShaderPath(visualizer.path);

@@ -1964,7 +1964,7 @@ function broadcastVisualizersState(targetVisualizerName) {
       content: visualizer.content
     } : null
   };
-  console.log('[broadcastVisualizersState] Sending visualizers/state for:', name, 'has content:', !!visualizer?.content);
+
   mainWindow.webContents.send('visualizers/state', payload);
 }
 
@@ -1973,22 +1973,16 @@ async function loadAndBroadcastVisualizerContent(visualizerName) {
   if (!v || !v.path) return;
   
   try {
-    console.log(`[loadAndBroadcastVisualizerContent] Loading content for ${visualizerName} from ${v.path}`);
     const result = await loadVisualizerContent(v.path, getEffectsRepoPath);
     
     // Extract the actual content from the result object
     if (result && result.content) {
       v.content = result.content;
-      const contentInfo = typeof result.content === 'string' 
-        ? `string, size: ${result.content.length}` 
-        : `object with keys: ${Object.keys(result.content).join(', ')}`;
-      console.log(`[loadAndBroadcastVisualizerContent] Content loaded for ${visualizerName}, type: ${contentInfo}`);
     } else if (result && result.error) {
       console.error(`[loadAndBroadcastVisualizerContent] Error loading ${visualizerName}: ${result.error}`);
       v.content = null;
     } else {
       v.content = null;
-      console.log(`[loadAndBroadcastVisualizerContent] No content loaded for ${visualizerName}`);
     }
     
     // Broadcast the unified state (which now includes content)

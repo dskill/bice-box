@@ -100,11 +100,6 @@ function loadMultiPassShader(shaderBasePath, effectsRepoPath) {
     }
     
     console.log(`Loaded multi-pass shader with passes: ${Object.keys(multiPassConfig).join(', ')}`);
-    // Debug: Log the actual content keys and sizes
-    Object.keys(multiPassConfig).forEach(key => {
-        const size = multiPassConfig[key] ? multiPassConfig[key].length : 0;
-        console.log(`  ${key} pass: ${size} characters`);
-    });
     return multiPassConfig;
 }
 
