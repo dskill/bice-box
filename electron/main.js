@@ -1964,6 +1964,7 @@ function broadcastVisualizersState(targetVisualizerName) {
       content: visualizer.content
     } : null
   };
+  console.log('[broadcastVisualizersState] Sending visualizers/state for:', name, 'has content:', !!visualizer?.content);
   mainWindow.webContents.send('visualizers/state', payload);
 }
 
@@ -1972,29 +1973,32 @@ async function loadAndBroadcastVisualizerContent(visualizerName) {
   if (!v || !v.path) return;
   
   try {
-    const effectsRepoPath = getEffectsRepoPath();
-    const result = await loadVisualizerContent(v.path, effectsRepoPath);
+    console.log(`[loadAndBroadcastVisualizerContent] Loading content for ${visualizerName} from ${v.path}`);
+    const result = await loadVisualizerContent(v.path, getEffectsRepoPath);
     
-    // Store content in the store
-    v.content = result;
-    
-    // Send the appropriate event based on type
-    if (v.type === 'shader') {
-      mainWindow.webContents.send('shader-effect-updated', {
-        shaderPath: v.path,
-        shaderContent: result
-      });
-    } else if (v.type === 'p5') {
-      mainWindow.webContents.send('visual-effect-updated', {
-        p5SketchPath: v.path,
-        p5SketchContent: result
-      });
+    // Extract the actual content from the result object
+    if (result && result.content) {
+      v.content = result.content;
+      const contentInfo = typeof result.content === 'string' 
+        ? `string, size: ${result.content.length}` 
+        : `object with keys: ${Object.keys(result.content).join(', ')}`;
+      console.log(`[loadAndBroadcastVisualizerContent] Content loaded for ${visualizerName}, type: ${contentInfo}`);
+    } else if (result && result.error) {
+      console.error(`[loadAndBroadcastVisualizerContent] Error loading ${visualizerName}: ${result.error}`);
+      v.content = null;
+    } else {
+      v.content = null;
+      console.log(`[loadAndBroadcastVisualizerContent] No content loaded for ${visualizerName}`);
     }
     
-    // Also broadcast the unified state
+    // Broadcast the unified state (which now includes content)
     broadcastVisualizersState(visualizerName);
+    
+    // No need to send separate events - the unified state has everything
   } catch (error) {
     console.error('Error loading visualizer content:', error);
+    // Still broadcast state even on error so UI knows something changed
+    broadcastVisualizersState(visualizerName);
   }
 }
 
@@ -2012,12 +2016,11 @@ function setCurrentVisualizerAction({ name }) {
   visualizersStore.activeVisualizerName = name;
   activeVisualSourcePath = found.path;
   
-  // Load content and broadcast
+  // Load content and broadcast only once with everything
   loadAndBroadcastVisualizerContent(name).catch(err => 
     console.error('Error loading visualizer on set_current_visualizer:', err)
   );
   
-  broadcastVisualizersState(name);
   return { ok: true };
 }
 

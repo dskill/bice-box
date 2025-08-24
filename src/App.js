@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import VisualizationMode from './VisualizationMode';
 import EffectSelectScreen from './EffectSelectScreen';
 import Whisper from './Whisper';
@@ -223,55 +223,7 @@ function App() {
     });
   }, [reloadEffectList, checkEffectsRepoStatus]);
 
-  useEffect(() => {
-    const handleEffectUpdate = (event, updatedEffect) => {
-      console.log('Effect update received:', updatedEffect);
-      
-      if (!updatedEffect) {
-        console.warn('Received undefined updatedEffect, skipping update');
-        return;
-      }
-
-      if (typeof updatedEffect !== 'object' || updatedEffect === null || typeof updatedEffect.name !== 'string') {
-        console.error('Invalid effect update received:', updatedEffect);
-        return;
-      }
-
-      setSynths(prevSynths => {
-        const updatedSynths = prevSynths.map(synth => 
-          synth.name === updatedEffect.name ? updatedEffect : synth
-        );
-        console.log(`Updated synths: ${updatedSynths.length} effects, updated "${updatedEffect.name}"`);
-        return updatedSynths;
-      });
-
-      // Check if the updated effect matches the current audio source (for direct audio selection)
-      if (currentAudioSource && updatedEffect.scFilePath && 
-          currentAudioSource.toLowerCase() === updatedEffect.scFilePath.toLowerCase()) {
-        const paramCount = updatedEffect.params ? Object.keys(updatedEffect.params).length : 0;
-        console.log(`Updated effect matches current audio source "${updatedEffect.name}": ${paramCount} parameters`);
-        if (updatedEffect.params) {
-          setCurrentAudioParams(updatedEffect.params);
-        }
-      }
-    };
-
-    const handleMcpAudioSourceChanged = (event, newAudioSource) => {
-      console.log('MCP audio source changed to:', newAudioSource);
-      setCurrentAudioSource(newAudioSource);
-    };
-
-    if (electron) {
-      console.log('Adding effect-updated and mcp-audio-source-changed listeners for App.js');
-      electron.ipcRenderer.on('effect-updated', handleEffectUpdate);
-      electron.ipcRenderer.on('mcp-audio-source-changed', handleMcpAudioSourceChanged);
-      return () => {
-        console.log('Removing effect-updated and mcp-audio-source-changed listeners from App.js');
-        electron.ipcRenderer.removeListener('effect-updated', handleEffectUpdate);
-        electron.ipcRenderer.removeListener('mcp-audio-source-changed', handleMcpAudioSourceChanged);
-      };
-    }
-  }, [currentAudioSource]); // Add currentAudioSource to dependency array
+  // Legacy event listeners removed - now using unified effects/state
 
   const handleVisualSelect = useCallback(async (selectedVisual, options = {}) => { // Expects the full visual object
     const { fromMcp = false } = options;
@@ -281,47 +233,20 @@ function App() {
       return;
     }
 
-    const { path: visualPath, type: visualType } = selectedVisual;
-    console.log(`Selecting visual source: ${visualPath} (type: ${visualType})`);
+    const visualizerName = selectedVisual.name;
+    console.log(`Selecting visual: ${visualizerName}`);
 
-    if (electron) {
-      try {
-        // Use the shared visualizer loading logic
-        const result = await electron.ipcRenderer.invoke('load-visualizer-content', visualPath);
-        
-        if (result.type === 'p5') {
-          setCurrentVisualSource(visualPath);
-          setCurrentVisualContent(result.content);
-          setCurrentShaderPath(null); // Clear shader if p5 is selected
-          setCurrentShaderContent('');
-          if (!fromMcp) electron.ipcRenderer.send('set-current-visual-source', visualPath); // For hot-reloading p5
-          console.log(`P5 sketch content loaded successfully.`);
-        } else if (result.type === 'shader') {
-          setCurrentShaderPath(visualPath);
-          setCurrentShaderContent(result.content);
-          setCurrentVisualSource(null); // Clear p5 if shader is selected
-          setCurrentVisualContent('');
-          if (!fromMcp) electron.ipcRenderer.send('set-current-visual-source', visualPath); // For hot-reloading shader
-          console.log(`Shader content loaded successfully.`);
-        } else {
-          console.warn(`Unknown visualizer result type: ${result.type}`);
-          setError(`Unknown visualizer result type: ${result.type}`);
-        }
-      } catch (error) {
-        console.error(`Error loading selected visual:`, error);
-        // Clear relevant visual state on error
-        if (visualType === 'p5') {
-          setCurrentVisualSource(null);
-          setCurrentVisualContent('');
-        } else if (visualType === 'shader') {
-          setCurrentShaderPath(null);
-          setCurrentShaderContent('');
-        }
-        setError(`Failed to load visual: ${error.message}`);
+    if (electron && electron.ipcRenderer && visualizerName) {
+      // Use unified action to set current visualizer
+      electron.ipcRenderer.send('visualizers/actions:set_current_visualizer', { name: visualizerName });
+      
+      // Also send the legacy event for hot-reloading (if not from MCP)
+      if (!fromMcp) {
+        electron.ipcRenderer.send('set-current-visual-source', selectedVisual.path);
       }
     }
     if (!fromMcp) setShowVisualSelector(false);
-  }, [setCurrentVisualSource, setCurrentVisualContent, setCurrentShaderPath, setCurrentShaderContent, setError, setShowVisualSelector]);
+  }, [setShowVisualSelector]);
 
   const pullEffectsRepo = () => {
     return new Promise((resolve, reject) => {
@@ -376,23 +301,7 @@ function App() {
     }
   }, [setCurrentVisualSource, setCurrentVisualContent, setCurrentShaderPath, setCurrentShaderContent]);
 
-  useEffect(() => {
-    const handleMcpVisualSourceChanged = async (event, selectedVisual) => {
-      console.log('MCP visual source changed to:', selectedVisual);
-      if (!selectedVisual || !selectedVisual.path || !selectedVisual.type) {
-        console.log('MCP visual selection invalid.');
-        return;
-      }
-      await handleVisualSelect(selectedVisual, { fromMcp: true });
-    };
-
-    if (electron) {
-      electron.ipcRenderer.on('mcp-visual-source-changed', handleMcpVisualSourceChanged);
-      return () => {
-        electron.ipcRenderer.removeListener('mcp-visual-source-changed', handleMcpVisualSourceChanged);
-      };
-    }
-  }, [handleVisualSelect]);
+  // Legacy mcp-visual-source-changed listener removed - now using unified visualizers/state
 
   const handleVisualEffectUpdate = useCallback((event, payload) => {
     if (!payload) {
@@ -401,14 +310,12 @@ function App() {
     }
     const { p5SketchPath: updatedPath, p5SketchContent } = payload; 
 
-    if (updatedPath && currentVisualSource && updatedPath.toLowerCase() === currentVisualSource.toLowerCase()) {
-      console.log(`Visual content updated for active visual source: ${currentVisualSource} (path from event: ${updatedPath})`);
+    // Only apply if this is a hot-reload update (path matches current)
+    if (currentVisualSource && currentVisualSource.toLowerCase() === updatedPath.toLowerCase()) {
+      console.log('App.js: Hot-reload p5 visual update for:', updatedPath);
       setCurrentVisualContent(p5SketchContent);
     } else {
-      // This condition might be hit if the fallback in main.js sent an update for a preset's visual
-      // that isn't the currently *active* visual source but is part of the current preset.
-      // Or if the paths simply don't match for other reasons.
-      console.log(`Ignoring visual update. Active visual source: ${currentVisualSource}, Updated sketch path: ${updatedPath}`);
+      console.log('App.js: Ignoring visual-effect-updated - likely handled by visualizers/state');
     }
   }, [currentVisualSource, setCurrentVisualContent]);
 
@@ -484,10 +391,23 @@ function App() {
   }, [handleDevModeChange]);
 
   // Subscribe to unified effects/state broadcast from main
+  const lastEffectUpdateRef = useRef({ name: null, timestamp: 0 });
+  
   useEffect(() => {
     const handleEffectsState = (event, payload) => {
       if (!payload || !payload.effect) return;
       const { effect } = payload;
+      
+      // Debounce duplicate updates from multiple listeners (React StrictMode)
+      const now = Date.now();
+      if (lastEffectUpdateRef.current.name === effect.name && 
+          now - lastEffectUpdateRef.current.timestamp < 50) {
+        console.log('App.js: Ignoring duplicate effects/state for:', effect.name);
+        return;
+      }
+      
+      lastEffectUpdateRef.current = { name: effect.name, timestamp: now };
+      
       if (effect.scFilePath) setCurrentAudioSource(effect.scFilePath);
       if (effect.paramSpecs) setCurrentAudioParams(effect.paramSpecs);
       if (effect.paramValues) setParamValues(effect.paramValues);
@@ -498,6 +418,49 @@ function App() {
         electron.ipcRenderer.removeListener('effects/state', handleEffectsState);
       };
     }
+  }, []);
+
+  // Subscribe to unified visualizers/state broadcast from main
+  const lastVisualizerUpdateRef = useRef({ name: null, timestamp: 0 });
+  
+  useEffect(() => {
+    if (!electron || !electron.ipcRenderer) return;
+    
+    const handleVisualizersState = (event, payload) => {
+      if (!payload || !payload.visualizer) return;
+      const { visualizer } = payload;
+      
+      // Debounce duplicate updates from multiple listeners (React StrictMode)
+      const now = Date.now();
+      if (lastVisualizerUpdateRef.current.name === visualizer.name && 
+          now - lastVisualizerUpdateRef.current.timestamp < 50) {
+        console.log('App.js: Ignoring duplicate visualizers/state for:', visualizer.name);
+        return;
+      }
+      
+      lastVisualizerUpdateRef.current = { name: visualizer.name, timestamp: now };
+      const contentInfo = visualizer.content 
+        ? (typeof visualizer.content === 'string' ? 'string' : `object with keys: ${Object.keys(visualizer.content).join(', ')}`)
+        : 'empty';
+      console.log('App.js: Applying visualizers/state:', visualizer.name, 'type:', visualizer.type, 'content:', contentInfo);
+      
+      if (visualizer.type === 'shader') {
+        setCurrentShaderPath(visualizer.path);
+        setCurrentShaderContent(visualizer.content || '');
+        setCurrentVisualSource(null);
+        setCurrentVisualContent('');
+      } else if (visualizer.type === 'p5') {
+        setCurrentVisualSource(visualizer.path);
+        setCurrentVisualContent(visualizer.content || '');
+        setCurrentShaderPath(null);
+        setCurrentShaderContent('');
+      }
+    };
+    
+    electron.ipcRenderer.on('visualizers/state', handleVisualizersState);
+    return () => {
+      electron.ipcRenderer.removeListener('visualizers/state', handleVisualizersState);
+    };
   }, []);
 
   const handleAudioSelect = useCallback((selected) => {
@@ -580,7 +543,7 @@ function App() {
     }
   }, []);
 
-  // Handler for 'shader-effect-updated' IPC messages (GLSL hot-reload)
+  // Handler for 'shader-effect-updated' IPC messages (primarily for hot-reload)
   const handleShaderEffectUpdated = useCallback((event, data) => {
     console.log('App.js: Received shader-effect-updated. Raw data:', data);
 
@@ -591,13 +554,13 @@ function App() {
     }
 
     const { shaderPath, shaderContent } = data;
-
-    // Only update the shader that is currently active in the UI
+    
+    // Only apply if this is a hot-reload update (path matches current)
     if (currentShaderPath && currentShaderPath.toLowerCase() === shaderPath.toLowerCase()) {
-      console.log('App.js: Updated shader matches active shader – applying new content.');
+      console.log('App.js: Hot-reload shader update for:', shaderPath);
       setCurrentShaderContent(shaderContent);
     } else {
-      console.log('App.js: Updated shader does not match the active shader – ignoring.');
+      console.log('App.js: Ignoring shader-effect-updated - likely handled by visualizers/state');
     }
   }, [currentShaderPath, setCurrentShaderContent]);
 
