@@ -271,35 +271,40 @@ function App() {
   };
 
   // Handler for 'auto-visualizer-loaded' IPC messages (from SC file comments)
-  const handleAutoVisualizerLoaded = useCallback((event, data) => {
+  const handleAutoVisualizerLoaded = useCallback(async (event, data) => {
     console.log(`App.js: Received auto-visualizer-loaded. Raw data:`, data);
     if (data && data.type && data.path && data.content !== undefined) {
-      const { type, path, content } = data;
+      const { type, path } = data;
       console.log(`App.js: Auto-loading visualizer: ${path} (type: ${type})`);
       
-      if (type === 'p5') {
-        setCurrentVisualSource(path);
-        setCurrentVisualContent(content);
-        setCurrentShaderPath(null); // Clear shader if p5 is auto-loaded
-        setCurrentShaderContent('');
-        // Also send to main for hot-reloading
+      // First, get the list of visualizers to find the name
+      try {
+        const visualizers = await electron.ipcRenderer.invoke('visualizers/queries:list_visualizers');
+        if (visualizers && visualizers.visualizers) {
+          // Find the visualizer that matches this path
+          const matchingVisualizer = visualizers.visualizers.find(v => v.path === path);
+          if (matchingVisualizer) {
+            // Use the unified action to set the current visualizer
+            electron.ipcRenderer.send('visualizers/actions:set_current_visualizer', { name: matchingVisualizer.name });
+            console.log(`Auto-loaded ${type} visualizer using unified action:`, matchingVisualizer.name);
+          } else {
+            console.warn(`Could not find visualizer with path: ${path}`);
+            // Fallback to just setting visual source for hot-reloading
+            electron.ipcRenderer.send('set-current-visual-source', path);
+          }
+        } else {
+          // Fallback to just setting visual source for hot-reloading
+          electron.ipcRenderer.send('set-current-visual-source', path);
+        }
+      } catch (error) {
+        console.error('Error auto-loading visualizer:', error);
+        // Fallback to just setting visual source for hot-reloading
         electron.ipcRenderer.send('set-current-visual-source', path);
-        console.log(`Auto-loaded p5 visualizer: ${path}`);
-      } else if (type === 'shader') {
-        setCurrentShaderPath(path);
-        setCurrentShaderContent(content);
-        setCurrentVisualSource(null); // Clear p5 if shader is auto-loaded
-        setCurrentVisualContent('');
-        // Also send to main for hot-reloading
-        electron.ipcRenderer.send('set-current-visual-source', path);
-        console.log(`Auto-loaded shader visualizer: ${path}`);
-      } else {
-        console.warn(`App.js: Unknown auto-visualizer type: ${type}`);
       }
     } else {
       console.warn('App.js: Received auto-visualizer-loaded with invalid or missing data payload.', data);
     }
-  }, [setCurrentVisualSource, setCurrentVisualContent, setCurrentShaderPath, setCurrentShaderContent]);
+  }, []);
 
   // Legacy mcp-visual-source-changed listener removed - now using unified visualizers/state
 

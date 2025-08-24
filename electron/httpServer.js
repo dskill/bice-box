@@ -276,8 +276,8 @@ function sendCurrentShaderToClient(ws, getState) {
     }
     
     try {
-        const currentEffect = getState.getCurrentEffectSnapshot ? getState.getCurrentEffectSnapshot() : null;
-        const { loadVisualizerContent, getActiveVisualSourcePath } = getState;
+        const { loadVisualizerContent, getActiveVisualSourcePath, getCurrentEffectSnapshot } = getState;
+        const currentEffect = getCurrentEffectSnapshot ? getCurrentEffectSnapshot() : null;
         
         // Try to get shader path from current effect first, then from active visual source
         let shaderPath = null;
@@ -348,15 +348,29 @@ async function handleToolCall(params, getState) {
     
     const {
         getSynths,
-        getAvailableVisualizers
+        getAvailableVisualizers,
+        getCurrentEffectSnapshot,
+        getActiveVisualizerSnapshot
     } = getState;
     
     switch (name) {
         case 'get_current_effect':
             try {
-                const effect = getState.getCurrentEffectSnapshot ? getState.getCurrentEffectSnapshot() : null;
+                const effect = getCurrentEffectSnapshot ? getCurrentEffectSnapshot() : null;
+                const visualizer = getActiveVisualizerSnapshot ? getActiveVisualizerSnapshot() : null;
+                
+                // Combine effect and visualizer info
+                const result = {
+                    effect: effect,
+                    visualizer: visualizer ? {
+                        name: visualizer.name,
+                        type: visualizer.type,
+                        path: visualizer.path
+                    } : null
+                };
+                
                 return {
-                    content: [{ type: 'text', text: JSON.stringify(effect, null, 2) }]
+                    content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
                 };
             } catch (error) {
                 console.error('[MCP] Error in get_current_effect:', error);

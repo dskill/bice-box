@@ -1964,7 +1964,6 @@ function broadcastVisualizersState(targetVisualizerName) {
       content: visualizer.content
     } : null
   };
-
   mainWindow.webContents.send('visualizers/state', payload);
 }
 
@@ -2034,7 +2033,7 @@ ipcMain.handle('visualizers/queries:get_current_visualizer', () => {
 });
 
 ipcMain.handle('visualizers/queries:list_visualizers', () => {
-  return getVisualizersListAction();
+  return { visualizers: getVisualizersListAction() };
 });
 
 // ======================================================================
