@@ -97,6 +97,7 @@ function startHttpServer(getState) {
                     break;
                     
                 case 'tools/list':
+                    console.log('[MCP] tools/list requested');
                     result = {
                         tools: [
                             {
@@ -167,13 +168,51 @@ function startHttpServer(getState) {
                                     },
                                     required: ['visualizerName']
                                 }
+                            },
+                            {
+                                name: 'create_or_update_audio_effect',
+                                description: 'The preferred way to create or update audio effects. Use this instead of writing .sc files directly. Automatically tests compilation and provides detailed error feedback. No permission needed - this is the standard method for creating effects.',
+                                inputSchema: {
+                                    type: 'object',
+                                    properties: {
+                                        effectName: {
+                                            type: 'string',
+                                            description: 'Name of the effect (without .sc extension)'
+                                        },
+                                        scCode: {
+                                            type: 'string',
+                                            description: 'SuperCollider code for the effect'
+                                        },
+                                        makeActive: {
+                                            type: 'boolean',
+                                            description: 'Whether to make this the active effect after creation (default: false)'
+                                        }
+                                    },
+                                    required: ['effectName', 'scCode']
+                                }
+                            },
+                            {
+                                name: 'test_supercollider_code',
+                                description: 'Test SuperCollider code compilation without saving any files. Use freely during development to validate syntax before finalizing. No permission needed.',
+                                inputSchema: {
+                                    type: 'object',
+                                    properties: {
+                                        scCode: {
+                                            type: 'string',
+                                            description: 'SuperCollider code to test'
+                                        }
+                                    },
+                                    required: ['scCode']
+                                }
                             }
                         ]
                     };
                     break;
                     
                 case 'tools/call':
+                    console.log(`[MCP] tools/call invoked for tool: ${params.name}`);
                     result = await handleToolCall(params, getState);
+                    console.log(`[MCP] tools/call completed for tool: ${params.name}, success: ${!result.isError}`);
                     break;
                 
                 case 'notifications/initialized':
@@ -471,6 +510,92 @@ async function handleToolCall(params, getState) {
                 console.error('[MCP] Error in set_visualizer:', error);
                 return {
                     content: [{ type: 'text', text: `Error setting visualizer: ${error.message}` }],
+                    isError: true
+                };
+            }
+            
+        case 'create_or_update_audio_effect':
+            try {
+                console.log('[MCP] create_or_update_audio_effect called with:', {
+                    effectName: args.effectName,
+                    scCodeLength: args.scCode ? args.scCode.length : 0,
+                    makeActive: args.makeActive
+                });
+                
+                const { effectName, scCode, makeActive = false } = args;
+                const { compileAndSaveEffect } = getState;
+                
+                if (!compileAndSaveEffect) {
+                    console.error('[MCP] compileAndSaveEffect function not found in getState');
+                    throw new Error('Effect compilation not available');
+                }
+                
+                console.log('[MCP] Calling compileAndSaveEffect...');
+                const result = await compileAndSaveEffect(effectName, scCode);
+                console.log('[MCP] compileAndSaveEffect result:', result);
+                
+                if (result.success) {
+                    let response = `Successfully created/updated effect: ${effectName}`;
+                    
+                    if (makeActive && result.success) {
+                        const { setCurrentEffectAction } = getState;
+                        if (setCurrentEffectAction) {
+                            const switchResult = setCurrentEffectAction({ name: effectName });
+                            if (switchResult.error) {
+                                response += `\nWarning: Effect saved but could not activate: ${switchResult.error}`;
+                            } else {
+                                response += `\nEffect is now active`;
+                            }
+                        } else {
+                            response += `\nWarning: Could not make effect active - action not available`;
+                        }
+                    }
+                    
+                    return {
+                        content: [{ type: 'text', text: response }]
+                    };
+                } else {
+                    return {
+                        content: [{ 
+                            type: 'text', 
+                            text: `Failed to compile effect:\n${result.error}\n\nSuperCollider output:\n${result.scOutput || 'No output'}` 
+                        }],
+                        isError: true
+                    };
+                }
+            } catch (error) {
+                console.error('[MCP] Error in create_or_update_audio_effect:', error);
+                return {
+                    content: [{ type: 'text', text: `Error creating effect: ${error.message}` }],
+                    isError: true
+                };
+            }
+            
+        case 'test_supercollider_code':
+            try {
+                const { scCode } = args;
+                const { testSuperColliderCode } = getState;
+                if (!testSuperColliderCode) throw new Error('SuperCollider code testing not available');
+                
+                const result = await testSuperColliderCode(scCode);
+                
+                if (result.success) {
+                    return {
+                        content: [{ type: 'text', text: 'SuperCollider code compiled successfully!\n\nNo syntax errors detected.' }]
+                    };
+                } else {
+                    return {
+                        content: [{ 
+                            type: 'text', 
+                            text: `SuperCollider compilation failed:\n${result.error}\n\nFull output:\n${result.output || 'No output'}` 
+                        }],
+                        isError: true
+                    };
+                }
+            } catch (error) {
+                console.error('[MCP] Error in test_supercollider_code:', error);
+                return {
+                    content: [{ type: 'text', text: `Error testing code: ${error.message}` }],
                     isError: true
                 };
             }

@@ -456,6 +456,19 @@ app.whenReady().then(() =>
         setActiveAudioSourcePath: (filePath) => {
             activeAudioSourcePath = filePath;
             console.log(`[MCP] Set activeAudioSourcePath to: ${activeAudioSourcePath}`);
+        },
+        // Add the safe compilation function
+        compileAndSaveEffect: async (effectName, scCode) => {
+            console.log(`[main.js] compileAndSaveEffect called with effectName: ${effectName}`);
+            const { compileAndSaveEffect } = require('./superColliderManager');
+            const result = await compileAndSaveEffect(effectName, scCode, getEffectsRepoPath, activeAudioSourcePath);
+            console.log(`[main.js] compileAndSaveEffect returned:`, result);
+            return result;
+        },
+        // Add the test-only function
+        testSuperColliderCode: async (scCode) => {
+            const { testSuperColliderCode } = require('./superColliderManager');
+            return await testSuperColliderCode(scCode);
         }
     };
     startHttpServer(getState);
@@ -623,7 +636,10 @@ function setupEffectsWatcher()
 {
   const effectsPath = getEffectsRepoPath();
   const watcher = chokidar.watch(effectsPath, {
-    ignored: /(^|[\\/])\../, // ignore dotfiles
+    ignored: [
+      /(^|[\\/])\../, // ignore dotfiles
+      /temp_[a-f0-9]+_.*\.sc$/ // ignore temp SC files from compilation testing
+    ],
     persistent: true,
     ignoreInitial: true
   });

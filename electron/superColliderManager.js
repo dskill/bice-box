@@ -537,6 +537,289 @@ async function killSuperCollider() {
     }
 }
 
+// Safe compilation function that tests SC code before saving
+async function compileAndSaveEffect(effectName, scCode, getEffectsRepoPath, activeAudioSourcePath) {
+    console.log(`[compileAndSaveEffect] Called with effectName: ${effectName}, scCode length: ${scCode ? scCode.length : 0}`);
+    
+    const fs = require('fs');
+    const path = require('path');
+    const crypto = require('crypto');
+    
+    // Validate inputs
+    if (!effectName || typeof effectName !== 'string') {
+        console.error('[compileAndSaveEffect] Invalid effectName:', effectName);
+        return {
+            success: false,
+            error: 'Invalid effect name provided',
+            scOutput: null
+        };
+    }
+    
+    if (!scCode || typeof scCode !== 'string') {
+        console.error('[compileAndSaveEffect] Invalid scCode:', typeof scCode);
+        return {
+            success: false,
+            error: 'Invalid SuperCollider code provided',
+            scOutput: null
+        };
+    }
+    
+    if (!getEffectsRepoPath || typeof getEffectsRepoPath !== 'function') {
+        console.error('[compileAndSaveEffect] getEffectsRepoPath is not a function');
+        return {
+            success: false,
+            error: 'Internal error: getEffectsRepoPath not available',
+            scOutput: null
+        };
+    }
+    
+    // Generate a unique temp filename
+    const tempId = crypto.randomBytes(8).toString('hex');
+    const tempFileName = `temp_${tempId}_${effectName}.sc`;
+    const audioPath = path.join(getEffectsRepoPath(), 'audio');
+    const tempFilePath = path.join(audioPath, tempFileName);
+    const finalFilePath = path.join(audioPath, `${effectName}.sc`);
+    
+    console.log(`[compileAndSaveEffect] Paths:`, {
+        audioPath,
+        tempFilePath,
+        finalFilePath
+    });
+    
+    try {
+        // Step 1: Write to temp file
+        console.log(`[compileAndSaveEffect] Writing temp file: ${tempFilePath}`);
+        fs.writeFileSync(tempFilePath, scCode, 'utf-8');
+        
+        // Step 2: Test compile the temp file
+        console.log(`[compileAndSaveEffect] Testing compilation of: ${tempFileName}`);
+        const compileResult = await testCompileScFile(tempFilePath);
+        
+        if (!compileResult.success) {
+            // Compilation failed - clean up and return error
+            console.error(`[compileAndSaveEffect] Compilation failed for ${effectName}`);
+            try {
+                fs.unlinkSync(tempFilePath);
+            } catch (e) {
+                console.warn(`Failed to delete temp file: ${tempFilePath}`);
+            }
+            return {
+                success: false,
+                error: compileResult.error,
+                scOutput: compileResult.output
+            };
+        }
+        
+        // Step 3: Compilation succeeded - move to final location
+        console.log(`[compileAndSaveEffect] Compilation successful, moving to: ${finalFilePath}`);
+        
+        // If file exists and is currently active, we need to be careful
+        const isActive = activeAudioSourcePath && 
+                        path.normalize(activeAudioSourcePath) === path.normalize(path.join('audio', `${effectName}.sc`));
+        
+        if (isActive) {
+            console.log(`[compileAndSaveEffect] Effect ${effectName} is currently active - using atomic rename`);
+        }
+        
+        // Use rename for atomic operation
+        fs.renameSync(tempFilePath, finalFilePath);
+        
+        // Step 4: Add to synths array if new
+        const existingIndex = synths.findIndex(s => s.name === effectName);
+        if (existingIndex === -1) {
+            console.log(`[compileAndSaveEffect] Adding new effect ${effectName} to synths array`);
+            const newEffect = {
+                name: effectName,
+                scFilePath: path.join('audio', `${effectName}.sc`),
+                params: {},
+                isAudioEffect: true
+            };
+            synths.push(newEffect);
+            synths.sort((a, b) => a.name.localeCompare(b.name));
+        }
+        
+        return {
+            success: true,
+            finalPath: finalFilePath
+        };
+        
+    } catch (error) {
+        console.error(`[compileAndSaveEffect] Unexpected error:`, error);
+        // Try to clean up temp file
+        try {
+            if (fs.existsSync(tempFilePath)) {
+                fs.unlinkSync(tempFilePath);
+            }
+        } catch (e) {
+            console.warn(`Failed to delete temp file: ${tempFilePath}`);
+        }
+        return {
+            success: false,
+            error: `Unexpected error: ${error.message}`,
+            scOutput: null
+        };
+    }
+}
+
+// Test compilation of SC file without side effects
+async function testCompileScFile(filePath) {
+    return new Promise((resolve) => {
+        if (!sclang) {
+            resolve({
+                success: false,
+                error: 'SuperCollider is not initialized',
+                output: null
+            });
+            return;
+        }
+        
+        // Create a test command that compiles but doesn't execute
+        const scCommand = `
+            try {
+                ("${filePath}").load;
+                "COMPILATION_SUCCESS".postln;
+            } { |error|
+                error.errorString.postln;
+                "COMPILATION_FAILED".postln;
+            };
+        `;
+        
+        let output = '';
+        let errorOutput = '';
+        
+        // Set up temporary listeners
+        const stdoutHandler = (data) => {
+            output += data.toString();
+        };
+        
+        const stderrHandler = (data) => {
+            errorOutput += data.toString();
+        };
+        
+        sclang.stdout.on('data', stdoutHandler);
+        sclang.stderr.on('data', stderrHandler);
+        
+        // Send the test command
+        sclang.stdin.write(scCommand + '\n');
+        
+        // Wait for response with timeout
+        setTimeout(() => {
+            // Remove temporary listeners
+            sclang.stdout.removeListener('data', stdoutHandler);
+            sclang.stderr.removeListener('data', stderrHandler);
+            
+            const fullOutput = output + errorOutput;
+            
+            // Check for actual errors first (more reliable than success markers)
+            const hasError = fullOutput.includes('ERROR:') || 
+                           fullOutput.includes('Parse error') ||
+                           fullOutput.includes('syntax error') ||
+                           fullOutput.includes('not defined') ||
+                           fullOutput.includes('failed.');
+            
+            if (hasError || fullOutput.includes('COMPILATION_FAILED')) {
+                // Extract error message with more context
+                let errorMsg = 'Unknown compilation error';
+                
+                // Extract the main error
+                const errorMatch = fullOutput.match(/ERROR:\s*(.+?)(?=\n|$)/);
+                if (errorMatch) {
+                    errorMsg = errorMatch[0];
+                    
+                    // Try to extract additional context
+                    const receiverMatch = fullOutput.match(/RECEIVER:\s*(.+?)(?=\n|$)/);
+                    const argsMatch = fullOutput.match(/ARGS:\s*(.+?)(?=\n|$)/);
+                    const lineMatch = fullOutput.match(/line\s+(\d+)\s+char\s+(\d+):/);
+                    
+                    if (receiverMatch) {
+                        errorMsg += `\nRECEIVER: ${receiverMatch[1]}`;
+                    }
+                    if (argsMatch) {
+                        errorMsg += `\nARGS: ${argsMatch[1]}`;
+                    }
+                    if (lineMatch) {
+                        errorMsg += `\nAt line ${lineMatch[1]}, char ${lineMatch[2]}`;
+                    }
+                } else {
+                    // Fallback to other patterns
+                    const errorPatterns = [
+                        /syntax error,\s*(.+)/i,
+                        /Parse error(.+?)(?=\n|$)/i,
+                        /Variable\s*'([^']+)'\s*not defined/,
+                        /Class not defined:\s*(.+)/
+                    ];
+                    
+                    for (const pattern of errorPatterns) {
+                        const match = fullOutput.match(pattern);
+                        if (match) {
+                            errorMsg = match[0];
+                            break;
+                        }
+                    }
+                }
+                
+                resolve({
+                    success: false,
+                    error: errorMsg,
+                    output: fullOutput
+                });
+            } else {
+                // Only mark as success if there are NO errors
+                resolve({
+                    success: true,
+                    error: null,
+                    output: fullOutput
+                });
+            }
+        }, 2000); // 2 second timeout
+    });
+}
+
+// Test SC code without saving to file
+async function testSuperColliderCode(scCode) {
+    const fs = require('fs');
+    const path = require('path');
+    const crypto = require('crypto');
+    const os = require('os');
+    
+    // Generate a temp file in system temp directory
+    const tempId = crypto.randomBytes(8).toString('hex');
+    const tempFileName = `test_${tempId}.sc`;
+    const tempFilePath = path.join(os.tmpdir(), tempFileName);
+    
+    try {
+        // Write code to temp file
+        fs.writeFileSync(tempFilePath, scCode, 'utf-8');
+        
+        // Test compile
+        const result = await testCompileScFile(tempFilePath);
+        
+        // Clean up temp file
+        try {
+            fs.unlinkSync(tempFilePath);
+        } catch (e) {
+            console.warn(`Failed to delete temp test file: ${tempFilePath}`);
+        }
+        
+        return result;
+    } catch (error) {
+        // Clean up on error
+        try {
+            if (fs.existsSync(tempFilePath)) {
+                fs.unlinkSync(tempFilePath);
+            }
+        } catch (e) {
+            console.warn(`Failed to delete temp test file: ${tempFilePath}`);
+        }
+        
+        return {
+            success: false,
+            error: `Failed to test code: ${error.message}`,
+            output: null
+        };
+    }
+}
+
 module.exports = {
     synths,
     initializeSuperCollider,
@@ -547,5 +830,7 @@ module.exports = {
     loadP5SketchSync,
     loadScFile,
     loadMultiPassShader,
-    loadVisualizerContent
+    loadVisualizerContent,
+    compileAndSaveEffect,
+    testSuperColliderCode
 };
