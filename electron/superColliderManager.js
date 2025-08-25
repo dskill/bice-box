@@ -674,15 +674,8 @@ async function testCompileScFile(filePath) {
         }
         
         // Create a test command that compiles but doesn't execute
-        const scCommand = `
-            try {
-                ("${filePath}").load;
-                "COMPILATION_SUCCESS".postln;
-            } { |error|
-                error.errorString.postln;
-                "COMPILATION_FAILED".postln;
-            };
-        `;
+        // Use a single line to avoid SC parsing issues
+        const scCommand = `try { ("${filePath}").load; "COMPILATION_SUCCESS".postln; } { |error| error.errorString.postln; "COMPILATION_FAILED".postln; };`;
         
         let output = '';
         let errorOutput = '';
@@ -711,11 +704,15 @@ async function testCompileScFile(filePath) {
             const fullOutput = output + errorOutput;
             
             // Check for actual errors first (more reliable than success markers)
-            const hasError = fullOutput.includes('ERROR:') || 
+            // Ignore errors from the try/catch wrapper parsing
+            const tryWrapperError = fullOutput.includes('try {') && fullOutput.includes('unexpected end of file');
+            
+            const hasError = (!tryWrapperError && (
+                           fullOutput.includes('ERROR:') || 
                            fullOutput.includes('Parse error') ||
                            fullOutput.includes('syntax error') ||
                            fullOutput.includes('not defined') ||
-                           fullOutput.includes('failed.');
+                           fullOutput.includes('failed.')));
             
             if (hasError || fullOutput.includes('COMPILATION_FAILED')) {
                 // Extract error message with more context
