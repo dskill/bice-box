@@ -537,6 +537,19 @@ async function handleToolCall(params, getState) {
                 if (result.success) {
                     let response = `Successfully created/updated effect: ${effectName}`;
                     
+                    if (result.finalPath) {
+                        response += `\nFile written to: ${result.finalPath}`;
+                    }
+                    
+                    // Trigger a reload of the effects list to ensure the new effect appears
+                    if (getState.mainWindow && getState.mainWindow.webContents && getState.loadEffectsList) {
+                        console.log('[MCP] Triggering effects list reload after successful save');
+                        const loaded = getState.loadEffectsList(getState.mainWindow, getState.getEffectsRepoPath, () => getState.getEffectsRepoPath() + '/effects');
+                        if (loaded && loaded.length > 0) {
+                            response += `\nEffects list reloaded (${loaded.length} effects total)`;
+                        }
+                    }
+                    
                     if (makeActive && result.success) {
                         const { setCurrentEffectAction } = getState;
                         if (setCurrentEffectAction) {

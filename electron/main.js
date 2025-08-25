@@ -444,6 +444,7 @@ app.whenReady().then(() =>
         loadScFileAndRequestSpecs: loadScFileAndRequestSpecs,
         loadVisualizerContent: loadVisualizerContent,
         getEffectsRepoPath: getEffectsRepoPath,
+        loadEffectsList: loadEffectsList,
         // New unified actions
         setCurrentEffectAction: setCurrentEffectAction,
         setEffectParametersAction: setEffectParametersAction,

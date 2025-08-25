@@ -587,9 +587,21 @@ async function compileAndSaveEffect(effectName, scCode, getEffectsRepoPath, acti
     });
     
     try {
+        // Ensure audio directory exists
+        if (!fs.existsSync(audioPath)) {
+            console.log(`[compileAndSaveEffect] Creating audio directory: ${audioPath}`);
+            fs.mkdirSync(audioPath, { recursive: true });
+        }
+        
         // Step 1: Write to temp file
         console.log(`[compileAndSaveEffect] Writing temp file: ${tempFilePath}`);
         fs.writeFileSync(tempFilePath, scCode, 'utf-8');
+        
+        // Verify the file was written
+        if (!fs.existsSync(tempFilePath)) {
+            throw new Error(`Failed to write temp file: ${tempFilePath}`);
+        }
+        console.log(`[compileAndSaveEffect] Temp file written successfully, size: ${fs.statSync(tempFilePath).size} bytes`);
         
         // Step 2: Test compile the temp file
         console.log(`[compileAndSaveEffect] Testing compilation of: ${tempFileName}`);
@@ -623,6 +635,12 @@ async function compileAndSaveEffect(effectName, scCode, getEffectsRepoPath, acti
         
         // Use rename for atomic operation
         fs.renameSync(tempFilePath, finalFilePath);
+        
+        // Verify the final file exists
+        if (!fs.existsSync(finalFilePath)) {
+            throw new Error(`Failed to move file to final location: ${finalFilePath}`);
+        }
+        console.log(`[compileAndSaveEffect] File successfully written to: ${finalFilePath}, size: ${fs.statSync(finalFilePath).size} bytes`);
         
         // Step 4: Add to synths array if new
         const existingIndex = synths.findIndex(s => s.name === effectName);
