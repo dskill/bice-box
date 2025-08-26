@@ -220,36 +220,33 @@ function createWindow()
 
     // Initialize OSC Server after creating the window
     const handleEffectSpecs = ({ name: effectName, params, error }) => {
-      // --- ADD THESE LINES ---
-      console.log(`=== CALLBACK: handleEffectSpecs called ===`);
-      console.log(`Effect name: ${effectName}`);
-      console.log(`Params:`, params);
-      console.log(`Error:`, error);
-      // -----------------------
+      // Debug logging (commented out for cleaner console)
+      // console.log(`=== CALLBACK: handleEffectSpecs called ===`);
+      // console.log(`Effect name: ${effectName}`);
+      // console.log(`Params:`, params);
+      // console.log(`Error:`, error);
     
       if (error) {
         console.error(`Received error with specs for ${effectName}: ${error}`);
         return;
       }
       
-      console.log(`CALLBACK: Received effect-specs for ${effectName}`);
-      console.log(`CALLBACK: Params received:`, params);
-      console.log(`CALLBACK: Current synths array length: ${synths.length}`);
-      console.log(`CALLBACK: Synths names: ${synths.map(s => s.name).join(', ')}`);
+      // Debug: Effect specs received
+      // console.log(`CALLBACK: Received effect-specs for ${effectName}`);
+      // console.log(`CALLBACK: Params received:`, params);
       
       const effectIndex = synths.findIndex(synth => synth.name === effectName);
-      console.log(`CALLBACK: Found effect at index: ${effectIndex}`);
       
       if (effectIndex !== -1) {
-        console.log(`CALLBACK: Before update - synths[${effectIndex}].params:`, synths[effectIndex].params);
+        // console.log(`CALLBACK: Before update - synths[${effectIndex}].params:`, synths[effectIndex].params);
         synths[effectIndex].params = params || {}; 
-        console.log(`CALLBACK: After update - synths[${effectIndex}].params:`, synths[effectIndex].params);
-        console.log(`Updated params for ${effectName} in synths array:`, synths[effectIndex].params);
+        // console.log(`CALLBACK: After update - synths[${effectIndex}].params:`, synths[effectIndex].params);
+        // console.log(`Updated params for ${effectName} in synths array:`, synths[effectIndex].params);
     
         const currentActiveEffect = getCurrentEffectFromStore();
-        console.log(`CALLBACK: Current active effect:`, currentActiveEffect ? currentActiveEffect.name : 'none');
-        console.log(`CALLBACK: Active audio source path:`, activeAudioSourcePath);
-        console.log(`CALLBACK: This effect's SC file path:`, synths[effectIndex].scFilePath);
+        // console.log(`CALLBACK: Current active effect:`, currentActiveEffect ? currentActiveEffect.name : 'none');
+        // console.log(`CALLBACK: Active audio source path:`, activeAudioSourcePath);
+        // console.log(`CALLBACK: This effect's SC file path:`, synths[effectIndex].scFilePath);
         
         // Check if this effect's SC file matches the currently active audio source
         const isActiveAudioSource = activeAudioSourcePath && synths[effectIndex].scFilePath && 
@@ -264,30 +261,28 @@ function createWindow()
         const isActiveInStore = effectsStore.activeEffectName && effectsStore.activeEffectName === effectName;
 
         if (isActiveAudioSource || isActiveInStore) {
-          // --- ADD THIS LINE ---
-          console.log(`CALLBACK: This effect matches the active audio source - updating UI`);
+          // This effect matches the active audio source - updating UI
           // ---------------------
           // Apply current paramValues to SC exactly once when specs are known
           tryApplyAllParamsToSC(effectName);
 
           // Update the current effect to include the new params (legacy structure)
           // Legacy: no longer needed - state is updated in effectsStore 
-          console.log('Updated currentEffect with new params from SC.');
+          // console.log('Updated currentEffect with new params from SC.');
           if (mainWindow && mainWindow.webContents) {
-            // --- ADD THESE LINES ---
-                      console.log(`CALLBACK: Sending effect-updated to renderer for active audio source ${effectName}`);
+            // Send effect-updated to renderer for active audio source
           mainWindow.webContents.send('effect-updated', synths[effectIndex]);
-          console.log(`Sent effect-updated for ${effectName} with new SC params to renderer.`);
+          // console.log(`Sent effect-updated for ${effectName} with new SC params to renderer.`);
           
 
             // -----------------------
             // Also broadcast unified effects/state snapshot
             broadcastEffectsState(effectName);
           } else {
-            console.error(`CALLBACK: mainWindow or webContents not available!`);
+            console.error(`mainWindow or webContents not available!`);
           }
         } else if (!currentActiveEffect && synths.length > 0 && synths[0].name === effectName) {
-          console.log(`CALLBACK: Setting initial effect ${effectName}`);
+          // console.log(`CALLBACK: Setting initial effect ${effectName}`);
           // This handles the case where the very first effect (e.g. bypass or default) gets its specs
           // Legacy: no longer needed - state is updated in effectsStore
           effectsStore.activeEffectName = effectName;
@@ -299,10 +294,9 @@ function createWindow()
           }
     
           if (mainWindow && mainWindow.webContents) {
-            // --- ADD THESE LINES ---
-            console.log(`CALLBACK: Sending effect-updated to renderer for initial effect ${effectName}`);
+            // Send effect-updated to renderer for initial effect
             mainWindow.webContents.send('effect-updated', synths[effectIndex]);
-            console.log(`Sent effect-updated for initial effect ${effectName} with new SC params to renderer.`);
+            // console.log(`Sent effect-updated for initial effect ${effectName} with new SC params to renderer.`);
             
 
             // -----------------------
@@ -310,10 +304,10 @@ function createWindow()
             tryApplyAllParamsToSC(effectName);
             broadcastEffectsState(effectName);
           } else {
-            console.error(`CALLBACK: mainWindow or webContents not available for initial effect!`);
+            console.error(`mainWindow or webContents not available for initial effect!`);
           }
         } else {
-          console.log(`CALLBACK: Effect ${effectName} does not match active audio source. Active: ${activeAudioSourcePath}, This effect: ${synths[effectIndex].scFilePath}`);
+          // console.log(`CALLBACK: Effect ${effectName} does not match active audio source. Active: ${activeAudioSourcePath}, This effect: ${synths[effectIndex].scFilePath}`);
           // Still broadcast store state so UI/MCP can see specs for non-active effects
           broadcastEffectsState(effectsStore.activeEffectName);
         }
@@ -321,13 +315,14 @@ function createWindow()
         console.warn(`Received specs for unknown effect: ${effectName}`);
         console.log(`Available effects: ${synths.map(s => s.name).join(', ')}`);
       }
-      // --- ADD THIS LINE ---
-      console.log(`=== END CALLBACK: handleEffectSpecs ===`);
-      // -------------------
+      // End of handleEffectSpecs callback
     };
 
     oscManager = new OSCManager(mainWindow, handleEffectSpecs, broadcast);
     oscManager.initialize();
+    
+    // Expose setEffectParametersAction globally for MIDI CC updates from OSC
+    global.setEffectParametersAction = setEffectParametersAction;
     
     // Set up WebSocket broadcasting for remote visualizer
     setupRemoteVisualizerBroadcasting();
@@ -1869,7 +1864,7 @@ function setCurrentEffectAction({ name }) {
   return { ok: true };
 }
 
-function setEffectParametersAction({ name, params }) {
+function setEffectParametersAction({ name, params, fromMidi = false }) {
   const targetName = name || effectsStore.activeEffectName;
   if (!targetName) return { error: 'No active effect and no name provided' };
   if (!params || typeof params !== 'object') return { error: 'params must be an object' };
@@ -1894,7 +1889,10 @@ function setEffectParametersAction({ name, params }) {
   // Update store and send OSC for each valid change
   Object.entries(valid).forEach(([k, v]) => {
     effect.paramValues[k] = v;
-    sendOscParamSet(k, v);
+    // Only send OSC to SC if not from MIDI (to avoid feedback loop)
+    if (!fromMidi) {
+      sendOscParamSet(k, v);
+    }
   });
   broadcastEffectsState(targetName);
   return { ok: true, invalid, clamped: clampedInfo };

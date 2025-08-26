@@ -407,7 +407,7 @@ function App() {
       const now = Date.now();
       if (lastEffectUpdateRef.current.name === effect.name && 
           now - lastEffectUpdateRef.current.timestamp < 50) {
-        console.log('App.js: Ignoring duplicate effects/state for:', effect.name);
+        // Silently ignore duplicate updates
         return;
       }
       

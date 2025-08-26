@@ -145,6 +145,33 @@ class OSCManager
                     }
                     break;
 
+                case '/effect/param/update':
+                    // SuperCollider is notifying us of a parameter change (from MIDI CC)
+                    if (oscMsg.args.length >= 3) {
+                        const effectName = oscMsg.args[0].value;
+                        const paramName = oscMsg.args[1].value;
+                        const paramValue = oscMsg.args[2].value;
+                        
+                        // Only log in debug mode or comment out entirely
+                        // console.log(`OSCManager: MIDI CC param update - ${effectName}.${paramName} = ${paramValue}`);
+                        
+                        // Update the effectsStore via the action (with fromMidi flag to prevent feedback)
+                        if (global.setEffectParametersAction) {
+                            const result = global.setEffectParametersAction({
+                                name: effectName,
+                                params: { [paramName]: paramValue },
+                                fromMidi: true  // Important: prevents OSC feedback loop
+                            });
+                            
+                            if (result.error) {
+                                console.error(`OSCManager: Error updating param from MIDI CC: ${result.error}`);
+                            }
+                        } else {
+                            console.error('OSCManager: setEffectParametersAction not available globally');
+                        }
+                    }
+                    break;
+
                 default:
                     // Forward any unhandled OSC messages to the renderer
                     //console.log('Non Standard OSC message:', oscMsg.address);
