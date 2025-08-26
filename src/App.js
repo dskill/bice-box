@@ -399,6 +399,7 @@ function App() {
   const lastEffectUpdateRef = useRef({ name: null, timestamp: 0 });
   
   useEffect(() => {
+    const MIDI_DEBUG = false;
     const handleEffectsState = (event, payload) => {
       if (!payload || !payload.effect) return;
       const { effect } = payload;
@@ -407,21 +408,21 @@ function App() {
       const now = Date.now();
       if (lastEffectUpdateRef.current.name === effect.name && 
           now - lastEffectUpdateRef.current.timestamp < 10) {
-        console.log(`[MIDI DEBUG] App.js ignoring debounced update for ${effect.name} (within 10ms)`, effect.paramValues);
+        if (MIDI_DEBUG) console.log(`[MIDI DEBUG] App.js ignoring debounced update for ${effect.name} (within 10ms)`, effect.paramValues);
         return;
       }
       
       lastEffectUpdateRef.current = { name: effect.name, timestamp: now };
       
       // MIDI debug: log param updates from effects/state
-      if (effect.paramValues && Object.keys(effect.paramValues).length > 0) {
+      if (MIDI_DEBUG && effect.paramValues && Object.keys(effect.paramValues).length > 0) {
         console.log('[MIDI DEBUG] App.js received effects/state with paramValues:', effect.paramValues);
       }
       
       if (effect.scFilePath) setCurrentAudioSource(effect.scFilePath);
       if (effect.paramSpecs) setCurrentAudioParams(effect.paramSpecs);
       if (effect.paramValues) {
-        console.log(`[MIDI DEBUG] App.js setting paramValues:`, effect.paramValues);
+        if (MIDI_DEBUG) console.log(`[MIDI DEBUG] App.js setting paramValues:`, effect.paramValues);
         setParamValues(effect.paramValues);
       }
     };
@@ -643,7 +644,7 @@ function App() {
                 if (paramValues[paramName] !== undefined) {
                   const prevValue = window._lastFaderValues?.[paramName];
                   if (prevValue !== currentValue) {
-                    console.log(`[MIDI DEBUG] Fader ${paramName} value changed: ${prevValue} -> ${currentValue}`);
+                    //console.log(`[MIDI DEBUG] Fader ${paramName} value changed: ${prevValue} -> ${currentValue}`);
                     if (!window._lastFaderValues) window._lastFaderValues = {};
                     window._lastFaderValues[paramName] = currentValue;
                   }

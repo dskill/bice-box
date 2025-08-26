@@ -2,6 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { generateColor } from './theme';
 import './ParamFader.css';
 
+// Toggle for verbose MIDI/fader debugging in this component
+const MIDI_DEBUG = false;
+
 // Throttle helper function with trailing edge execution
 const throttle = (func, limit) => {
   let inThrottle;
@@ -91,7 +94,7 @@ const ParamFader = ({ param, onParamChange, useRotatedLabels }) => {
   // Handle initial value and external value changes
   useEffect(() => {
     if (value !== currentValueRef.current && !isDragging) {
-      console.log(`[MIDI DEBUG] ParamFader ${name}: external value change ${currentValueRef.current} -> ${value}`);
+      if (MIDI_DEBUG) console.log(`[MIDI DEBUG] ParamFader ${name}: external value change ${currentValueRef.current} -> ${value}`);
       currentValueRef.current = value;
       skipNextUpdateRef.current = true; // Skip the next update since it's from external
       setFaderValue(value);
@@ -112,20 +115,20 @@ const ParamFader = ({ param, onParamChange, useRotatedLabels }) => {
       return;
     }
     
-    console.log(`[MIDI DEBUG] ParamFader ${name}: faderValue change ${currentValueRef.current} -> ${faderValue}, isDragging: ${isDragging}, skip: ${skipNextUpdateRef.current}`);
+    if (MIDI_DEBUG) console.log(`[MIDI DEBUG] ParamFader ${name}: faderValue change ${currentValueRef.current} -> ${faderValue}, isDragging: ${isDragging}, skip: ${skipNextUpdateRef.current}`);
     
     // Always update our current value reference
     currentValueRef.current = faderValue;
     
     // Check if we should skip this update (it came from external/MIDI)
     if (skipNextUpdateRef.current) {
-      console.log(`[MIDI DEBUG] ParamFader ${name}: skipping external update`);
+      if (MIDI_DEBUG) console.log(`[MIDI DEBUG] ParamFader ${name}: skipping external update`);
       skipNextUpdateRef.current = false;
       return;
     }
     
     // Send the update
-    console.log(`[MIDI DEBUG] ParamFader ${name}: sending user-initiated update ${faderValue}`);
+    if (MIDI_DEBUG) console.log(`[MIDI DEBUG] ParamFader ${name}: sending user-initiated update ${faderValue}`);
     throttledDispatchParam(name, faderValue);
     if (throttledOnParamChangeRef.current) {
       throttledOnParamChangeRef.current(name, faderValue);

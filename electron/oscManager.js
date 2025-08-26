@@ -152,13 +152,15 @@ class OSCManager
                         const paramName = oscMsg.args[1].value;
                         const paramValue = oscMsg.args[2].value;
                         
-                        // MIDI debug logging
-                        console.log(`[MIDI DEBUG] OSCManager received /effect/param/update:`, {
-                            effectName,
-                            paramName,
-                            paramValue,
-                            valueType: typeof paramValue
-                        });
+                        const MIDI_DEBUG = false;
+                        if (MIDI_DEBUG) {
+                            console.log(`[MIDI DEBUG] OSCManager received /effect/param/update:`, {
+                                effectName,
+                                paramName,
+                                paramValue,
+                                valueType: typeof paramValue
+                            });
+                        }
                         
                         // Update the effectsStore via the action (with fromMidi flag to prevent feedback)
                         if (global.setEffectParametersAction) {
@@ -168,7 +170,7 @@ class OSCManager
                                 fromMidi: true  // Important: prevents OSC feedback loop
                             });
                             
-                            console.log(`[MIDI DEBUG] setEffectParametersAction result:`, result);
+                            if (MIDI_DEBUG) console.log(`[MIDI DEBUG] setEffectParametersAction result:`, result);
                             
                             if (result.error) {
                                 console.error(`[MIDI DEBUG] OSCManager: Error updating param from MIDI CC: ${result.error}`);
