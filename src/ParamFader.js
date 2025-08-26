@@ -42,6 +42,8 @@ const ParamFader = ({ param, onParamChange, useRotatedLabels }) => {
   const lastUpdateTime = useRef(0);
   const faderTrackRef = useRef(null);
   const skipNextUpdateRef = useRef(false);
+  const [isActive, setIsActive] = useState(false);
+  const activeTimeoutRef = useRef(null);
 
   // Throttled version of dispatching unified param action
   const throttledDispatchParam = throttle((paramName, paramValue) => {
@@ -98,6 +100,11 @@ const ParamFader = ({ param, onParamChange, useRotatedLabels }) => {
       currentValueRef.current = value;
       skipNextUpdateRef.current = true; // Skip the next update since it's from external
       setFaderValue(value);
+
+      // Visually highlight this fader briefly to indicate MIDI control
+      setIsActive(true);
+      if (activeTimeoutRef.current) clearTimeout(activeTimeoutRef.current);
+      activeTimeoutRef.current = setTimeout(() => setIsActive(false), 400);
       // Remove the onParamChange call here to avoid double-calling
     }
   }, [value, isDragging, name]);
@@ -194,9 +201,18 @@ const ParamFader = ({ param, onParamChange, useRotatedLabels }) => {
     initialMouseYRef.current = e.clientY;
   };
 
+  // Cleanup highlight timer on unmount
+  useEffect(() => {
+    return () => {
+      if (activeTimeoutRef.current) clearTimeout(activeTimeoutRef.current);
+    };
+  }, []);
+
   const faderPosition = ((faderValue - range[0]) / (range[1] - range[0])) * 100;
 
   const faderColor = generateColor(param.index);
+
+  const isHighlighted = isDragging || isActive;
 
   return (
     <div 
@@ -206,10 +222,10 @@ const ParamFader = ({ param, onParamChange, useRotatedLabels }) => {
       style={{ 
         '--fader-scale': `${faderPosition / 100}`,
         touchAction: 'none',
-        cursor: isDragging ? 'grabbing' : 'grab'
+        cursor: isHighlighted ? 'grabbing' : 'grab'
       }}
     >
-      {isDragging && (
+      {isHighlighted && (
         <div 
           className="fader-value-tooltip"
           style={{ 
@@ -221,14 +237,14 @@ const ParamFader = ({ param, onParamChange, useRotatedLabels }) => {
       )}
       <div className="fader-track" ref={faderTrackRef}>
         <div
-          className={`fader-thumb ${isDragging ? 'dragging' : ''}`}
+          className={`fader-thumb ${isHighlighted ? 'dragging' : ''}`}
           style={{ 
             '--fader-color': faderColor
           }}
         />
       </div>
       <div 
-        className={`fader-label ${isDragging ? 'dragging' : ''}`}
+        className={`fader-label ${isHighlighted ? 'dragging' : ''}`}
         style={{ 
           '--fader-color': faderColor
         }}
