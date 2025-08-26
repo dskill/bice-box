@@ -626,24 +626,26 @@ function App() {
       <div className="effect-nav-buttons-container">
         <div className="visualization-controls">
           <div className="fader-container">
-            {currentAudioParams && Object.entries(currentAudioParams).map(([paramName, paramSpec], index) => {
-              const faderParam = {
-                name: paramName,
-                value: paramValues[paramName] !== undefined ? paramValues[paramName] : paramSpec.default,
-                range: [paramSpec.minval, paramSpec.maxval],
-                units: paramSpec.units || '',
-                index: index,
-              };
-              return (
-                <div key={`${currentAudioSource}-${paramName}`}>
-                  <ParamFader 
-                    param={faderParam} 
-                    onParamChange={handleParamChange}
-                    useRotatedLabels={useRotatedLabels}
-                  />
-                </div>
-              );
-            })}
+            {currentAudioParams && Object.entries(currentAudioParams)
+              .sort(([a], [b]) => a.localeCompare(b)) // Sort parameters alphabetically
+              .map(([paramName, paramSpec], index) => {
+                const faderParam = {
+                  name: paramName,
+                  value: paramValues[paramName] !== undefined ? paramValues[paramName] : paramSpec.default,
+                  range: [paramSpec.minval, paramSpec.maxval],
+                  units: paramSpec.units || '',
+                  index: index,
+                };
+                return (
+                  <div key={`${currentAudioSource}-${paramName}`}>
+                    <ParamFader 
+                      param={faderParam} 
+                      onParamChange={handleParamChange}
+                      useRotatedLabels={useRotatedLabels}
+                    />
+                  </div>
+                );
+              })}
           </div>
         </div>
       </div>
