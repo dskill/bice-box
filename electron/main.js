@@ -1792,6 +1792,25 @@ function initializeParamValuesFromSpecs(effectName) {
 function clampParam(effectName, paramName, value) {
   const spec = effectsStore.byName?.[effectName]?.paramSpecs?.[paramName];
   if (!spec) return { value, clamped: false, known: false };
+  
+  // MIDI debug: log parameter spec details with call stack
+  if (value !== undefined) { // Only log when actually clamping (not during initialization)
+    const stack = new Error().stack;
+    const fromMidi = stack.includes('fromMidi');
+    console.log(`[MIDI DEBUG] clampParam for ${effectName}.${paramName}:`, {
+      inputValue: value,
+      fromMidiFlow: fromMidi,
+      calledFrom: stack.split('\n')[2]?.trim() || 'unknown',
+      spec: {
+        minval: spec.minval,
+        maxval: spec.maxval,
+        warp: spec.warp,
+        default: spec.default,
+        units: spec.units
+      }
+    });
+  }
+  
   const min = typeof spec.minval === 'number' ? spec.minval : value;
   const max = typeof spec.maxval === 'number' ? spec.maxval : value;
   const clampedValue = Math.max(min, Math.min(max, value));
@@ -1868,6 +1887,12 @@ function setEffectParametersAction({ name, params, fromMidi = false }) {
   const targetName = name || effectsStore.activeEffectName;
   if (!targetName) return { error: 'No active effect and no name provided' };
   if (!params || typeof params !== 'object') return { error: 'params must be an object' };
+  
+  // MIDI debug logging
+  if (fromMidi) {
+    console.log(`[MIDI DEBUG] setEffectParametersAction called:`, { targetName, params, fromMidi });
+  }
+  
   ensureEffectInStore(targetName);
   const effect = effectsStore.byName[targetName];
   const valid = {};
@@ -1876,16 +1901,30 @@ function setEffectParametersAction({ name, params, fromMidi = false }) {
   Object.entries(params).forEach(([k, v]) => {
     if (typeof v !== 'number' || Number.isNaN(v)) {
       invalid[k] = v;
+      if (fromMidi) console.log(`[MIDI DEBUG] Invalid param ${k}: not a number or NaN (${v})`);
       return;
     }
     const { value, clamped, known } = clampParam(targetName, k, v);
     if (!known) {
       invalid[k] = v;
+      if (fromMidi) console.log(`[MIDI DEBUG] Unknown param ${k} for effect ${targetName}`);
       return;
     }
     valid[k] = value;
-    if (clamped) clampedInfo[k] = { requested: v, applied: value };
+    if (clamped) {
+      clampedInfo[k] = { requested: v, applied: value };
+      if (fromMidi) console.log(`[MIDI DEBUG] Param ${k} clamped: ${v} -> ${value}`);
+    }
   });
+  
+  // MIDI debug: log what we're updating
+  if (fromMidi && Object.keys(valid).length > 0) {
+    console.log(`[MIDI DEBUG] Updating effect params:`, valid);
+    console.log(`[MIDI DEBUG] Previous values:`, Object.fromEntries(
+      Object.keys(valid).map(k => [k, effect.paramValues[k]])
+    ));
+  }
+  
   // Update store and send OSC for each valid change
   Object.entries(valid).forEach(([k, v]) => {
     effect.paramValues[k] = v;

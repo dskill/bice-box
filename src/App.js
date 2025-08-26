@@ -406,16 +406,24 @@ function App() {
       // Debounce duplicate updates from multiple listeners (React StrictMode)
       const now = Date.now();
       if (lastEffectUpdateRef.current.name === effect.name && 
-          now - lastEffectUpdateRef.current.timestamp < 50) {
-        // Silently ignore duplicate updates
+          now - lastEffectUpdateRef.current.timestamp < 10) {
+        console.log(`[MIDI DEBUG] App.js ignoring debounced update for ${effect.name} (within 10ms)`, effect.paramValues);
         return;
       }
       
       lastEffectUpdateRef.current = { name: effect.name, timestamp: now };
       
+      // MIDI debug: log param updates from effects/state
+      if (effect.paramValues && Object.keys(effect.paramValues).length > 0) {
+        console.log('[MIDI DEBUG] App.js received effects/state with paramValues:', effect.paramValues);
+      }
+      
       if (effect.scFilePath) setCurrentAudioSource(effect.scFilePath);
       if (effect.paramSpecs) setCurrentAudioParams(effect.paramSpecs);
-      if (effect.paramValues) setParamValues(effect.paramValues);
+      if (effect.paramValues) {
+        console.log(`[MIDI DEBUG] App.js setting paramValues:`, effect.paramValues);
+        setParamValues(effect.paramValues);
+      }
     };
     if (electron && electron.ipcRenderer) {
       electron.ipcRenderer.on('effects/state', handleEffectsState);
@@ -629,9 +637,21 @@ function App() {
             {currentAudioParams && Object.entries(currentAudioParams)
               .sort(([a], [b]) => a.localeCompare(b)) // Sort parameters alphabetically
               .map(([paramName, paramSpec], index) => {
+                const currentValue = paramValues[paramName] !== undefined ? paramValues[paramName] : paramSpec.default;
+                
+                // MIDI debug: log fader values when they change from MIDI
+                if (paramValues[paramName] !== undefined) {
+                  const prevValue = window._lastFaderValues?.[paramName];
+                  if (prevValue !== currentValue) {
+                    console.log(`[MIDI DEBUG] Fader ${paramName} value changed: ${prevValue} -> ${currentValue}`);
+                    if (!window._lastFaderValues) window._lastFaderValues = {};
+                    window._lastFaderValues[paramName] = currentValue;
+                  }
+                }
+                
                 const faderParam = {
                   name: paramName,
-                  value: paramValues[paramName] !== undefined ? paramValues[paramName] : paramSpec.default,
+                  value: currentValue,
                   range: [paramSpec.minval, paramSpec.maxval],
                   units: paramSpec.units || '',
                   index: index,

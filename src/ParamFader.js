@@ -2,14 +2,29 @@ import React, { useState, useEffect, useRef } from 'react';
 import { generateColor } from './theme';
 import './ParamFader.css';
 
-// Throttle helper function
+// Throttle helper function with trailing edge execution
 const throttle = (func, limit) => {
   let inThrottle;
+  let lastArgs;
+  let lastThis;
+  
   return function(...args) {
+    lastArgs = args;
+    lastThis = this;
+    
     if (!inThrottle) {
       func.apply(this, args);
       inThrottle = true;
-      setTimeout(() => inThrottle = false, limit);
+      
+      setTimeout(() => {
+        inThrottle = false;
+        // Execute the last call that came in during the throttle period
+        if (lastArgs) {
+          func.apply(lastThis, lastArgs);
+          lastArgs = null;
+          lastThis = null;
+        }
+      }, limit);
     }
   }
 };
@@ -23,6 +38,7 @@ const ParamFader = ({ param, onParamChange, useRotatedLabels }) => {
   const initialMouseYRef = useRef(null);
   const lastUpdateTime = useRef(0);
   const faderTrackRef = useRef(null);
+  const skipNextUpdateRef = useRef(false);
 
   // Throttled version of dispatching unified param action
   const throttledDispatchParam = throttle((paramName, paramValue) => {
@@ -74,12 +90,14 @@ const ParamFader = ({ param, onParamChange, useRotatedLabels }) => {
 
   // Handle initial value and external value changes
   useEffect(() => {
-    if (value !== currentValueRef.current) {
+    if (value !== currentValueRef.current && !isDragging) {
+      console.log(`[MIDI DEBUG] ParamFader ${name}: external value change ${currentValueRef.current} -> ${value}`);
       currentValueRef.current = value;
+      skipNextUpdateRef.current = true; // Skip the next update since it's from external
       setFaderValue(value);
       // Remove the onParamChange call here to avoid double-calling
     }
-  }, [value]);
+  }, [value, isDragging, name]);
 
   // init value
   useEffect(() => {
@@ -87,15 +105,32 @@ const ParamFader = ({ param, onParamChange, useRotatedLabels }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Handle SuperCollider updates
+  // Handle fader value changes
   useEffect(() => {
-    if (faderValue !== currentValueRef.current) {
-      currentValueRef.current = faderValue;
-      throttledDispatchParam(name, faderValue);
-      if (throttledOnParamChangeRef.current) {
-        throttledOnParamChangeRef.current(name, faderValue);
-      }
+    // Skip if this is the same value we already have
+    if (faderValue === currentValueRef.current) {
+      return;
     }
+    
+    console.log(`[MIDI DEBUG] ParamFader ${name}: faderValue change ${currentValueRef.current} -> ${faderValue}, isDragging: ${isDragging}, skip: ${skipNextUpdateRef.current}`);
+    
+    // Always update our current value reference
+    currentValueRef.current = faderValue;
+    
+    // Check if we should skip this update (it came from external/MIDI)
+    if (skipNextUpdateRef.current) {
+      console.log(`[MIDI DEBUG] ParamFader ${name}: skipping external update`);
+      skipNextUpdateRef.current = false;
+      return;
+    }
+    
+    // Send the update
+    console.log(`[MIDI DEBUG] ParamFader ${name}: sending user-initiated update ${faderValue}`);
+    throttledDispatchParam(name, faderValue);
+    if (throttledOnParamChangeRef.current) {
+      throttledOnParamChangeRef.current(name, faderValue);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [faderValue, name, throttledDispatchParam]);
 
   useEffect(() => {
