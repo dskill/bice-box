@@ -1935,6 +1935,7 @@ function setEffectParametersAction({ name, params, fromMidi = false }) {
       sendOscParamSet(k, v);
     }
   });
+  // Always broadcast to UI - UI is read-only and won't send values back
   broadcastEffectsState(targetName);
   return { ok: true, invalid, clamped: clampedInfo };
 }

@@ -2,8 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { generateColor } from './theme';
 import './ParamFader.css';
 
-// Toggle for verbose MIDI/fader debugging in this component
-const MIDI_DEBUG = false;
+// Toggle for verbose UI/fader debugging in this component
+const UI_DEBUG = true;
 
 // Throttle helper function with trailing edge execution
 const throttle = (func, limit) => {
@@ -93,9 +93,10 @@ const ParamFader = ({ param, onParamChange, useRotatedLabels }) => {
   };
 
   // Handle initial value and external value changes
+  // Always update to show SuperCollider's authoritative value, even while dragging
   useEffect(() => {
-    if (value !== currentValueRef.current && !isDragging) {
-      if (MIDI_DEBUG) console.log(`[MIDI DEBUG] ParamFader ${name}: external value change ${currentValueRef.current} -> ${value}`);
+    if (value !== currentValueRef.current) {
+      if (UI_DEBUG) console.log(`[UI_DEBUG] ParamFader ${name}: external value change ${currentValueRef.current} -> ${value} (dragging: ${isDragging})`);
       currentValueRef.current = value;
       setFaderValue(value);
 
@@ -106,32 +107,15 @@ const ParamFader = ({ param, onParamChange, useRotatedLabels }) => {
     }
   }, [value, isDragging, name]);
 
-  // init value
-  useEffect(() => {
-    onParamChange(name, faderValue);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // REMOVED: init value callback - this was causing feedback loops
+  // The UI should only display values from SC broadcasts, not send initial values back
+  // useEffect(() => {
+  //   onParamChange(name, faderValue);
+  // }, []);
 
-  // Handle fader value changes
-  useEffect(() => {
-    // Skip if this is the same value we already have
-    if (faderValue === currentValueRef.current) {
-      return;
-    }
-    
-    if (MIDI_DEBUG) console.log(`[MIDI DEBUG] ParamFader ${name}: faderValue change ${currentValueRef.current} -> ${faderValue}, isDragging: ${isDragging}`);
-    
-    // Always update our current value reference
-    currentValueRef.current = faderValue;
-    
-    // Send the update - no more echo prevention logic
-    if (MIDI_DEBUG) console.log(`[MIDI DEBUG] ParamFader ${name}: sending update ${faderValue}`);
-    throttledDispatchParam(name, faderValue);
-    if (throttledOnParamChangeRef.current) {
-      throttledOnParamChangeRef.current(name, faderValue);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [faderValue, name, throttledDispatchParam]);
+  // REMOVED: faderValue change handler - UI is now read-only
+  // The UI only updates faderValue when receiving broadcasts from SuperCollider
+  // User interactions send values to SC but don't update the UI directly
 
   useEffect(() => {
     const handleMouseMove = (e) => {
@@ -154,7 +138,13 @@ const ParamFader = ({ param, onParamChange, useRotatedLabels }) => {
       // Use a more effective threshold based on the value range
       const threshold = Math.max(0.001, valueRange * 0.0001); // Adaptive threshold
       if (Math.abs(newValue - currentValueRef.current) > threshold) {
-        setFaderValue(newValue);
+        // Send to SuperCollider but DON'T update local fader position
+        // Wait for SC to broadcast the value back to update the UI
+        currentValueRef.current = newValue;
+        throttledDispatchParam(name, newValue);
+        if (throttledOnParamChangeRef.current) {
+          throttledOnParamChangeRef.current(name, newValue);
+        }
       }
     };
 

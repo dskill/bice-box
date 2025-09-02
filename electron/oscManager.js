@@ -16,7 +16,7 @@ class OSCManager
         
         // WebSocket broadcast throttling
         this.lastBroadcastTime = 0;
-        this.broadcastThrottleMs = 50; // 20 FPS (1000ms / 20fps = 50ms)
+        this.broadcastThrottleMs = 50; // 20 updates/second (1000ms / 20fps = 50ms)
         this.lastAudioData = null;
         
         if (this.shouldLogMessageRate) {
@@ -152,7 +152,6 @@ class OSCManager
                 case '/effect/state':
                     // SuperCollider is broadcasting the current state of all effect parameters
                     // This is the new unified parameter state broadcast from SC (single source of truth)
-                    console.log('[PARAM_SYNC] Received /effect/state from SC:', oscMsg.args.map(arg => arg.value));
                     if (oscMsg.args.length >= 3) {
                         const effectName = oscMsg.args[0].value;
                         const paramUpdates = {};
@@ -166,7 +165,10 @@ class OSCManager
                             }
                         }
                         
-                        console.log(`[PARAM_SYNC] Parsed params for ${effectName}:`, paramUpdates);
+                        // Only log when there are actual parameter changes (reduce spam)
+                        if (Object.keys(paramUpdates).length > 0) {
+                            console.log(`[PARAM_SYNC] Broadcasting ${Object.keys(paramUpdates).length} params for ${effectName}`);
+                        }
                         
                         // Update the effectsStore via the action (with fromMidi flag to prevent OSC feedback)
                         if (global.setEffectParametersAction && Object.keys(paramUpdates).length > 0) {
@@ -176,13 +178,9 @@ class OSCManager
                                 fromMidi: true  // Prevents sending OSC back to SC
                             });
                             
-                            console.log(`[PARAM_SYNC] setEffectParametersAction result:`, result);
-                            
                             if (result.error) {
                                 console.error(`OSCManager: Error updating params from SC broadcast: ${result.error}`);
                             }
-                        } else {
-                            console.warn('[PARAM_SYNC] No setEffectParametersAction available or no params to update');
                         }
                     } else {
                         console.warn('[PARAM_SYNC] /effect/state message has insufficient args:', oscMsg.args.length);

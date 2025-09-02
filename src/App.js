@@ -396,33 +396,35 @@ function App() {
   }, [handleDevModeChange]);
 
   // Subscribe to unified effects/state broadcast from main
-  const lastEffectUpdateRef = useRef({ name: null, timestamp: 0 });
+  const lastEffectUpdateRef = useRef({ name: null, paramValues: null, timestamp: 0 });
   
   useEffect(() => {
-    const MIDI_DEBUG = false;
+    const UI_DEBUG = true; // Enable UI debug logging
     const handleEffectsState = (event, payload) => {
       if (!payload || !payload.effect) return;
       const { effect } = payload;
       
-      // Debounce duplicate updates from multiple listeners (React StrictMode)
+      // Debounce duplicate updates with identical parameter values
       const now = Date.now();
+      const paramValuesStr = JSON.stringify(effect.paramValues || {});
       if (lastEffectUpdateRef.current.name === effect.name && 
-          now - lastEffectUpdateRef.current.timestamp < 10) {
-        if (MIDI_DEBUG) console.log(`[MIDI DEBUG] App.js ignoring debounced update for ${effect.name} (within 10ms)`, effect.paramValues);
+          lastEffectUpdateRef.current.paramValues === paramValuesStr &&
+          now - lastEffectUpdateRef.current.timestamp < 50) {
+        if (UI_DEBUG) console.log(`[UI_DEBUG] App.js ignoring duplicate paramValues for ${effect.name}`);
         return;
       }
       
-      lastEffectUpdateRef.current = { name: effect.name, timestamp: now };
+      lastEffectUpdateRef.current = { name: effect.name, paramValues: paramValuesStr, timestamp: now };
       
-      // MIDI debug: log param updates from effects/state
-      if (MIDI_DEBUG && effect.paramValues && Object.keys(effect.paramValues).length > 0) {
-        console.log('[MIDI DEBUG] App.js received effects/state with paramValues:', effect.paramValues);
+      // UI debug: log param updates from effects/state
+      if (UI_DEBUG && effect.paramValues && Object.keys(effect.paramValues).length > 0) {
+        console.log('[UI_DEBUG] App.js received effects/state with paramValues:', JSON.stringify(effect.paramValues));
       }
       
       if (effect.scFilePath) setCurrentAudioSource(effect.scFilePath);
       if (effect.paramSpecs) setCurrentAudioParams(effect.paramSpecs);
       if (effect.paramValues) {
-        if (MIDI_DEBUG) console.log(`[MIDI DEBUG] App.js setting paramValues:`, effect.paramValues);
+        if (UI_DEBUG) console.log(`[UI_DEBUG] App.js setting paramValues:`, JSON.stringify(effect.paramValues));
         setParamValues(effect.paramValues);
       }
     };
@@ -547,8 +549,7 @@ function App() {
   }, []);
 
   const handleParamChange = useCallback((paramName, value) => {
-    // Send parameter change to SuperCollider - no local state update
-    // UI will be updated when SC broadcasts the new state via effects/state
+    // Re-enabled: Fixed the actual feedback loop in main.js
     if (electron && electron.ipcRenderer) {
       electron.ipcRenderer.send('effects/actions:set_effect_parameters', { params: { [paramName]: value } });
     }
