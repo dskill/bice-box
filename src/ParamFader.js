@@ -41,7 +41,6 @@ const ParamFader = ({ param, onParamChange, useRotatedLabels }) => {
   const initialMouseYRef = useRef(null);
   const lastUpdateTime = useRef(0);
   const faderTrackRef = useRef(null);
-  const skipNextUpdateRef = useRef(false);
   const [isActive, setIsActive] = useState(false);
   const activeTimeoutRef = useRef(null);
 
@@ -50,14 +49,14 @@ const ParamFader = ({ param, onParamChange, useRotatedLabels }) => {
     if (window.electron && window.electron.ipcRenderer) {
       window.electron.ipcRenderer.send('effects/actions:set_effect_parameters', { params: { [paramName]: paramValue } });
     }
-  }, 16);
+  }, 50);
 
   // Throttled version of parent callback to prevent excessive calls during dragging
   const throttledOnParamChangeRef = useRef(null);
   useEffect(() => {
     throttledOnParamChangeRef.current = throttle((paramName, paramValue) => {
       onParamChange(paramName, paramValue);
-    }, 16);
+    }, 50);
   }, [onParamChange]);
 
   // Helper function to convert camelCase to Title Case
@@ -98,14 +97,12 @@ const ParamFader = ({ param, onParamChange, useRotatedLabels }) => {
     if (value !== currentValueRef.current && !isDragging) {
       if (MIDI_DEBUG) console.log(`[MIDI DEBUG] ParamFader ${name}: external value change ${currentValueRef.current} -> ${value}`);
       currentValueRef.current = value;
-      skipNextUpdateRef.current = true; // Skip the next update since it's from external
       setFaderValue(value);
 
-      // Visually highlight this fader briefly to indicate MIDI control
+      // Visually highlight this fader briefly to indicate external control
       setIsActive(true);
       if (activeTimeoutRef.current) clearTimeout(activeTimeoutRef.current);
       activeTimeoutRef.current = setTimeout(() => setIsActive(false), 400);
-      // Remove the onParamChange call here to avoid double-calling
     }
   }, [value, isDragging, name]);
 
@@ -122,20 +119,13 @@ const ParamFader = ({ param, onParamChange, useRotatedLabels }) => {
       return;
     }
     
-    if (MIDI_DEBUG) console.log(`[MIDI DEBUG] ParamFader ${name}: faderValue change ${currentValueRef.current} -> ${faderValue}, isDragging: ${isDragging}, skip: ${skipNextUpdateRef.current}`);
+    if (MIDI_DEBUG) console.log(`[MIDI DEBUG] ParamFader ${name}: faderValue change ${currentValueRef.current} -> ${faderValue}, isDragging: ${isDragging}`);
     
     // Always update our current value reference
     currentValueRef.current = faderValue;
     
-    // Check if we should skip this update (it came from external/MIDI)
-    if (skipNextUpdateRef.current) {
-      if (MIDI_DEBUG) console.log(`[MIDI DEBUG] ParamFader ${name}: skipping external update`);
-      skipNextUpdateRef.current = false;
-      return;
-    }
-    
-    // Send the update
-    if (MIDI_DEBUG) console.log(`[MIDI DEBUG] ParamFader ${name}: sending user-initiated update ${faderValue}`);
+    // Send the update - no more echo prevention logic
+    if (MIDI_DEBUG) console.log(`[MIDI DEBUG] ParamFader ${name}: sending update ${faderValue}`);
     throttledDispatchParam(name, faderValue);
     if (throttledOnParamChangeRef.current) {
       throttledOnParamChangeRef.current(name, faderValue);
@@ -148,7 +138,7 @@ const ParamFader = ({ param, onParamChange, useRotatedLabels }) => {
       if (!isDragging) return;
       
       const now = performance.now();
-      if (now - lastUpdateTime.current < 16) return; // 60fps throttle
+      if (now - lastUpdateTime.current < 50) return; // 20fps throttle
       lastUpdateTime.current = now;
 
       if (!faderTrackRef.current) return;

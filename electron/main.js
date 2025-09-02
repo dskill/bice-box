@@ -644,7 +644,7 @@ function setupEffectsWatcher()
   {
     console.log(`File changed: ${changedPath}`);
     reloadEffectForChangedFile(changedPath);
-  }, 300); // in ms
+  }, 300); // in ms - keep at 300ms for file watching
 
   watcher
     .on('change', debouncedReloadEffect)

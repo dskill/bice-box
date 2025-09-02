@@ -547,7 +547,8 @@ function App() {
   }, []);
 
   const handleParamChange = useCallback((paramName, value) => {
-    setParamValues(prev => ({ ...prev, [paramName]: value }));
+    // Send parameter change to SuperCollider - no local state update
+    // UI will be updated when SC broadcasts the new state via effects/state
     if (electron && electron.ipcRenderer) {
       electron.ipcRenderer.send('effects/actions:set_effect_parameters', { params: { [paramName]: value } });
     }

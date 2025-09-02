@@ -16,7 +16,7 @@ class OSCManager
         
         // WebSocket broadcast throttling
         this.lastBroadcastTime = 0;
-        this.broadcastThrottleMs = 16; // ~60 FPS (1000ms / 60fps = 16ms)
+        this.broadcastThrottleMs = 50; // 20 FPS (1000ms / 20fps = 50ms)
         this.lastAudioData = null;
         
         if (this.shouldLogMessageRate) {
@@ -145,39 +145,47 @@ class OSCManager
                     }
                     break;
 
-                case '/effect/param/update':
-                    // SuperCollider is notifying us of a parameter change (from MIDI CC)
+                // REMOVED: /effect/param/update handler to eliminate MIDI → UI feedback loop
+                // This was causing circular updates: MIDI → SC → OSC → Electron → IPC → React
+                // Now MIDI changes stay in SC and will be broadcast via the new SC broadcasting system
+                
+                case '/effect/state':
+                    // SuperCollider is broadcasting the current state of all effect parameters
+                    // This is the new unified parameter state broadcast from SC (single source of truth)
+                    console.log('[PARAM_SYNC] Received /effect/state from SC:', oscMsg.args.map(arg => arg.value));
                     if (oscMsg.args.length >= 3) {
                         const effectName = oscMsg.args[0].value;
-                        const paramName = oscMsg.args[1].value;
-                        const paramValue = oscMsg.args[2].value;
+                        const paramUpdates = {};
                         
-                        const MIDI_DEBUG = false;
-                        if (MIDI_DEBUG) {
-                            console.log(`[MIDI DEBUG] OSCManager received /effect/param/update:`, {
-                                effectName,
-                                paramName,
-                                paramValue,
-                                valueType: typeof paramValue
-                            });
+                        // Parse parameter name/value pairs from the message
+                        for (let i = 1; i < oscMsg.args.length; i += 2) {
+                            if (i + 1 < oscMsg.args.length) {
+                                const paramName = oscMsg.args[i].value;
+                                const paramValue = oscMsg.args[i + 1].value;
+                                paramUpdates[paramName] = paramValue;
+                            }
                         }
                         
-                        // Update the effectsStore via the action (with fromMidi flag to prevent feedback)
-                        if (global.setEffectParametersAction) {
+                        console.log(`[PARAM_SYNC] Parsed params for ${effectName}:`, paramUpdates);
+                        
+                        // Update the effectsStore via the action (with fromMidi flag to prevent OSC feedback)
+                        if (global.setEffectParametersAction && Object.keys(paramUpdates).length > 0) {
                             const result = global.setEffectParametersAction({
                                 name: effectName,
-                                params: { [paramName]: paramValue },
-                                fromMidi: true  // Important: prevents OSC feedback loop
+                                params: paramUpdates,
+                                fromMidi: true  // Prevents sending OSC back to SC
                             });
                             
-                            if (MIDI_DEBUG) console.log(`[MIDI DEBUG] setEffectParametersAction result:`, result);
+                            console.log(`[PARAM_SYNC] setEffectParametersAction result:`, result);
                             
                             if (result.error) {
-                                console.error(`[MIDI DEBUG] OSCManager: Error updating param from MIDI CC: ${result.error}`);
+                                console.error(`OSCManager: Error updating params from SC broadcast: ${result.error}`);
                             }
                         } else {
-                            console.error('[MIDI DEBUG] OSCManager: setEffectParametersAction not available globally');
+                            console.warn('[PARAM_SYNC] No setEffectParametersAction available or no params to update');
                         }
+                    } else {
+                        console.warn('[PARAM_SYNC] /effect/state message has insufficient args:', oscMsg.args.length);
                     }
                     break;
 
