@@ -167,7 +167,7 @@ class OSCManager
                         
                         // Only log when there are actual parameter changes (reduce spam)
                         if (Object.keys(paramUpdates).length > 0) {
-                            console.log(`[PARAM_SYNC] Broadcasting ${Object.keys(paramUpdates).length} params for ${effectName}`);
+                            // Broadcasting parameter updates to UI
                         }
                         
                         // Update the effectsStore via the action (with fromMidi flag to prevent OSC feedback)

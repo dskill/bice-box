@@ -399,7 +399,7 @@ function App() {
   const lastEffectUpdateRef = useRef({ name: null, paramValues: null, timestamp: 0 });
   
   useEffect(() => {
-    const UI_DEBUG = true; // Enable UI debug logging
+    // Handle effects state updates from SuperCollider
     const handleEffectsState = (event, payload) => {
       if (!payload || !payload.effect) return;
       const { effect } = payload;
@@ -410,21 +410,18 @@ function App() {
       if (lastEffectUpdateRef.current.name === effect.name && 
           lastEffectUpdateRef.current.paramValues === paramValuesStr &&
           now - lastEffectUpdateRef.current.timestamp < 50) {
-        if (UI_DEBUG) console.log(`[UI_DEBUG] App.js ignoring duplicate paramValues for ${effect.name}`);
+        // Ignore duplicate parameter updates
         return;
       }
       
       lastEffectUpdateRef.current = { name: effect.name, paramValues: paramValuesStr, timestamp: now };
       
-      // UI debug: log param updates from effects/state
-      if (UI_DEBUG && effect.paramValues && Object.keys(effect.paramValues).length > 0) {
-        console.log('[UI_DEBUG] App.js received effects/state with paramValues:', JSON.stringify(effect.paramValues));
-      }
+      // Parameter updates received from SuperCollider
       
       if (effect.scFilePath) setCurrentAudioSource(effect.scFilePath);
       if (effect.paramSpecs) setCurrentAudioParams(effect.paramSpecs);
       if (effect.paramValues) {
-        if (UI_DEBUG) console.log(`[UI_DEBUG] App.js setting paramValues:`, JSON.stringify(effect.paramValues));
+        // Update UI parameter values
         setParamValues(effect.paramValues);
       }
     };

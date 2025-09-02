@@ -2,8 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { generateColor } from './theme';
 import './ParamFader.css';
 
-// Toggle for verbose UI/fader debugging in this component
-const UI_DEBUG = true;
+// ParamFader component for audio effect parameters
 
 // Throttle helper function with trailing edge execution
 const throttle = (func, limit) => {
@@ -96,7 +95,7 @@ const ParamFader = ({ param, onParamChange, useRotatedLabels }) => {
   // Always update to show SuperCollider's authoritative value, even while dragging
   useEffect(() => {
     if (value !== currentValueRef.current) {
-      if (UI_DEBUG) console.log(`[UI_DEBUG] ParamFader ${name}: external value change ${currentValueRef.current} -> ${value} (dragging: ${isDragging})`);
+      // External parameter value change received
       currentValueRef.current = value;
       setFaderValue(value);
 
@@ -107,15 +106,10 @@ const ParamFader = ({ param, onParamChange, useRotatedLabels }) => {
     }
   }, [value, isDragging, name]);
 
-  // REMOVED: init value callback - this was causing feedback loops
-  // The UI should only display values from SC broadcasts, not send initial values back
-  // useEffect(() => {
-  //   onParamChange(name, faderValue);
-  // }, []);
-
-  // REMOVED: faderValue change handler - UI is now read-only
-  // The UI only updates faderValue when receiving broadcasts from SuperCollider
-  // User interactions send values to SC but don't update the UI directly
+  // SuperCollider Single Source of Truth Architecture:
+  // - UI sends parameter changes to SuperCollider via mouse interactions
+  // - SuperCollider broadcasts authoritative values back to UI
+  // - UI always displays SuperCollider's values, never its own local state
 
   useEffect(() => {
     const handleMouseMove = (e) => {
@@ -138,8 +132,8 @@ const ParamFader = ({ param, onParamChange, useRotatedLabels }) => {
       // Use a more effective threshold based on the value range
       const threshold = Math.max(0.001, valueRange * 0.0001); // Adaptive threshold
       if (Math.abs(newValue - currentValueRef.current) > threshold) {
-        // Send to SuperCollider but DON'T update local fader position
-        // Wait for SC to broadcast the value back to update the UI
+        // Send parameter change to SuperCollider (single source of truth)
+        // UI position will update when SuperCollider broadcasts back
         currentValueRef.current = newValue;
         throttledDispatchParam(name, newValue);
         if (throttledOnParamChangeRef.current) {
