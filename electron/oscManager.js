@@ -187,6 +187,20 @@ class OSCManager
                     }
                     break;
 
+                case '/midi/cc117':
+                    // Handle MIDI CC 117 for push-to-talk functionality
+                    if (oscMsg.args.length >= 1) {
+                        const ccValue = oscMsg.args[0].value;
+                        console.log(`[MIDI] CC117 push-to-talk: ${ccValue}`);
+                        
+                        // Send to renderer for push-to-talk control
+                        this.mainWindow.webContents.send('midi-cc117', {
+                            value: ccValue,
+                            pressed: ccValue > 0 // 127 = pressed, 0 = released
+                        });
+                    }
+                    break;
+
                 default:
                     // Forward any unhandled OSC messages to the renderer
                     //console.log('Non Standard OSC message:', oscMsg.address);

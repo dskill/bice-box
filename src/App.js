@@ -573,6 +573,23 @@ function App() {
     }
   }, [currentShaderPath, setCurrentShaderContent]);
 
+  // Handler for MIDI CC 117 push-to-talk events
+  const handleMidiCC117 = useCallback((event, data) => {
+    console.log('App.js: Received MIDI CC117 push-to-talk:', data);
+    
+    if (data && typeof data.pressed === 'boolean') {
+      if (data.pressed) {
+        // CC 117 pressed - start recording
+        console.log('MIDI CC117: Starting recording');
+        setIsRecording(true);
+      } else {
+        // CC 117 released - stop recording
+        console.log('MIDI CC117: Stopping recording');
+        setIsRecording(false);
+      }
+    }
+  }, []);
+
   // Effect for general IPC listeners (like settings, wifi, etc.)
   useEffect(() => {
     electron.ipcRenderer.on('shader-effect-updated', handleShaderEffectUpdated);
@@ -588,6 +605,16 @@ function App() {
         electron.ipcRenderer.removeAllListeners('auto-visualizer-loaded');
     };
   }, [handleAutoVisualizerLoaded]);
+
+  // Effect for MIDI CC 117 push-to-talk IPC listener
+  useEffect(() => {
+    if (electron && electron.ipcRenderer) {
+      electron.ipcRenderer.on('midi-cc117', handleMidiCC117);
+      return () => {
+        electron.ipcRenderer.removeAllListeners('midi-cc117');
+      };
+    }
+  }, [handleMidiCC117]);
 
   if (error) {
     return <div className="error-message">{error}</div>;
