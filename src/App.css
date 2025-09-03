@@ -133,7 +133,7 @@ body {
 
 .fader-container {
   position: relative;
-  z-index: 1100; /* Above ClaudeConsole (z-index: 1000) */
+  z-index: 900; /* Below ClaudeConsole (z-index: 1000) */
   display: grid;
   grid-template-columns: repeat(var(--grid-columns, 6), 1fr);
   gap: 15px;
@@ -1407,6 +1407,6 @@ button:disabled {
 .effect-nav-buttons-container {
   position: absolute;
   bottom: 20px;
-  z-index: 1050; /* Above ClaudeConsole (1000) but below modals (1000+) */
+  z-index: 950; /* Below ClaudeConsole (1000) but above faders (900) */
   width: 100%; /* Ensure it spans the width for centering */
 }

@@ -82,7 +82,8 @@
   top: 70px;
   left: 20px;
   right: 20px;
-  bottom: 40px;
+  bottom: 140px;
+  border-radius: 5px;
   background-color: rgba(10, 10, 10, 0);
   color: rgb(255, 255, 255);
   font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
@@ -230,6 +231,8 @@
   white-space: pre-wrap;
   /* Hide scrollbars */
   scrollbar-width: none; /* Firefox */
+  border-radius: 10px;
+
   -ms-overflow-style: none; /* Internet Explorer 10+ */
   /* Enable smooth touch scrolling */
   -webkit-overflow-scrolling: touch;
