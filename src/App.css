@@ -647,6 +647,50 @@ button:active {
   pointer-events: auto;
 }
 
+/* Floating Claude Controls above faders */
+.floating-claude-controls {
+  position: absolute;
+  bottom: 0px; /* Above the faders */
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  z-index: 2080; /* Above faders (1050) */
+  pointer-events: auto;
+  background: rgba(0, 0, 0, 0.8);
+}
+
+.floating-claude-input {
+  background: rgba(0, 0, 0, 0.7);
+  color: #ffffff;
+  border-radius: 4px;
+  font-family: 'Inconsolata', monospace;
+  font-size: 12px;
+  width: 200px;
+}
+
+.floating-claude-input:focus {
+  outline: none;
+}
+
+.floating-claude-send {
+  background: #00ff001a;
+  color: rgb(198, 202, 224);
+  border-radius: 4px;
+  cursor: pointer;
+  padding: 0px 0px;
+  transition: all 0.2s ease;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.floating-claude-send:hover {
+  background: rgba(0, 255, 0, 0.2);
+}
+
+/* floating-claude-cancel removed - cancel now handled by main Claude button */
+
 .effect-management__qr-code {
   display: flex;
   flex-direction: column;

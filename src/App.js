@@ -660,6 +660,36 @@ function App() {
 
       <div className="effect-nav-buttons-container">
         <div className="visualization-controls">
+          {/* Floating Claude Controls above faders */}
+          {devMode && (
+            <div className="floating-claude-controls">
+              <input
+                type="text"
+                className="floating-claude-input"
+                placeholder="Type to AI..."
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && e.target.value.trim() && electron) {
+                    const message = e.target.value.trim();
+                    electron.ipcRenderer.send('send-to-claude', message);
+                    e.target.value = '';
+                  }
+                }}
+              />
+              <button 
+                className="floating-claude-send"
+                onClick={(e) => {
+                  const input = e.target.parentElement.querySelector('.floating-claude-input');
+                  if (input.value.trim() && electron) {
+                    const message = input.value.trim();
+                    electron.ipcRenderer.send('send-to-claude', message);
+                    input.value = '';
+                  }
+                }}
+              >
+                Send
+              </button>
+            </div>
+          )}
           <div className="fader-container">
             {currentAudioParams && Object.entries(currentAudioParams)
               .sort(([a], [b]) => a.localeCompare(b)) // Sort parameters alphabetically

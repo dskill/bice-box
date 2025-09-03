@@ -44,6 +44,20 @@
   color: #ff4d4d;
 }
 
+.claude-button.thinking {
+  background-color: rgba(0, 255, 0, 0.2);
+  border-color: #00ff00;
+  color: #00ff00;
+  animation: thinking-pulse 1.5s infinite;
+  cursor: pointer;
+}
+
+.claude-button.thinking:hover {
+  background-color: rgba(255, 68, 68, 0.2);
+  border-color: #ff4444;
+  color: #ff6666;
+}
+
 .claude-console-close {
   background: none;
   border: 1px solid rgba(198, 202, 224, 0.3);
@@ -68,43 +82,23 @@
   top: 70px;
   left: 20px;
   right: 20px;
-  bottom: 20px;
-  background-color: rgba(10, 10, 10, .8);
+  bottom: 40px;
+  background-color: rgba(10, 10, 10, 0);
   color: rgb(255, 255, 255);
   font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
   font-size: 14px;
-  padding: 15px;
+  padding: 0px;
   overflow-y: auto;
   z-index: 1000;
-  border: 1px solid #333;
-  border-radius: 8px;
   white-space: pre-wrap;
   text-align: left;
   display: flex;
   flex-direction: column;
 }
 
-.claude-console-header {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 15px;
-  border-bottom: 1px solid #333;
-  background: rgba(0, 0, 0, 0.05);
-  margin: -15px -15px 10px -15px;
-}
+/* claude-console-header removed - status now shown in main button */
 
-.claude-input-controls {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.claude-input-form-header {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
+/* Removed .claude-input-controls and .claude-input-form-header - now using floating controls */
 
 .claude-action-button {
   background: rgba(255, 255, 255, 0.1);
@@ -127,20 +121,7 @@
   cursor: not-allowed;
 }
 
-.claude-status-indicator {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  color: #00ff00;
-  font-size: 12px;
-  padding: 5px 0;
-}
-
-.claude-thinking-dots {
-  font-size: 16px;
-  animation: thinking-pulse 1.5s infinite;
-}
+/* claude-status-indicator and claude-thinking-dots removed - status now in main button */
 
 @keyframes thinking-pulse {
   0%, 100% { opacity: 0.3; }
@@ -245,9 +226,7 @@
   padding: 10px;
   text-align: left;
   overflow-y: auto;
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid #333;
-  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.75);
   white-space: pre-wrap;
   /* Hide scrollbars */
   scrollbar-width: none; /* Firefox */

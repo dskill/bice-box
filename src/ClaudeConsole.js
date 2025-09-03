@@ -11,7 +11,6 @@ const ClaudeConsole = ({
   devMode
 }) => {
   const [claudeOutput, setClaudeOutput] = useState('');
-  const [claudeInput, setClaudeInput] = useState('');
   const [isClaudeResponding, setIsClaudeResponding] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -157,20 +156,7 @@ const ClaudeConsole = ({
     }
   }, [electron, handleClaudeResponse]);
 
-  const handleSendToClaude = (e) => {
-    e.preventDefault();
-    // Prevent submission if user has dragged beyond threshold
-    if (hasDraggedBeyondThresholdRef.current) {
-      return;
-    }
-    
-    if (claudeInput.trim() && electron) {
-      const message = claudeInput.trim();
-      setIsClaudeResponding(true);
-      electron.ipcRenderer.send('send-to-claude', message);
-      setClaudeInput('');
-    }
-  };
+  // handleSendToClaude removed - now using floating controls
 
   const handleCloseClick = () => {
     // Prevent close if user has dragged beyond threshold
@@ -205,15 +191,16 @@ const ClaudeConsole = ({
       {isOpen ? (
         // Show Hold to Talk button when console is open
         <button
-          className={`claude-button ${isRecording ? 'recording' : ''}`}
-          onMouseDown={onRecordingStart}
-          onMouseUp={onRecordingEnd}
-          onMouseLeave={onRecordingEnd}
-          onTouchStart={onRecordingStart}
-          onTouchEnd={onRecordingEnd}
-          disabled={isClaudeResponding}
+          className={`claude-button ${isRecording ? 'recording' : ''} ${isClaudeResponding ? 'thinking' : ''}`}
+          onMouseDown={isClaudeResponding ? undefined : onRecordingStart}
+          onMouseUp={isClaudeResponding ? undefined : onRecordingEnd}
+          onMouseLeave={isClaudeResponding ? undefined : onRecordingEnd}
+          onTouchStart={isClaudeResponding ? undefined : onRecordingStart}
+          onTouchEnd={isClaudeResponding ? undefined : onRecordingEnd}
+          onClick={isClaudeResponding ? handleCancelClaude : undefined}
+          disabled={false}
         >
-          {isRecording ? 'Listening...' : isClaudeResponding ? 'AI is responding...' : 'Hold to Talk'}
+          {isRecording ? 'Listening...' : isClaudeResponding ? 'Thinking...' : 'Hold to Talk'}
         </button>
       ) : (
         // Show Claude button when console is closed
@@ -233,45 +220,6 @@ const ClaudeConsole = ({
 
       {isOpen && (
         <div className="claude-console">
-          <div className="claude-console-header">
-            <div className="claude-input-controls">
-              <form onSubmit={handleSendToClaude} className="claude-input-form-header">
-                <input
-                  type="text"
-                  className="claude-input"
-                  value={claudeInput}
-                  onChange={(e) => setClaudeInput(e.target.value)}
-                  placeholder="Type to AI..."
-                  autoFocus
-                  disabled={isClaudeResponding}
-                />
-                <button 
-                  type="submit" 
-                  className="claude-send-button"
-                  disabled={isClaudeResponding || !claudeInput.trim()}
-                >
-                  {isClaudeResponding ? '...' : 'Send'}
-                </button>
-                <button 
-                  type="button"
-                  className="claude-cancel-button"
-                  onClick={handleCancelClaude}
-                  title="Cancel current request"
-                  disabled={!isClaudeResponding}
-                >
-                  Cancel
-                </button>
-              </form>
-            </div>
-            
-            {isClaudeResponding && (
-              <div className="claude-status-indicator">
-                <span className="claude-thinking-dots">●●●</span>
-                <span>AI is responding...</span>
-              </div>
-            )}
-          </div>
-          
           <pre 
             className="claude-output" 
             ref={outputRef}
