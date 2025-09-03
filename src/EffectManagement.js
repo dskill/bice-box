@@ -270,6 +270,14 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
         }
     }
 
+    const resetClaudeConversation = () =>
+    {
+        if (electron)
+        {
+            electron.ipcRenderer.send('reset-claude-session');
+        }
+    }
+
     const handleInputDeviceChange = (event) =>
     {
         const selectedDevice = event.target.value;
@@ -535,7 +543,7 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
                     {devMode && (
                         <>
                             <Button label={"Reload All Effects"} onClick={reloadEffectList} />
-                            <Button label={"Reboot Server"} onClick={rebootServer} />
+                            <Button label={"Reset Conversation"} onClick={resetClaudeConversation} />
                         </>
                     )}
                 </div>

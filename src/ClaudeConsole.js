@@ -139,13 +139,20 @@ const ClaudeConsole = ({
     setClaudeOutput(prev => prev + data);
   }, []); // Empty dependency array ensures this function is created only once.
 
-  // Listen for Claude responses
+  // Listen for Claude responses and session resets
   useEffect(() => {
     if (electron) {
       electron.ipcRenderer.on('claude-response', handleClaudeResponse);
+      
+      // Listen for session reset events to clear the output
+      const handleSessionReset = () => {
+        setClaudeOutput('');
+      };
+      electron.ipcRenderer.on('claude-session-reset', handleSessionReset);
 
       return () => {
         electron.ipcRenderer.removeAllListeners('claude-response');
+        electron.ipcRenderer.removeAllListeners('claude-session-reset');
       };
     }
   }, [electron, handleClaudeResponse]);
@@ -185,20 +192,7 @@ const ClaudeConsole = ({
     }
   };
 
-  const handleResetClaude = () => {
-    // Prevent reset if user has dragged beyond threshold
-    if (hasDraggedBeyondThresholdRef.current) {
-      return;
-    }
-    
-    if (electron && !isClaudeResponding) {
-      // Clear the output display
-      setClaudeOutput('');
-      
-      // Send reset command to backend
-      electron.ipcRenderer.send('reset-claude-session');
-    }
-  };
+  // handleResetClaude moved to EffectManagement component
 
   // Removed toggle functionality - using optimized --continue approach
 
@@ -253,17 +247,7 @@ const ClaudeConsole = ({
                 </button>
               </div>
             )}
-            {!isClaudeResponding && (
-              <div className="claude-controls">
-                <button 
-                  className="claude-reset-button"
-                  onClick={handleResetClaude}
-                  title="Start a new conversation (clear history)"
-                >
-                  Reset
-                </button>
-              </div>
-            )}
+            {/* Reset button moved to Effect Management sidebar */}
             {/* Using optimized --continue approach - no toggle needed */}
           </div>
           

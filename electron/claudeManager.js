@@ -687,6 +687,11 @@ class ClaudeManager {
     handleSessionReset() {
         this.resetSession();
         this.sendToRenderer('\n🔄 Session reset\n');
+        
+        // Emit session reset event to clear frontend console
+        if (this.mainWindow && this.mainWindow.webContents) {
+            this.mainWindow.webContents.send('claude-session-reset');
+        }
     }
 
     // Cleanup method to be called when app shuts down
