@@ -1517,6 +1517,12 @@ ipcMain.on('check-wifi-status', (event) =>
 // Add these IPC handlers
 ipcMain.handle('get-dev-mode', () => devMode);
 
+ipcMain.handle('get-platform-info', () => ({
+  platform: process.platform,
+  isLinux: process.platform === 'linux',
+  isPi: process.platform === 'linux' // Assuming Pi runs Linux
+}));
+
 ipcMain.on('toggle-dev-mode', (event) => {
     devMode = !devMode;
     mainWindow.webContents.send('dev-mode-changed', devMode);

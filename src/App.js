@@ -42,6 +42,7 @@ function App() {
   const [shaderError, setShaderError] = useState(null);
   const [devMode, setDevMode] = useState(false);
   const [paramValues, setParamValues] = useState({});
+  const [platformInfo, setPlatformInfo] = useState({ isLinux: false, isPi: false });
 
   // --- State for Claude Voice Interaction ---
   const [isClaudeConsoleOpen, setIsClaudeConsoleOpen] = useState(false);
@@ -383,8 +384,9 @@ function App() {
 
   useEffect(() => {
     if (electron && electron.ipcRenderer) {
-      // Get initial dev mode state
+      // Get initial dev mode state and platform info
       electron.ipcRenderer.invoke('get-dev-mode').then(setDevMode);
+      electron.ipcRenderer.invoke('get-platform-info').then(setPlatformInfo);
 
       // Listen for changes to dev mode
       electron.ipcRenderer.on('dev-mode-changed', handleDevModeChange);
@@ -660,8 +662,8 @@ function App() {
 
       <div className="effect-nav-buttons-container">
         <div className="visualization-controls">
-          {/* Floating Claude Controls above faders */}
-          {devMode && (
+          {/* Floating Claude Controls above faders - Desktop only */}
+          {devMode && !platformInfo.isPi && (
             <div className="floating-claude-controls">
               <input
                 type="text"
