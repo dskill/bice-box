@@ -260,8 +260,7 @@
 
 .claude-input:focus {
   outline: none;
-  border-color: #00ff00;
-  box-shadow: 0 0 5px rgba(0, 255, 0, 0.3);
+  border-color: rgba(255, 255, 255, 0.2);
 }
 
 .claude-input:disabled {
@@ -270,8 +269,8 @@
 }
 
 .claude-send-button {
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid #ffffff;
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid #333;
   color: #ffffff;
   padding: 8px 16px;
   border-radius: 3px;
