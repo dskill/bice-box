@@ -40,6 +40,7 @@
   left: 50%;
   transform-origin: bottom;
   transform: translateX(-50%) scaleY(var(--fader-scale, 0));
+  transition: transform 0.1s ease-out;
 }
 
 .fader-thumb.dragging {
@@ -50,6 +51,7 @@
     var(--fader-color) 50%,
     var(--fader-color) 100%
   );
+  transition: transform 0.1s ease-out; /* Disable transition during dragging for immediate response */
 }
 
 .fader-label {
