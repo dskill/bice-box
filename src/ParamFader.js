@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
 import { generateColor } from './theme';
 import './ParamFader.css';
 
-// ParamFader component for audio effect parameters
+// High-performance ParamFader using direct DOM manipulation
+// Eliminates React re-renders for optimal Raspberry Pi performance
 
 // Throttle helper function with trailing edge execution
 const throttle = (func, limit) => {
@@ -33,30 +34,23 @@ const throttle = (func, limit) => {
 
 const ParamFader = ({ param, onParamChange, useRotatedLabels }) => {
   const { name, value, range, units } = param;
-  const [faderValue, setFaderValue] = useState(value);
-  const [isDragging, setIsDragging] = useState(false);
+  
+  // Refs for direct DOM manipulation - NO React state!
+  const faderThumbRef = useRef(null);
+  const faderTrackRef = useRef(null);
+  const faderLabelRef = useRef(null);
+  const tooltipRef = useRef(null);
+  
+  // Essential refs for mouse handling and state tracking
   const currentValueRef = useRef(value);
+  const isDraggingRef = useRef(false);
   const initialValueRef = useRef(null);
   const initialMouseYRef = useRef(null);
   const lastUpdateTime = useRef(0);
-  const faderTrackRef = useRef(null);
-  const [isActive, setIsActive] = useState(false);
   const activeTimeoutRef = useRef(null);
-
-  // Throttled version of dispatching unified param action
-  const throttledDispatchParam = throttle((paramName, paramValue) => {
-    if (window.electron && window.electron.ipcRenderer) {
-      window.electron.ipcRenderer.send('effects/actions:set_effect_parameters', { params: { [paramName]: paramValue } });
-    }
-  }, 50);
-
-  // Throttled version of parent callback to prevent excessive calls during dragging
-  const throttledOnParamChangeRef = useRef(null);
-  useEffect(() => {
-    throttledOnParamChangeRef.current = throttle((paramName, paramValue) => {
-      onParamChange(paramName, paramValue);
-    }, 50);
-  }, [onParamChange]);
+  const dragStartTimeRef = useRef(0);
+  const faderContainerRef = useRef(null);
+  const isActiveRef = useRef(false);
 
   // Helper function to convert camelCase to Title Case
   const toTitleCase = (str) => {
@@ -91,29 +85,100 @@ const ParamFader = ({ param, onParamChange, useRotatedLabels }) => {
     return unit ? `${formattedValue} ${unit}` : formattedValue;
   };
 
-  // Handle initial value and external value changes
-  // Always update to show SuperCollider's authoritative value, even while dragging
+  // Direct DOM manipulation functions - bypasses React entirely!
+  const updateSliderPosition = useCallback((newValue) => {
+    if (!faderContainerRef.current) return;
+    
+    const percentage = ((newValue - range[0]) / (range[1] - range[0])) * 100;
+    const clampedPercentage = Math.max(0, Math.min(100, percentage));
+    
+    // Update the CSS variable for the vertical scale on the container
+    faderContainerRef.current.style.setProperty('--fader-scale', clampedPercentage / 100);
+    
+    // Update tooltip value if it's visible
+    if (tooltipRef.current && (isDraggingRef.current || isActiveRef.current)) {
+      tooltipRef.current.textContent = formatValue(newValue, units);
+    }
+    
+    currentValueRef.current = newValue;
+  }, [range, units]);
+
+  const setActiveState = useCallback((isActive) => {
+    if (!faderThumbRef.current || !faderLabelRef.current || !tooltipRef.current) return;
+    
+    // Don't interfere with dragging state
+    if (isDraggingRef.current) return;
+    
+    isActiveRef.current = isActive;
+    
+    if (isActive) {
+      faderThumbRef.current.classList.add('dragging');
+      faderLabelRef.current.classList.add('dragging');
+      tooltipRef.current.style.display = 'block';
+      
+      if (activeTimeoutRef.current) clearTimeout(activeTimeoutRef.current);
+      activeTimeoutRef.current = setTimeout(() => {
+        // Don't remove if we started dragging in the meantime
+        if (!isDraggingRef.current) {
+          isActiveRef.current = false;
+          if (faderThumbRef.current) faderThumbRef.current.classList.remove('dragging');
+          if (faderLabelRef.current) faderLabelRef.current.classList.remove('dragging');
+          if (tooltipRef.current) tooltipRef.current.style.display = 'none';
+        }
+      }, 400);
+    } else {
+      isActiveRef.current = false;
+      faderThumbRef.current.classList.remove('dragging');
+      faderLabelRef.current.classList.remove('dragging');
+      tooltipRef.current.style.display = 'none';
+    }
+  }, []);
+
+  // Throttled version of dispatching unified param action
+  const throttledDispatchParam = throttle((paramName, paramValue) => {
+    if (window.electron && window.electron.ipcRenderer) {
+      window.electron.ipcRenderer.send('effects/actions:set_effect_parameters', { params: { [paramName]: paramValue } });
+    }
+  }, 50); // 50ms throttle for SuperCollider Single Source of Truth
+
+  // Throttled version of onParamChange callback
+  const throttledOnParamChangeRef = useRef(
+    throttle((paramName, paramValue) => {
+      if (onParamChange) {
+        onParamChange(paramName, paramValue);
+      }
+    }, 50) // 50ms throttle to match SuperCollider broadcast rate
+  );
+
+  // Update the throttled function when onParamChange changes
+  useEffect(() => {
+    throttledOnParamChangeRef.current = throttle((paramName, paramValue) => {
+      if (onParamChange) {
+        onParamChange(paramName, paramValue);
+      }
+    }, 50);
+  }, [onParamChange]);
+
+  // Handle external parameter updates from SuperCollider
+  // Uses direct DOM manipulation instead of React state
   useEffect(() => {
     if (value !== currentValueRef.current) {
       // External parameter value change received
-      currentValueRef.current = value;
-      setFaderValue(value);
-
-      // Visually highlight this fader briefly to indicate external control
-      setIsActive(true);
-      if (activeTimeoutRef.current) clearTimeout(activeTimeoutRef.current);
-      activeTimeoutRef.current = setTimeout(() => setIsActive(false), 400);
+      updateSliderPosition(value);
+      
+      // Only highlight if we're not currently dragging
+      if (!isDraggingRef.current) {
+        // Visually highlight this fader briefly to indicate external control
+        setActiveState(true);
+      }
     }
-  }, [value, isDragging, name]);
+  }, [value, updateSliderPosition, setActiveState]);
 
-  // SuperCollider Single Source of Truth Architecture:
-  // - UI sends parameter changes to SuperCollider via mouse interactions
-  // - SuperCollider broadcasts authoritative values back to UI
-  // - UI always displays SuperCollider's values, never its own local state
-
+  // Mouse event handlers - setup once on mount, never change
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const handleMouseMove = (e) => {
-      if (!isDragging) return;
+      if (!isDraggingRef.current) return;
       
       const now = performance.now();
       if (now - lastUpdateTime.current < 50) return; // 20fps throttle
@@ -132,93 +197,130 @@ const ParamFader = ({ param, onParamChange, useRotatedLabels }) => {
       // Use a more effective threshold based on the value range
       const threshold = Math.max(0.001, valueRange * 0.0001); // Adaptive threshold
       if (Math.abs(newValue - currentValueRef.current) > threshold) {
+        // Update UI position immediately for responsive dragging
+        updateSliderPosition(newValue);
+        
+        // Update tooltip value during dragging
+        if (tooltipRef.current) {
+          tooltipRef.current.textContent = formatValue(newValue, units);
+        }
+        
         // Send parameter change to SuperCollider (single source of truth)
-        // UI position will update when SuperCollider broadcasts back
-        currentValueRef.current = newValue;
         throttledDispatchParam(name, newValue);
-        if (throttledOnParamChangeRef.current) {
-          throttledOnParamChangeRef.current(name, newValue);
+        throttledOnParamChangeRef.current(name, newValue);
+      }
+    };
+
+    const handleMouseUp = () => {
+      if (isDraggingRef.current) {
+        isDraggingRef.current = false;
+        
+        // Reset cursor on the container
+        if (faderContainerRef.current) {
+          faderContainerRef.current.style.cursor = 'grab';
+        }
+        
+        // Remove dragging state
+        if (faderThumbRef.current && faderLabelRef.current) {
+          faderThumbRef.current.classList.remove('dragging');
+          faderLabelRef.current.classList.remove('dragging');
+          if (tooltipRef.current) {
+            tooltipRef.current.style.display = 'none';
+          }
         }
       }
     };
 
-    const handleMouseUp = (e) => {
-      setIsDragging(false);
-      initialValueRef.current = null;
-      initialMouseYRef.current = null;
-    };
-
-    if (isDragging) {
-      // Add both mouse and pointer events
-      window.addEventListener('mousemove', handleMouseMove, { passive: false });
-      window.addEventListener('pointermove', handleMouseMove, { passive: false });
-      window.addEventListener('mouseup', handleMouseUp);
-      window.addEventListener('pointerup', handleMouseUp);
-      window.addEventListener('pointercancel', handleMouseUp); // Handle touch cancellation
-    }
+    // Add global pointer event listeners (works for both mouse and touch)
+    document.addEventListener('pointermove', handleMouseMove);
+    document.addEventListener('pointerup', handleMouseUp);
 
     return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('pointermove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-      window.removeEventListener('pointerup', handleMouseUp);
-      window.removeEventListener('pointercancel', handleMouseUp);
+      document.removeEventListener('pointermove', handleMouseMove);
+      document.removeEventListener('pointerup', handleMouseUp);
     };
-  }, [isDragging, range]);
+  }, [name, range, units, updateSliderPosition, throttledDispatchParam]); // Dependencies for event handlers
 
-  const handleMouseDown = (e) => {
+  // Mouse down handler for fader
+  const handleMouseDown = useCallback((e) => {
     e.preventDefault();
-    e.stopPropagation(); // Prevent event bubbling
+    e.stopPropagation();
     
-    setIsDragging(true);
-    initialValueRef.current = faderValue;
+    isDraggingRef.current = true;
+    initialValueRef.current = currentValueRef.current;
     initialMouseYRef.current = e.clientY;
-  };
+    dragStartTimeRef.current = performance.now();
+    
+    // Update cursor on the container element
+    if (faderContainerRef.current) {
+      faderContainerRef.current.style.cursor = 'grabbing';
+    }
+    
+    // Clear any active timeout that might interfere
+    if (activeTimeoutRef.current) {
+      clearTimeout(activeTimeoutRef.current);
+      activeTimeoutRef.current = null;
+    }
+    
+    // Show dragging state immediately and keep it
+    if (faderThumbRef.current && faderLabelRef.current) {
+      faderThumbRef.current.classList.add('dragging');
+      faderLabelRef.current.classList.add('dragging');
+      if (tooltipRef.current) {
+        tooltipRef.current.style.display = 'block';
+        tooltipRef.current.textContent = formatValue(currentValueRef.current, units);
+      }
+    }
+  }, [units]);
 
-  // Cleanup highlight timer on unmount
+  // Initialize slider position on mount and when value changes
   useEffect(() => {
-    return () => {
-      if (activeTimeoutRef.current) clearTimeout(activeTimeoutRef.current);
-    };
-  }, []);
+    updateSliderPosition(value);
+  }, [value, updateSliderPosition]);
 
-  const faderPosition = ((faderValue - range[0]) / (range[1] - range[0])) * 100;
+  // Generate color for the fader (use param.index if available for consistency)
+  const faderColor = generateColor(param.index !== undefined ? param.index : name);
+  
+  // Initial percentage for first render only
+  const initialPercentage = ((value - range[0]) / (range[1] - range[0])) * 100;
 
-  const faderColor = generateColor(param.index);
-
-  const isHighlighted = isDragging || isActive;
-
+  // Component renders ONCE and never again!
   return (
     <div 
-      className={`param-fader ${useRotatedLabels ? 'rotated-layout' : ''}`} 
+      ref={faderContainerRef}
+      className={`param-fader ${useRotatedLabels ? 'rotated-layout' : ''}`}
       onMouseDown={handleMouseDown}
       onPointerDown={handleMouseDown}
       style={{ 
-        '--fader-scale': `${faderPosition / 100}`,
+        '--fader-scale': `${initialPercentage / 100}`,
         touchAction: 'none',
-        cursor: isHighlighted ? 'grabbing' : 'grab'
+        cursor: 'grab'
       }}
     >
-      {isHighlighted && (
-        <div 
-          className="fader-value-tooltip"
-          style={{ 
-            '--fader-color': faderColor
-          }}
-        >
-          {formatValue(faderValue, units)}
-        </div>
-      )}
+      <div 
+        ref={tooltipRef}
+        className="fader-value-tooltip"
+        style={{ 
+          '--fader-color': faderColor,
+          display: 'none'  // Initially hidden
+        }}
+      >
+        {formatValue(value, units)}
+      </div>
+      
       <div className="fader-track" ref={faderTrackRef}>
         <div
-          className={`fader-thumb ${isHighlighted ? 'dragging' : ''}`}
+          ref={faderThumbRef}
+          className="fader-thumb"
           style={{ 
             '--fader-color': faderColor
           }}
         />
       </div>
+      
       <div 
-        className={`fader-label ${isHighlighted ? 'dragging' : ''}`}
+        ref={faderLabelRef}
+        className="fader-label"
         style={{ 
           '--fader-color': faderColor
         }}
