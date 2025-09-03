@@ -694,10 +694,9 @@ async function testCompileScFile(filePath) {
         // Use a unique marker for each compilation test
         const uniqueMarker = `COMPILE_TEST_${Date.now()}_${Math.random().toString(36).substring(7)}`;
         
-        // The most reliable approach: Just load the file and check if any ERROR appears
-        // If the load succeeds without errors, we output SUCCESS
-        // If any ERROR occurs, it will be in the output and we won't see our marker
-        const scCommand = `("${filePath}").load; ("${uniqueMarker}:SUCCESS").postln;`;
+        // Load the file and wait a moment to catch any immediate runtime failures
+        // This helps catch issues like incorrect UGen arguments that crash the synth
+        const scCommand = `("${filePath}").load; ("${uniqueMarker}:LOADED").postln;`;
         
         let output = '';
         let errorOutput = '';
@@ -728,10 +727,11 @@ async function testCompileScFile(filePath) {
             // Check if we have any ERROR in the output BEFORE looking for success marker
             const hasError = fullOutput.includes('ERROR:') || 
                            fullOutput.includes('Parse error') ||
-                           fullOutput.includes('syntax error');
+                           fullOutput.includes('syntax error') ||
+                           fullOutput.includes('FAILURE IN SERVER');  // Catch runtime failures
             
-            // Look for our success marker
-            const hasSuccessMarker = fullOutput.includes(`${uniqueMarker}:SUCCESS`);
+            // Look for our marker showing the file was loaded
+            const hasLoadedMarker = fullOutput.includes(`${uniqueMarker}:LOADED`);
             
             if (hasError) {
                 // If there's an error, compilation failed regardless of marker
@@ -750,9 +750,9 @@ async function testCompileScFile(filePath) {
                     output: fullOutput
                 });
                 return;
-            } else if (hasSuccessMarker) {
-                // No errors AND we have our success marker
-                console.log('[testCompileScFile] Compilation successful (marker found, no errors)');
+            } else if (hasLoadedMarker) {
+                // No errors AND we have our loaded marker
+                console.log('[testCompileScFile] Compilation successful (file loaded, no errors)');
                 resolve({
                     success: true,
                     error: null,
