@@ -197,15 +197,8 @@ const ParamFader = ({ param, onParamChange, useRotatedLabels }) => {
       // Use a more effective threshold based on the value range
       const threshold = Math.max(0.001, valueRange * 0.0001); // Adaptive threshold
       if (Math.abs(newValue - currentValueRef.current) > threshold) {
-        // Update UI position immediately for responsive dragging
-        updateSliderPosition(newValue);
-        
-        // Update tooltip value during dragging
-        if (tooltipRef.current) {
-          tooltipRef.current.textContent = formatValue(newValue, units);
-        }
-        
         // Send parameter change to SuperCollider (single source of truth)
+        // UI will update when SC broadcasts the value back
         throttledDispatchParam(name, newValue);
         throttledOnParamChangeRef.current(name, newValue);
       }
@@ -239,7 +232,7 @@ const ParamFader = ({ param, onParamChange, useRotatedLabels }) => {
       document.removeEventListener('pointermove', handleMouseMove);
       document.removeEventListener('pointerup', handleMouseUp);
     };
-  }, [name, range, units, updateSliderPosition, throttledDispatchParam]); // Dependencies for event handlers
+  }, [name, range, throttledDispatchParam]); // Dependencies for event handlers
 
   // Mouse down handler for fader
   const handleMouseDown = useCallback((e) => {
@@ -268,10 +261,10 @@ const ParamFader = ({ param, onParamChange, useRotatedLabels }) => {
       faderLabelRef.current.classList.add('dragging');
       if (tooltipRef.current) {
         tooltipRef.current.style.display = 'block';
-        tooltipRef.current.textContent = formatValue(currentValueRef.current, units);
+        // Tooltip value will be updated when SC broadcasts back
       }
     }
-  }, [units]);
+  }, []);
 
   // Initialize slider position on mount and when value changes
   useEffect(() => {
