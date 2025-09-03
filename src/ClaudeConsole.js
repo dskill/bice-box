@@ -234,21 +234,42 @@ const ClaudeConsole = ({
       {isOpen && (
         <div className="claude-console">
           <div className="claude-console-header">
+            <div className="claude-input-controls">
+              <form onSubmit={handleSendToClaude} className="claude-input-form-header">
+                <input
+                  type="text"
+                  className="claude-input"
+                  value={claudeInput}
+                  onChange={(e) => setClaudeInput(e.target.value)}
+                  placeholder="Type to AI..."
+                  autoFocus
+                  disabled={isClaudeResponding}
+                />
+                <button 
+                  type="submit" 
+                  className="claude-send-button"
+                  disabled={isClaudeResponding || !claudeInput.trim()}
+                >
+                  {isClaudeResponding ? '...' : 'Send'}
+                </button>
+                <button 
+                  type="button"
+                  className="claude-cancel-button"
+                  onClick={handleCancelClaude}
+                  title="Cancel current request"
+                  disabled={!isClaudeResponding}
+                >
+                  Cancel
+                </button>
+              </form>
+            </div>
+            
             {isClaudeResponding && (
               <div className="claude-status-indicator">
                 <span className="claude-thinking-dots">●●●</span>
                 <span>AI is responding...</span>
-                <button 
-                  className="claude-cancel-button"
-                  onClick={handleCancelClaude}
-                  title="Cancel current request"
-                >
-                  Cancel
-                </button>
               </div>
             )}
-            {/* Reset button moved to Effect Management sidebar */}
-            {/* Using optimized --continue approach - no toggle needed */}
           </div>
           
           <pre 
@@ -263,24 +284,7 @@ const ClaudeConsole = ({
             {claudeOutput}
           </pre>
           
-          <form onSubmit={handleSendToClaude} className="claude-input-form">
-            <input
-              type="text"
-              className="claude-input"
-              value={claudeInput}
-              onChange={(e) => setClaudeInput(e.target.value)}
-              placeholder="Type to AI..."
-              autoFocus
-              disabled={isClaudeResponding}
-            />
-            <button 
-              type="submit" 
-              className="claude-send-button"
-              disabled={isClaudeResponding || !claudeInput.trim()}
-            >
-              {isClaudeResponding ? '...' : 'Send'}
-            </button>
-          </form>
+
         </div>
       )}
     </div>
