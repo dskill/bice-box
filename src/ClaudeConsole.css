@@ -45,9 +45,9 @@
 }
 
 .claude-button.thinking {
-  background-color: rgba(0, 255, 0, 0.2);
-  border-color: #00ff00;
-  color: #00ff00;
+  background-color: rgba(204, 0, 0, 0.75);
+  border-color: #ff4d4d;
+  color: #ff4d4d;
   animation: thinking-pulse 1.5s infinite;
   cursor: pointer;
 }
@@ -124,7 +124,7 @@
 /* claude-status-indicator and claude-thinking-dots removed - status now in main button */
 
 @keyframes thinking-pulse {
-  0%, 100% { opacity: 0.3; }
+  0%, 100% { opacity: 0.6; }
   50% { opacity: 1; }
 }
 

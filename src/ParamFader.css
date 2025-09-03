@@ -37,8 +37,8 @@
   background: linear-gradient(
     to top,
     transparent 0%,
-    rgba(255, 255, 255, 0.4) 50%,
-    rgba(255, 255, 255, 0.8) 100%
+    rgba(255, 255, 255, 0.2) 50%,
+    rgba(255, 255, 255, 0.4) 100%
   );
   border-radius: 4px;
   bottom: 0;
