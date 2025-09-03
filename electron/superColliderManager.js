@@ -691,9 +691,13 @@ async function testCompileScFile(filePath) {
             return;
         }
         
-        // Create a test command that compiles but doesn't execute
-        // Use a single line to avoid SC parsing issues
-        const scCommand = `try { ("${filePath}").load; "COMPILATION_SUCCESS".postln; } { |error| error.errorString.postln; "COMPILATION_FAILED".postln; };`;
+        // Use a unique marker for each compilation test
+        const uniqueMarker = `COMPILE_TEST_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+        
+        // The most reliable approach: Just load the file and check if any ERROR appears
+        // If the load succeeds without errors, we output SUCCESS
+        // If any ERROR occurs, it will be in the output and we won't see our marker
+        const scCommand = `("${filePath}").load; ("${uniqueMarker}:SUCCESS").postln;`;
         
         let output = '';
         let errorOutput = '';
@@ -721,56 +725,23 @@ async function testCompileScFile(filePath) {
             
             const fullOutput = output + errorOutput;
             
-            // Check for actual errors first (more reliable than success markers)
-            // Ignore errors from the try/catch wrapper parsing
-            const tryWrapperError = fullOutput.includes('try {') && fullOutput.includes('unexpected end of file');
-            
-            const hasError = (!tryWrapperError && (
-                           fullOutput.includes('ERROR:') || 
+            // Check if we have any ERROR in the output BEFORE looking for success marker
+            const hasError = fullOutput.includes('ERROR:') || 
                            fullOutput.includes('Parse error') ||
-                           fullOutput.includes('syntax error') ||
-                           fullOutput.includes('not defined') ||
-                           fullOutput.includes('failed.')));
+                           fullOutput.includes('syntax error');
             
-            if (hasError || fullOutput.includes('COMPILATION_FAILED')) {
-                // Extract error message with more context
-                let errorMsg = 'Unknown compilation error';
+            // Look for our success marker
+            const hasSuccessMarker = fullOutput.includes(`${uniqueMarker}:SUCCESS`);
+            
+            if (hasError) {
+                // If there's an error, compilation failed regardless of marker
+                console.log('[testCompileScFile] Compilation failed - ERROR found in output');
                 
-                // Extract the main error
+                // Extract the error message
+                let errorMsg = 'Compilation error';
                 const errorMatch = fullOutput.match(/ERROR:\s*(.+?)(?=\n|$)/);
                 if (errorMatch) {
                     errorMsg = errorMatch[0];
-                    
-                    // Try to extract additional context
-                    const receiverMatch = fullOutput.match(/RECEIVER:\s*(.+?)(?=\n|$)/);
-                    const argsMatch = fullOutput.match(/ARGS:\s*(.+?)(?=\n|$)/);
-                    const lineMatch = fullOutput.match(/line\s+(\d+)\s+char\s+(\d+):/);
-                    
-                    if (receiverMatch) {
-                        errorMsg += `\nRECEIVER: ${receiverMatch[1]}`;
-                    }
-                    if (argsMatch) {
-                        errorMsg += `\nARGS: ${argsMatch[1]}`;
-                    }
-                    if (lineMatch) {
-                        errorMsg += `\nAt line ${lineMatch[1]}, char ${lineMatch[2]}`;
-                    }
-                } else {
-                    // Fallback to other patterns
-                    const errorPatterns = [
-                        /syntax error,\s*(.+)/i,
-                        /Parse error(.+?)(?=\n|$)/i,
-                        /Variable\s*'([^']+)'\s*not defined/,
-                        /Class not defined:\s*(.+)/
-                    ];
-                    
-                    for (const pattern of errorPatterns) {
-                        const match = fullOutput.match(pattern);
-                        if (match) {
-                            errorMsg = match[0];
-                            break;
-                        }
-                    }
                 }
                 
                 resolve({
@@ -778,14 +749,49 @@ async function testCompileScFile(filePath) {
                     error: errorMsg,
                     output: fullOutput
                 });
-            } else {
-                // Only mark as success if there are NO errors
+                return;
+            } else if (hasSuccessMarker) {
+                // No errors AND we have our success marker
+                console.log('[testCompileScFile] Compilation successful (marker found, no errors)');
                 resolve({
                     success: true,
                     error: null,
                     output: fullOutput
                 });
+                return;
             }
+            
+            // FALLBACK: If we don't find our marker, something went wrong
+            // This could mean SC crashed, timed out, or had a serious parsing error
+            console.warn('[testCompileScFile] No unique compilation marker found in output');
+            
+            // Check for catastrophic errors that prevented our test from running
+            const catastrophicErrorPatterns = [
+                /ERROR:\s*(.+?)(?=\n|$)/,
+                /Parse error/,
+                /syntax error/,
+                /unexpected end of file/
+            ];
+            
+            let hasRealError = false;
+            let errorMsg = 'Compilation test timeout - no response from SuperCollider';
+            
+            // Check if there's an obvious error that prevented our test from running
+            for (const pattern of catastrophicErrorPatterns) {
+                const match = fullOutput.match(pattern);
+                if (match) {
+                    hasRealError = true;
+                    errorMsg = match[0] || match[1] || 'Compilation error detected';
+                    break;
+                }
+            }
+            
+            // Return failure - we couldn't determine the compilation result
+            resolve({
+                success: false,
+                error: hasRealError ? errorMsg : 'Compilation test timeout - no response from SuperCollider',
+                output: fullOutput
+            });
         }, 2000); // 2 second timeout
     });
 }

@@ -111,3 +111,8 @@ For direct testing of SuperCollider scripts (`.sc` files), you can use an intera
     This will define and potentially run the synth or code within that file. Check the `postln` messages from the effect script for confirmation.
 
 This interactive approach is useful for debugging individual SuperCollider files and understanding their behavior outside of the full Electron application.
+
+DEBUG: this is a helpful way to get the latest logs off the pi
+```
+scp patch@192.168.50.180:"$(ssh patch@192.168.50.180 'ls -t ~/.config/bice-box/logs/*.txt | head -1')" ./latest-bice-log.txt
+```
