@@ -204,6 +204,23 @@ function startHttpServer(getState) {
                                     },
                                     required: ['scCode']
                                 }
+                            },
+                            {
+                                name: 'read_logs',
+                                description: 'Read recent application logs for debugging. Returns the last N lines from the console output.',
+                                inputSchema: {
+                                    type: 'object',
+                                    properties: {
+                                        lines: {
+                                            type: 'number',
+                                            description: 'Number of lines to return (default: 100, max: 1000)'
+                                        },
+                                        filter: {
+                                            type: 'string',
+                                            description: 'Optional filter string to search for in logs'
+                                        }
+                                    }
+                                }
                             }
                         ]
                     };
@@ -609,6 +626,41 @@ async function handleToolCall(params, getState) {
                 console.error('[MCP] Error in test_supercollider_code:', error);
                 return {
                     content: [{ type: 'text', text: `Error testing code: ${error.message}` }],
+                    isError: true
+                };
+            }
+            
+        case 'read_logs':
+            try {
+                const { lines = 100, filter } = args;
+                const { getLogBuffer } = getState;
+                
+                if (!getLogBuffer) {
+                    // Fallback: if no log buffer is available, return a message
+                    return {
+                        content: [{ type: 'text', text: 'Log reading not available. The application may need to implement log buffering.' }]
+                    };
+                }
+                
+                // Limit lines to max 1000 for safety
+                const numLines = Math.min(Math.max(1, lines), 1000);
+                
+                // Get logs from buffer
+                const logs = getLogBuffer(numLines, filter);
+                
+                if (!logs || logs.length === 0) {
+                    return {
+                        content: [{ type: 'text', text: 'No logs available matching the criteria.' }]
+                    };
+                }
+                
+                return {
+                    content: [{ type: 'text', text: logs }]
+                };
+            } catch (error) {
+                console.error('[MCP] Error in read_logs:', error);
+                return {
+                    content: [{ type: 'text', text: `Error reading logs: ${error.message}` }],
                     isError: true
                 };
             }

@@ -54,6 +54,39 @@ let devMode = false;
 let activeAudioSourcePath = null; // To store the path of the user-selected audio effect
 let activeVisualSourcePath = null; // To store the path of the user-selected visual effect
 
+// Log buffer for MCP log reading functionality
+const LOG_BUFFER_SIZE = 2000; // Keep last 2000 lines in memory
+let logBuffer = [];
+
+function addToLogBuffer(type, ...args) {
+    const timestamp = new Date().toISOString();
+    const message = args.map(arg => 
+        typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+    ).join(' ');
+    
+    const logEntry = `[${timestamp}] [${type}] ${message}`;
+    logBuffer.push(logEntry);
+    
+    // Keep buffer size limited
+    if (logBuffer.length > LOG_BUFFER_SIZE) {
+        logBuffer.shift();
+    }
+}
+
+// Function to get logs from buffer
+function getLogBuffer(numLines = 100, filter = null) {
+    let logs = [...logBuffer]; // Copy the buffer
+    
+    // Apply filter if provided
+    if (filter) {
+        logs = logs.filter(log => log.toLowerCase().includes(filter.toLowerCase()));
+    }
+    
+    // Get last N lines
+    const startIndex = Math.max(0, logs.length - numLines);
+    return logs.slice(startIndex).join('\n');
+}
+
 const runGenerator = process.argv.includes('--generate');
 const runHeadlessTest = process.argv.includes('--headless-test');
 const runGpuCheck = process.argv.includes('--gpu-check'); // Added gpu-check flag
@@ -86,13 +119,24 @@ const originalConsoleError = console.error;
 console.log = function ()
 {
   logStream.write(util.format.apply(null, arguments) + '\n');
+  addToLogBuffer('LOG', ...arguments); // Add to our buffer
   originalConsoleLog.apply(console, arguments);
 };
 
 console.error = function ()
 {
   logStream.write('ERROR: ' + util.format.apply(null, arguments) + '\n');
+  addToLogBuffer('ERROR', ...arguments); // Add to our buffer
   originalConsoleError.apply(console, arguments);
+};
+
+// Also override console.warn
+const originalConsoleWarn = console.warn;
+console.warn = function ()
+{
+  logStream.write('WARN: ' + util.format.apply(null, arguments) + '\n');
+  addToLogBuffer('WARN', ...arguments); // Add to our buffer
+  originalConsoleWarn.apply(console, arguments);
 };
 
 function getEffectsPath()
@@ -465,7 +509,8 @@ app.whenReady().then(() =>
         testSuperColliderCode: async (scCode) => {
             const { testSuperColliderCode } = require('./superColliderManager');
             return await testSuperColliderCode(scCode);
-        }
+        },
+        getLogBuffer: getLogBuffer
     };
     startHttpServer(getState);
 
