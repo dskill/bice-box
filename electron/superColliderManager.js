@@ -741,7 +741,9 @@ async function testCompileScFile(filePath) {
                            fullOutput.includes('Parse error') ||
                            fullOutput.includes('syntax error') ||
                            fullOutput.includes('FAILURE IN SERVER /s_new') ||  // Synth creation failed
-                           fullOutput.includes('FAILURE IN SERVER /n_set');     // Synth crashed after creation
+                           fullOutput.includes('FAILURE IN SERVER /n_set') ||  // Synth crashed after creation
+                           fullOutput.includes('exceeded number of interconnect buffers') || // SynthDef too complex
+                           fullOutput.includes('exception in GraphDef_Load');  // Failed to load SynthDef
             
             // Look for our marker showing the file was loaded
             const hasLoadedMarker = fullOutput.includes(`${uniqueMarker}:LOADED`);
@@ -750,11 +752,28 @@ async function testCompileScFile(filePath) {
                 // If there's an error, compilation failed regardless of marker
                 console.log('[testCompileScFile] Compilation failed - ERROR found in output');
                 
-                // Extract the error message
+                // Extract the error message with specific handling for known critical errors
                 let errorMsg = 'Compilation error';
-                const errorMatch = fullOutput.match(/ERROR:\s*(.+?)(?=\n|$)/);
-                if (errorMatch) {
-                    errorMsg = errorMatch[0];
+                
+                // Check for specific critical errors first
+                if (fullOutput.includes('exceeded number of interconnect buffers')) {
+                    errorMsg = 'ERROR: SynthDef too complex - Exceeded SuperCollider interconnect buffer limit. Try simplifying the effect or reducing the number of parallel processing chains.';
+                } else if (fullOutput.includes('exception in GraphDef_Load')) {
+                    errorMsg = 'ERROR: Failed to load SynthDef - The effect definition could not be loaded by the server.';
+                } else if (fullOutput.includes('FAILURE IN SERVER /n_set')) {
+                    errorMsg = 'ERROR: Runtime failure - Synth crashed immediately after creation (likely invalid UGen arguments).';
+                } else if (fullOutput.includes('FAILURE IN SERVER /s_new')) {
+                    errorMsg = 'ERROR: Failed to create synth instance.';
+                } else {
+                    // Try to extract generic error message
+                    const errorMatch = fullOutput.match(/ERROR:\s*(.+?)(?=\n|$)/);
+                    if (errorMatch) {
+                        errorMsg = errorMatch[0];
+                    } else if (fullOutput.includes('syntax error')) {
+                        errorMsg = 'ERROR: Syntax error in SuperCollider code';
+                    } else if (fullOutput.includes('Parse error')) {
+                        errorMsg = 'ERROR: Parse error in SuperCollider code';
+                    }
                 }
                 
                 resolve({
