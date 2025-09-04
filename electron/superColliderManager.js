@@ -694,9 +694,13 @@ async function testCompileScFile(filePath) {
         // Use a unique marker for each compilation test
         const uniqueMarker = `COMPILE_TEST_${Date.now()}_${Math.random().toString(36).substring(7)}`;
         
-        // Load the file and wait a moment to catch any immediate runtime failures
-        // This helps catch issues like incorrect UGen arguments that crash the synth
-        const scCommand = `("${filePath}").load; ("${uniqueMarker}:LOADED").postln;`;
+        // Load the file and optionally create a test synth to catch runtime failures
+        // Extract effect name from the temp file name
+        const effectName = path.basename(filePath, '.sc').replace(/^temp_[a-f0-9]+_/, '');
+        
+        // Load the file, then try to create a test synth to catch runtime errors
+        // We'll send multiple commands and collect all output
+        const scCommand = `("${filePath}").load; Synth("${effectName}", [\\in_bus, 999, \\out, 999]); ("${uniqueMarker}:LOADED").postln;`;
         
         let output = '';
         let errorOutput = '';
@@ -715,6 +719,12 @@ async function testCompileScFile(filePath) {
         
         // Send the test command
         sclang.stdin.write(scCommand + '\n');
+        
+        // Give the synth a moment to crash if it's going to
+        // This helps catch runtime errors that happen immediately after instantiation
+        setTimeout(() => {
+            // Just a delay to allow errors to accumulate
+        }, 500);
         
         // Wait for response with timeout
         setTimeout(() => {
@@ -792,7 +802,7 @@ async function testCompileScFile(filePath) {
                 error: hasRealError ? errorMsg : 'Compilation test timeout - no response from SuperCollider',
                 output: fullOutput
             });
-        }, 2000); // 2 second timeout
+        }, 3000); // 3 second timeout to catch runtime errors
     });
 }
 
