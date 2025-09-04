@@ -544,6 +544,7 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
                         <>
                             <Button label={"Reload All Effects"} onClick={reloadEffectList} />
                             <Button label={"Reset Conversation"} onClick={resetClaudeConversation} />
+                            <Button label={"Reboot Server"} onClick={rebootServer} />
                         </>
                     )}
                 </div>

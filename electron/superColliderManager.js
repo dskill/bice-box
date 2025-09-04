@@ -735,10 +735,13 @@ async function testCompileScFile(filePath) {
             const fullOutput = output + errorOutput;
             
             // Check if we have any ERROR in the output BEFORE looking for success marker
+            // Note: "FAILURE IN SERVER /n_free" is harmless - it just means there was no synth to free
+            // We only care about /n_set failures which indicate the synth crashed
             const hasError = fullOutput.includes('ERROR:') || 
                            fullOutput.includes('Parse error') ||
                            fullOutput.includes('syntax error') ||
-                           fullOutput.includes('FAILURE IN SERVER');  // Catch runtime failures
+                           fullOutput.includes('FAILURE IN SERVER /s_new') ||  // Synth creation failed
+                           fullOutput.includes('FAILURE IN SERVER /n_set');     // Synth crashed after creation
             
             // Look for our marker showing the file was loaded
             const hasLoadedMarker = fullOutput.includes(`${uniqueMarker}:LOADED`);
