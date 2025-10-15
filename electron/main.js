@@ -1268,6 +1268,38 @@ ipcMain.on('check-git-local-changes', async (event) =>
   }
 });
 
+// Discard local changes in effects repo
+ipcMain.on('discard-git-changes', async (event) =>
+{
+  const effectsRepoPath = getEffectsRepoPath();
+  console.log('[discard-git-changes] Discarding local changes at:', effectsRepoPath);
+  
+  try
+  {
+    const execOptions = {
+      cwd: effectsRepoPath,
+      shell: true
+    };
+
+    // Reset to HEAD (discards all local changes)
+    console.log('[discard-git-changes] Running git reset --hard HEAD...');
+    await execPromise('git reset --hard HEAD', execOptions);
+    
+    // Clean untracked files
+    console.log('[discard-git-changes] Running git clean -fd...');
+    await execPromise('git clean -fd', execOptions);
+    
+    console.log('[discard-git-changes] Local changes discarded successfully');
+    event.reply('discard-changes-success');
+  }
+  catch (error)
+  {
+    console.error('[discard-git-changes] Error discarding changes:', error);
+    const errorMessage = error.stderr || error.message || 'Unknown error discarding changes';
+    event.reply('discard-changes-error', errorMessage);
+  }
+});
+
 // Switch git branch
 ipcMain.on('switch-git-branch', async (event, branchName) =>
 {

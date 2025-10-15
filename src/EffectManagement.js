@@ -583,6 +583,9 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
 
             // Check effects repo
             onCheckEffectsRepo();
+            
+            // Check for local changes
+            checkLocalChanges();
         };
 
         // Run on mount
@@ -617,6 +620,27 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
         reloadEffectList();
     };
 
+    const handleDiscardChanges = () => {
+        if (!window.confirm('Are you sure you want to discard all local changes? This cannot be undone.')) {
+            return;
+        }
+
+        console.log('Discarding local changes...');
+        electron.ipcRenderer.send('discard-git-changes');
+        
+        electron.ipcRenderer.once('discard-changes-success', () => {
+            console.log('Local changes discarded successfully');
+            setHasLocalChanges(false);
+            checkLocalChanges(); // Verify
+            reloadEffectList(); // Reload effects in case files changed
+        });
+        
+        electron.ipcRenderer.once('discard-changes-error', (event, error) => {
+            console.error('Failed to discard changes:', error);
+            setErrorMessage(`Failed to discard changes: ${error}`);
+        });
+    };
+
     return (
         <div 
             className={`effect-management-modal ${isExpanded ? 'effect-management-modal--expanded' : ''}`}
@@ -635,8 +659,49 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
             <div className={`effect-management__content ${isExpanded ? 'effect-management__content--expanded' : ''}`}>
                 <div className="effect-management__buttons">
                     {renderWifiButton()}
-                    {renderAppUpdateButton()}
-                    {renderSyncButton()}
+                    
+                    {/* Branch Selector - Show when not on Pi, or when on Pi with WiFi */}
+                    {(() => {
+                        const hasConnectivity = !isPlatformRaspberryPi || wifiStatus.connected;
+                        console.log('Dropdown render - isPi:', isPlatformRaspberryPi, 'wifiConnected:', wifiStatus.connected, 'hasConnectivity:', hasConnectivity, 'branches:', availableBranches.length);
+                        return null;
+                    })()}
+                    {(!isPlatformRaspberryPi || wifiStatus.connected) && availableBranches.length > 0 && (
+                        <div className="branch-selector">
+                            <label>Branch: </label>
+                            <select 
+                                value={currentBranch}
+                                onChange={handleBranchChange}
+                                disabled={hasLocalChanges || isSwitchingBranch}
+                                className="effect-management__select"
+                            >
+                                {availableBranches.map(branch => (
+                                    <option key={branch} value={branch}>{branch}</option>
+                                ))}
+                            </select>
+                            {hasLocalChanges && (
+                                <span className="branch-warning">Local changes - cannot switch</span>
+                            )}
+                            {isSwitchingBranch && (
+                                <span className="branch-switching">
+                                    <FaSync className="spin" /> Switching...
+                                </span>
+                            )}
+                        </div>
+                    )}
+                    
+                    {/* Hidden but keeping code: {renderAppUpdateButton()} */}
+                    {/* Hidden but keeping code: {renderSyncButton()} */}
+                    
+                    {/* Show discard button only when there are local changes */}
+                    {hasLocalChanges && (
+                        <Button 
+                            label="Discard Local Changes"
+                            onClick={handleDiscardChanges}
+                            className="discard-changes-button"
+                        />
+                    )}
+                    
                     <Button 
                         label={devMode ? "Disable Dev Mode" : "Enable Dev Mode"}
                         onClick={handleDevModeToggle}
@@ -651,36 +716,6 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
                         </>
                     )}
                 </div>
-                
-                {/* Branch Selector - Show when not on Pi, or when on Pi with WiFi */}
-                {(() => {
-                    const hasConnectivity = !isPlatformRaspberryPi || wifiStatus.connected;
-                    console.log('Dropdown render - isPi:', isPlatformRaspberryPi, 'wifiConnected:', wifiStatus.connected, 'hasConnectivity:', hasConnectivity, 'branches:', availableBranches.length);
-                    return null;
-                })()}
-                {(!isPlatformRaspberryPi || wifiStatus.connected) && availableBranches.length > 0 && (
-                    <div className="branch-selector">
-                        <label>Branch: </label>
-                        <select 
-                            value={currentBranch}
-                            onChange={handleBranchChange}
-                            disabled={hasLocalChanges || isSwitchingBranch}
-                            className="effect-management__select"
-                        >
-                            {availableBranches.map(branch => (
-                                <option key={branch} value={branch}>{branch}</option>
-                            ))}
-                        </select>
-                        {hasLocalChanges && (
-                            <span className="branch-warning">Local changes - cannot switch</span>
-                        )}
-                        {isSwitchingBranch && (
-                            <span className="branch-switching">
-                                <FaSync className="spin" /> Switching...
-                            </span>
-                        )}
-                    </div>
-                )}
                 
                 {errorMessage && <div className="effect-management__error">{errorMessage}</div>}
                 

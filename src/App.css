@@ -1444,3 +1444,14 @@ button:disabled {
   align-items: center;
   gap: 5px;
 }
+
+/* Discard changes button - warning style */
+.discard-changes-button {
+  color: #ff6b6b !important;
+  border: 1px solid #ff6b6b !important;
+}
+
+.discard-changes-button:hover {
+  background-color: rgba(255, 107, 107, 0.1) !important;
+  color: #ff4444 !important;
+}
