@@ -1583,7 +1583,7 @@ function getAvailableVisualizers(effectsRepoPath) {
   const p5VisualsDir = path.join(effectsRepoPath, 'visual');
   const shaderVisualsDir = path.join(effectsRepoPath, 'shaders'); // Added shaders
 
-  console.log(`Scanning for P5 visualizers in: ${p5VisualsDir}`);
+  // console.log(`Scanning for P5 visualizers in: ${p5VisualsDir}`); // Spam removed
   try {
     if (fs.existsSync(p5VisualsDir)) {
       const files = fs.readdirSync(p5VisualsDir);
@@ -1604,7 +1604,7 @@ function getAvailableVisualizers(effectsRepoPath) {
     console.error(`Error scanning P5 visualizers directory ${p5VisualsDir}:`, error);
   }
 
-  console.log(`Scanning for Shader visualizers in: ${shaderVisualsDir}`);
+  // console.log(`Scanning for Shader visualizers in: ${shaderVisualsDir}`); // Spam removed
   try {
     if (fs.existsSync(shaderVisualsDir)) {
       const files = fs.readdirSync(shaderVisualsDir);
@@ -1662,7 +1662,7 @@ function getAvailableVisualizers(effectsRepoPath) {
   }
 
   visualizers.sort((a, b) => a.name.localeCompare(b.name)); // Sort alphabetically
-  console.log(`Found ${visualizers.length} total visualizers (P5 and Shaders):`, visualizers.map(v => `${v.name} (${v.type}) [${v.path}]`));
+  // console.log(`Found ${visualizers.length} total visualizers (P5 and Shaders):`, visualizers.map(v => `${v.name} (${v.type}) [${v.path}]`)); // Spam removed
   return visualizers;
 }
 

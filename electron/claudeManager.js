@@ -161,7 +161,12 @@ class ClaudeManager {
                 '/usr/local/bin',
             ].filter(Boolean).join(path.delimiter);
 
-            console.log('Extended PATH for Claude process:', extendedPath);
+            console.log('Extended PATH for Claude process (first 500 chars):', extendedPath.substring(0, 500));
+            console.log('PATH components:');
+            console.log('  nodeBinPath:', nodeBinPath);
+            console.log('  nvmBinPath:', nvmBinPath);
+            console.log('  claudeCliPath:', claudeCliPath);
+            console.log('  process.env.PATH (first 200 chars):', process.env.PATH?.substring(0, 200));
 
             const cleanEnv = {
                 ...process.env,
@@ -174,16 +179,26 @@ class ClaudeManager {
                 NODE_PATH: process.env.NODE_PATH
             };
 
-            // Check Claude CLI version
+            // Check Claude CLI version and location
             try {
                 const { execSync } = require('child_process');
+                
+                // Find which claude binary is being used
+                const claudePath = execSync('which claude', { 
+                    env: cleanEnv,
+                    encoding: 'utf8',
+                    timeout: 5000 
+                }).trim();
+                console.log(`Claude CLI path: ${claudePath}`);
+                this.sendToRenderer(`\n📍 Claude CLI path: ${claudePath}\n`);
+                
                 const claudeVersion = execSync('claude -v', { 
                     env: cleanEnv,
                     encoding: 'utf8',
                     timeout: 5000 
                 }).trim();
                 console.log(`Claude CLI version: ${claudeVersion}`);
-                this.sendToRenderer(`\n📦 Claude CLI version: ${claudeVersion}\n`);
+                this.sendToRenderer(`📦 Claude CLI version: ${claudeVersion}\n`);
             } catch (versionError) {
                 console.warn('Could not determine Claude CLI version:', versionError.message);
             }

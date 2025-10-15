@@ -34,7 +34,7 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
         {
             const handleIpAddressReply = (event, address) =>
             {
-                console.log("IP address received:", address);
+                // console.log("IP address received:", address); // Spam removed
                 setIpAddress(address);
             };
 
@@ -140,7 +140,7 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
 
     const fetchIp = () =>
     {
-        console.log("Fetching IP address...");
+        // console.log("Fetching IP address..."); // Spam removed
         if (!electron || !electron.ipcRenderer)
         {
             console.warn('Electron or ipcRenderer is not available');
@@ -163,7 +163,7 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
                 clearTimeout(timeoutId);
                 if (address)
                 {
-                    console.log("IP address received:", address);
+                    // console.log("IP address received:", address); // Spam removed
                     setIpAddress(address);
                     resolve(address);
                 } else

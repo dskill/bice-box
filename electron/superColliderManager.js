@@ -30,7 +30,7 @@ function loadEffectsList(mainWindow, getEffectsRepoPath, getEffectsPath) {
                 isAudioEffect: true // Flag to distinguish from old JSON-based effects
             };
             
-            console.log(`Added audio effect: ${effectName} -> ${scFilePath}`);
+            // console.log(`Added audio effect: ${effectName} -> ${scFilePath}`); // Spam removed
             synths.push(audioEffect);
         });
 

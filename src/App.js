@@ -108,7 +108,7 @@ function App() {
 
   useEffect(() => {
     const handleEffectsData = (event, data) => {
-        console.log("Received effects-data:", data);
+        // console.log("Received effects-data:", data); // Spam removed
         if (Array.isArray(data)) {
             setSynths(prevSynths => {
                 // Only set initial effect if the synths list was previously empty
