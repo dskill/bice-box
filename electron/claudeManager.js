@@ -174,6 +174,20 @@ class ClaudeManager {
                 NODE_PATH: process.env.NODE_PATH
             };
 
+            // Check Claude CLI version
+            try {
+                const { execSync } = require('child_process');
+                const claudeVersion = execSync('claude -v', { 
+                    env: cleanEnv,
+                    encoding: 'utf8',
+                    timeout: 5000 
+                }).trim();
+                console.log(`Claude CLI version: ${claudeVersion}`);
+                this.sendToRenderer(`\n📦 Claude CLI version: ${claudeVersion}\n`);
+            } catch (versionError) {
+                console.warn('Could not determine Claude CLI version:', versionError.message);
+            }
+
             // Start claude with streaming JSON input/output (official feature)
             const commandParts = [
                 'claude',
