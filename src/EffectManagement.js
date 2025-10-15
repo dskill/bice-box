@@ -26,6 +26,11 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
     const [showWifiSettings, setShowWifiSettings] = useState(false);
     const [wifiStatus, setWifiStatus] = useState({ connected: false, ssid: null });
     const [devMode, setDevMode] = useState(false);
+    const [availableBranches, setAvailableBranches] = useState([]);
+    const [currentBranch, setCurrentBranch] = useState('');
+    const [hasLocalChanges, setHasLocalChanges] = useState(false);
+    const [isSwitchingBranch, setIsSwitchingBranch] = useState(false);
+    const [isPlatformRaspberryPi, setIsPlatformRaspberryPi] = useState(false);
 
     useEffect(() =>
     {
@@ -135,6 +140,17 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
             return () => {
                 electron.ipcRenderer.removeListener('dev-mode-changed', handleModeChange);
             };
+        }
+    }, []);
+
+    useEffect(() => {
+        if (electron && electron.ipcRenderer) {
+            // Check if we're on Raspberry Pi
+            electron.ipcRenderer.invoke('get-platform-info').then(info => {
+                if (info && info.isPi !== undefined) {
+                    setIsPlatformRaspberryPi(info.isPi);
+                }
+            });
         }
     }, []);
 
@@ -308,6 +324,93 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
     {
         setIsExpanded(!isExpanded);
     };
+
+    const fetchGitBranches = () =>
+    {
+        if (!electron || !electron.ipcRenderer)
+        {
+            console.warn('Electron or ipcRenderer not available for fetchGitBranches');
+            return;
+        }
+
+        electron.ipcRenderer.send('get-git-branches');
+        electron.ipcRenderer.once('git-branches-reply', (event, data) =>
+        {
+            console.log('Git branches received:', data);
+            setAvailableBranches(data.branches);
+            setCurrentBranch(data.currentBranch);
+        });
+        electron.ipcRenderer.once('git-branches-error', (event, error) =>
+        {
+            console.error('Failed to fetch branches:', error);
+            setErrorMessage(`Failed to fetch branches: ${error}`);
+        });
+    };
+
+    const checkLocalChanges = () =>
+    {
+        if (!electron || !electron.ipcRenderer)
+        {
+            console.warn('Electron or ipcRenderer not available for checkLocalChanges');
+            return;
+        }
+
+        electron.ipcRenderer.send('check-git-local-changes');
+        electron.ipcRenderer.once('git-local-changes-reply', (event, data) =>
+        {
+            console.log('Local changes status:', data.hasLocalChanges);
+            setHasLocalChanges(data.hasLocalChanges);
+        });
+        electron.ipcRenderer.once('git-local-changes-error', (event, error) =>
+        {
+            console.error('Failed to check local changes:', error);
+        });
+    };
+
+    const handleBranchChange = (event) =>
+    {
+        const newBranch = event.target.value;
+        if (newBranch === currentBranch)
+        {
+            return; // No change needed
+        }
+
+        console.log(`Switching to branch: ${newBranch}`);
+        setIsSwitchingBranch(true);
+        
+        electron.ipcRenderer.send('switch-git-branch', newBranch);
+        
+        electron.ipcRenderer.once('switch-branch-success', (event, data) =>
+        {
+            console.log('Branch switched successfully:', data.branch);
+            setCurrentBranch(data.branch);
+            setIsSwitchingBranch(false);
+            reloadEffectList();
+            checkLocalChanges();
+        });
+        
+        electron.ipcRenderer.once('switch-branch-error', (event, error) =>
+        {
+            console.error('Failed to switch branch:', error);
+            setErrorMessage(`Failed to switch branch: ${error}`);
+            setIsSwitchingBranch(false);
+        });
+    };
+
+    // Effect to fetch branches when WiFi connects (or immediately if not on Pi)
+    useEffect(() => {
+        const hasConnectivity = !isPlatformRaspberryPi || wifiStatus.connected;
+        console.log('Branch fetch effect - isPi:', isPlatformRaspberryPi, 'wifiConnected:', wifiStatus.connected, 'hasConnectivity:', hasConnectivity);
+        
+        if (electron && electron.ipcRenderer && hasConnectivity) {
+            console.log('Has connectivity, fetching git branches...');
+            fetchGitBranches();
+            checkLocalChanges();
+        } else {
+            console.log('NOT fetching branches - hasConnectivity:', hasConnectivity);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [wifiStatus.connected, isPlatformRaspberryPi]);
 
     const handlePullEffectsRepo = () =>
     {
@@ -548,6 +651,37 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
                         </>
                     )}
                 </div>
+                
+                {/* Branch Selector - Show when not on Pi, or when on Pi with WiFi */}
+                {(() => {
+                    const hasConnectivity = !isPlatformRaspberryPi || wifiStatus.connected;
+                    console.log('Dropdown render - isPi:', isPlatformRaspberryPi, 'wifiConnected:', wifiStatus.connected, 'hasConnectivity:', hasConnectivity, 'branches:', availableBranches.length);
+                    return null;
+                })()}
+                {(!isPlatformRaspberryPi || wifiStatus.connected) && availableBranches.length > 0 && (
+                    <div className="branch-selector">
+                        <label>Branch: </label>
+                        <select 
+                            value={currentBranch}
+                            onChange={handleBranchChange}
+                            disabled={hasLocalChanges || isSwitchingBranch}
+                            className="effect-management__select"
+                        >
+                            {availableBranches.map(branch => (
+                                <option key={branch} value={branch}>{branch}</option>
+                            ))}
+                        </select>
+                        {hasLocalChanges && (
+                            <span className="branch-warning">Local changes - cannot switch</span>
+                        )}
+                        {isSwitchingBranch && (
+                            <span className="branch-switching">
+                                <FaSync className="spin" /> Switching...
+                            </span>
+                        )}
+                    </div>
+                )}
+                
                 {errorMessage && <div className="effect-management__error">{errorMessage}</div>}
                 
                                 {/* QR Code for Remote Access */}

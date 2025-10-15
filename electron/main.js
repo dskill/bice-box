@@ -1197,6 +1197,127 @@ ipcMain.on('check-effects-repo', async (event) =>
   }
 });
 
+// Get available git branches
+ipcMain.on('get-git-branches', async (event) =>
+{
+  const effectsRepoPath = getEffectsRepoPath();
+  console.log('[get-git-branches] Getting branches for repo at:', effectsRepoPath);
+  
+  try
+  {
+    const execOptions = {
+      cwd: effectsRepoPath,
+      shell: true
+    };
+
+    // Fetch latest from origin
+    console.log('[get-git-branches] Fetching from origin...');
+    await execPromise('git fetch origin', execOptions);
+    
+    // Get all remote branches
+    console.log('[get-git-branches] Getting remote branches...');
+    const result = await execPromise('git branch -r', execOptions);
+    const branches = result.stdout
+      .split('\n')
+      .map(b => b.trim().replace('origin/', '').replace('origin/HEAD ->', ''))
+      .filter(b => b && !b.includes('->'))
+      .filter((v, i, a) => a.indexOf(v) === i); // unique
+    
+    // Get current branch
+    console.log('[get-git-branches] Getting current branch...');
+    const currentBranchResult = await execPromise('git rev-parse --abbrev-ref HEAD', execOptions);
+    const currentBranch = currentBranchResult.stdout.trim();
+    
+    console.log('[get-git-branches] Found branches:', branches, 'Current:', currentBranch);
+    event.reply('git-branches-reply', { branches, currentBranch });
+  }
+  catch (error)
+  {
+    console.error('[get-git-branches] Error getting branches:', error);
+    const errorMessage = error.stderr || error.message || 'Unknown error getting branches';
+    event.reply('git-branches-error', errorMessage);
+  }
+});
+
+// Check for local changes in the effects repo
+ipcMain.on('check-git-local-changes', async (event) =>
+{
+  const effectsRepoPath = getEffectsRepoPath();
+  console.log('[check-git-local-changes] Checking for local changes at:', effectsRepoPath);
+  
+  try
+  {
+    const execOptions = {
+      cwd: effectsRepoPath,
+      shell: true
+    };
+
+    const result = await execPromise('git status --porcelain', execOptions);
+    const hasLocalChanges = result.stdout.trim().length > 0;
+    
+    console.log('[check-git-local-changes] Has local changes:', hasLocalChanges);
+    event.reply('git-local-changes-reply', { hasLocalChanges });
+  }
+  catch (error)
+  {
+    console.error('[check-git-local-changes] Error checking local changes:', error);
+    const errorMessage = error.stderr || error.message || 'Unknown error checking local changes';
+    event.reply('git-local-changes-error', errorMessage);
+  }
+});
+
+// Switch git branch
+ipcMain.on('switch-git-branch', async (event, branchName) =>
+{
+  const effectsRepoPath = getEffectsRepoPath();
+  console.log(`[switch-git-branch] Switching to branch '${branchName}' at:`, effectsRepoPath);
+  
+  try
+  {
+    const execOptions = {
+      cwd: effectsRepoPath,
+      shell: true
+    };
+
+    // Check for local changes first
+    console.log('[switch-git-branch] Checking for local changes...');
+    const statusResult = await execPromise('git status --porcelain', execOptions);
+    if (statusResult.stdout.trim().length > 0)
+    {
+      throw new Error('Cannot switch branches with local changes');
+    }
+    
+    // Checkout the branch
+    console.log(`[switch-git-branch] Checking out branch '${branchName}'...`);
+    await execPromise(`git checkout ${branchName}`, execOptions);
+    
+    // Pull latest
+    console.log(`[switch-git-branch] Pulling latest from origin/${branchName}...`);
+    await execPromise(`git pull origin ${branchName}`, execOptions);
+    
+    // Reload effects
+    console.log('[switch-git-branch] Reloading effects list...');
+    const loadedSynths = loadEffectsList(mainWindow, getEffectsRepoPath, getEffectsPath);
+    try { (loadedSynths || []).forEach(s => ensureEffectInStore(s.name, s.scFilePath)); } catch {}
+    broadcastEffectsState(effectsStore.activeEffectName);
+    const validSynths = loadedSynths.filter(synth => synth && synth.name);
+    if (mainWindow && mainWindow.webContents)
+    {
+      mainWindow.webContents.send('effects-data', validSynths);
+      console.log('[switch-git-branch] Effects reloaded and sent to renderer.');
+    }
+    
+    console.log(`[switch-git-branch] Successfully switched to branch '${branchName}'`);
+    event.reply('switch-branch-success', { branch: branchName });
+  }
+  catch (error)
+  {
+    console.error('[switch-git-branch] Error switching branch:', error);
+    const errorMessage = error.stderr || error.message || 'Unknown error switching branch';
+    event.reply('switch-branch-error', errorMessage);
+  }
+});
+
 function execPromise(command, options)
 {
   return new Promise((resolve, reject) =>
