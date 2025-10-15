@@ -1221,6 +1221,8 @@ ipcMain.on('get-git-branches', async (event) =>
       .split('\n')
       .map(b => b.trim().replace('origin/', '').replace('origin/HEAD ->', ''))
       .filter(b => b && !b.includes('->'))
+      .filter(b => !b.startsWith('archived/'))  // Filter archived branches
+      .filter(b => !b.startsWith('cursor/'))    // Filter cursor branches
       .filter((v, i, a) => a.indexOf(v) === i); // unique
     
     // Get current branch
