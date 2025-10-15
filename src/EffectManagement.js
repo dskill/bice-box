@@ -668,7 +668,6 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
                     })()}
                     {(!isPlatformRaspberryPi || wifiStatus.connected) && availableBranches.length > 0 && (
                         <div className="branch-selector">
-                            <label>Branch: </label>
                             <select 
                                 value={currentBranch}
                                 onChange={handleBranchChange}
