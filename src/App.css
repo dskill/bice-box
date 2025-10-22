@@ -1428,8 +1428,11 @@ button:disabled {
 }
 
 .branch-selector select {
-  min-width: 150px;
+  min-width: 200px;
   color: rgb(198, 202, 224);
+  font-size: 18px;
+  padding: 8px 12px;
+  min-height: 44px; /* Better touch target for mobile/Pi */
 }
 
 .branch-warning {

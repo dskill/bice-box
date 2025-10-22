@@ -337,6 +337,8 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
         electron.ipcRenderer.once('git-branches-reply', (event, data) =>
         {
             console.log('Git branches received:', data);
+            console.log('Setting available branches:', data.branches);
+            console.log('Setting current branch to:', data.currentBranch);
             setAvailableBranches(data.branches);
             setCurrentBranch(data.currentBranch);
         });
@@ -668,7 +670,9 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
                     })()}
                     {(!isPlatformRaspberryPi || wifiStatus.connected) && availableBranches.length > 0 && (
                         <div className="branch-selector">
+                            {console.log('Rendering select - currentBranch:', currentBranch, 'availableBranches:', availableBranches)}
                             <select 
+                                key={`branch-select-${currentBranch}`}
                                 value={currentBranch}
                                 onChange={handleBranchChange}
                                 disabled={hasLocalChanges || isSwitchingBranch}

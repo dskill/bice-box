@@ -1223,6 +1223,7 @@ ipcMain.on('get-git-branches', async (event) =>
       .filter(b => b && !b.includes('->'))
       .filter(b => !b.startsWith('archived/'))  // Filter archived branches
       .filter(b => !b.startsWith('cursor/'))    // Filter cursor branches
+      .filter(b => !b.startsWith('claude/'))    // Filter claude branches
       .filter((v, i, a) => a.indexOf(v) === i); // unique
     
     // Get current branch
