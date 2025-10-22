@@ -1419,6 +1419,7 @@ button:disabled {
   margin: 5px 0;
   padding: 5px 10px;
   justify-content: flex-end;
+  pointer-events: auto; /* Enable click events */
 }
 
 .branch-selector label {
