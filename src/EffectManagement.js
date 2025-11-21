@@ -664,13 +664,13 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
                     
                     {/* Branch Selector - Show when not on Pi, or when on Pi with WiFi */}
                     {(() => {
-                        const hasConnectivity = !isPlatformRaspberryPi || wifiStatus.connected;
-                        console.log('Dropdown render - isPi:', isPlatformRaspberryPi, 'wifiConnected:', wifiStatus.connected, 'hasConnectivity:', hasConnectivity, 'branches:', availableBranches.length);
+                        // const hasConnectivity = !isPlatformRaspberryPi || wifiStatus.connected;
+                        // console.log('Dropdown render - isPi:', isPlatformRaspberryPi, 'wifiConnected:', wifiStatus.connected, 'hasConnectivity:', hasConnectivity, 'branches:', availableBranches.length);
                         return null;
                     })()}
                     {(!isPlatformRaspberryPi || wifiStatus.connected) && availableBranches.length > 0 && (
                         <div className="branch-selector">
-                            {console.log('Rendering select - currentBranch:', currentBranch, 'availableBranches:', availableBranches)}
+                            {/* {console.log('Rendering select - currentBranch:', currentBranch, 'availableBranches:', availableBranches)} */}
                             <select 
                                 key={`branch-select-${currentBranch}`}
                                 value={currentBranch}
