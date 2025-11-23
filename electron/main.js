@@ -362,7 +362,47 @@ function createWindow()
       // End of handleEffectSpecs callback
     };
 
-    oscManager = new OSCManager(mainWindow, handleEffectSpecs, broadcast);
+    const handleMidiCommand = (command) => {
+      console.log(`[MIDI] Handling command: ${command}`);
+      
+      if (!effectsStore.activeEffectName) {
+        console.warn('[MIDI] No active effect, cannot switch.');
+        // Try to select the first one if nothing is active
+        if (synths.length > 0) {
+            console.log('[MIDI] selecting first effect as fallback');
+            setCurrentEffectAction({ name: synths[0].name });
+        }
+        return;
+      }
+
+      // Find current index in synths list
+      // Filter out any invalid synths first to match UI logic
+      const validSynths = synths.filter(s => s && s.name);
+      const currentIndex = validSynths.findIndex(s => s.name === effectsStore.activeEffectName);
+
+      if (currentIndex === -1) {
+        console.warn(`[MIDI] Active effect '${effectsStore.activeEffectName}' not found in synth list.`);
+        return;
+      }
+
+      let newIndex = currentIndex;
+      if (command === 'prev') {
+        newIndex = (currentIndex - 1 + validSynths.length) % validSynths.length;
+      } else if (command === 'next') {
+        newIndex = (currentIndex + 1) % validSynths.length;
+      } else {
+        console.warn(`[MIDI] Unknown command: ${command}`);
+        return;
+      }
+
+      const nextEffect = validSynths[newIndex];
+      if (nextEffect) {
+        console.log(`[MIDI] Switching to ${command} effect: ${nextEffect.name} (index ${currentIndex} -> ${newIndex})`);
+        setCurrentEffectAction({ name: nextEffect.name });
+      }
+    };
+
+    oscManager = new OSCManager(mainWindow, handleEffectSpecs, broadcast, handleMidiCommand);
     oscManager.initialize();
     
     // Expose setEffectParametersAction globally for MIDI CC updates from OSC

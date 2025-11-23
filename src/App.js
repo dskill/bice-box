@@ -529,15 +529,26 @@ function App() {
     setIsClaudeConsoleOpen(false);
   }, []);
 
+  // Track Claude's responding state at the App level to handle cancellation
+  const [isClaudeResponding, setIsClaudeResponding] = useState(false);
+
   const handleInteractionStart = useCallback((e) => {
-    e.preventDefault(); // Stop touch from firing mouse events
+    if (e && e.preventDefault) e.preventDefault(); // Stop touch from firing mouse events
+    if (isClaudeResponding) return; // Don't record if already responding
     setIsRecording(true);
-  }, []);
+  }, [isClaudeResponding]);
 
   const handleInteractionEnd = useCallback((e) => {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
     setIsRecording(false);
   }, []);
+
+  const handleCancelClaude = useCallback(() => {
+    if (electron && isClaudeResponding) {
+      setIsClaudeResponding(false);
+      electron.ipcRenderer.send('cancel-claude');
+    }
+  }, [electron, isClaudeResponding]);
 
   // --- Handlers for SC/Effects ---
   const handleTranscriptionComplete = useCallback((text) => {
@@ -581,16 +592,26 @@ function App() {
     
     if (data && typeof data.pressed === 'boolean') {
       if (data.pressed) {
-        // CC 117 pressed - start recording
-        console.log('MIDI CC117: Starting recording');
-        setIsRecording(true);
+        // CC 117 pressed
+        if (isClaudeResponding) {
+            // If thinking, cancel
+            console.log('MIDI CC117: Cancelling Claude request');
+            handleCancelClaude();
+        } else {
+            // If not thinking, start recording and ensure console is open
+            console.log('MIDI CC117: Starting recording');
+            if (!isClaudeConsoleOpen) {
+                setIsClaudeConsoleOpen(true);
+            }
+            setIsRecording(true);
+        }
       } else {
         // CC 117 released - stop recording
         console.log('MIDI CC117: Stopping recording');
         setIsRecording(false);
       }
     }
-  }, []);
+  }, [isClaudeResponding, isClaudeConsoleOpen, handleCancelClaude]);
 
   // Effect for general IPC listeners (like settings, wifi, etc.)
   useEffect(() => {
@@ -643,6 +664,8 @@ function App() {
         onRecordingStart={handleInteractionStart}
         onRecordingEnd={handleInteractionEnd}
         devMode={devMode}
+        isResponding={isClaudeResponding}
+        onRespondingChange={setIsClaudeResponding}
       />
 
       <VisualizationMode

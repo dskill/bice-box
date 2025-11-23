@@ -8,10 +8,17 @@ const ClaudeConsole = ({
   isRecording, 
   onRecordingStart, 
   onRecordingEnd,
-  devMode
+  devMode,
+  // Add props to sync responding state
+  isResponding,
+  onRespondingChange
 }) => {
   const [claudeOutput, setClaudeOutput] = useState('');
-  const [isClaudeResponding, setIsClaudeResponding] = useState(false);
+  // Use prop if available, otherwise local state (for backward compatibility if needed)
+  const [localIsClaudeResponding, setLocalIsClaudeResponding] = useState(false);
+  const isClaudeResponding = isResponding !== undefined ? isResponding : localIsClaudeResponding;
+  const setIsClaudeResponding = onRespondingChange || setLocalIsClaudeResponding;
+
   const [isLoading, setIsLoading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   // Using optimized --continue approach, no toggle needed

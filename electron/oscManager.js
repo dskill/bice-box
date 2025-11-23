@@ -2,11 +2,12 @@ const OSC = require('osc');
 
 class OSCManager
 {
-    constructor(mainWindow, onEffectSpecsReceived = null, broadcastFunction = null)
+    constructor(mainWindow, onEffectSpecsReceived = null, broadcastFunction = null, onMidiCommand = null)
     {
         this.mainWindow = mainWindow;
         this.onEffectSpecsReceived = onEffectSpecsReceived; // Callback for effect specs
         this.broadcastFunction = broadcastFunction; // Callback for WebSocket broadcasting
+        this.onMidiCommand = onMidiCommand; // Callback for MIDI commands (prev/next effect)
         this.oscServer = null;
         this.isClosing = false;
         this.oscMessageCount = 0;
@@ -198,6 +199,35 @@ class OSCManager
                             value: ccValue,
                             pressed: ccValue > 0 // 127 = pressed, 0 = released
                         });
+                    }
+                    break;
+
+                case '/midi/push_to_talk':
+                    // Handle MIDI push-to-talk functionality (CC 27 on Roto Control, CC 117 on other devices)
+                    // Maps to the same IPC event as CC 117 for the frontend
+                    if (oscMsg.args.length >= 1) {
+                        const ccValue = oscMsg.args[0].value;
+                        console.log(`[MIDI] Push-to-talk: ${ccValue}`);
+                        
+                        // Send to renderer for push-to-talk control
+                        this.mainWindow.webContents.send('midi-cc117', {
+                            value: ccValue,
+                            pressed: ccValue > 0 // 127 = pressed, 0 = released
+                        });
+                    }
+                    break;
+
+                case '/midi/prev_effect':
+                    console.log('[MIDI] Received prev_effect command');
+                    if (this.onMidiCommand) {
+                        this.onMidiCommand('prev');
+                    }
+                    break;
+
+                case '/midi/next_effect':
+                    console.log('[MIDI] Received next_effect command');
+                    if (this.onMidiCommand) {
+                        this.onMidiCommand('next');
                     }
                     break;
 
