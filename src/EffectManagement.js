@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import Button from './Button';
 import ToggleButton from './ToggleButton'; // Import ToggleButton
 import WifiSettings from './WifiSettings'; // Import WifiSettings
+import BranchSelector from './BranchSelector'; // Import BranchSelector
 import './App.css';
-import { FaSync, FaCheck, FaExclamationTriangle, FaDownload, FaWifi } from 'react-icons/fa';
+import { FaSync, FaCheck, FaExclamationTriangle, FaDownload, FaWifi, FaCodeBranch } from 'react-icons/fa';
 import ReactDOM from 'react-dom';
 import QRCode from 'react-qr-code';
 
@@ -30,6 +31,7 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
     const [currentBranch, setCurrentBranch] = useState('');
     const [hasLocalChanges, setHasLocalChanges] = useState(false);
     const [isSwitchingBranch, setIsSwitchingBranch] = useState(false);
+    const [showBranchSelector, setShowBranchSelector] = useState(false);
     const [isPlatformRaspberryPi, setIsPlatformRaspberryPi] = useState(false);
 
     useEffect(() =>
@@ -369,9 +371,8 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
         });
     };
 
-    const handleBranchChange = (event) =>
+    const handleBranchChange = (newBranch) =>
     {
-        const newBranch = event.target.value;
         if (newBranch === currentBranch)
         {
             return; // No change needed
@@ -389,6 +390,8 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
             setIsSwitchingBranch(false);
             reloadEffectList();
             checkLocalChanges();
+            // Optional: Close selector on success if desired, or let user close it
+            // setShowBranchSelector(false); 
         });
         
         electron.ipcRenderer.once('switch-branch-error', (event, error) =>
@@ -670,25 +673,13 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
                     })()}
                     {(!isPlatformRaspberryPi || wifiStatus.connected) && availableBranches.length > 0 && (
                         <div className="branch-selector">
-                            {/* {console.log('Rendering select - currentBranch:', currentBranch, 'availableBranches:', availableBranches)} */}
-                            <select 
-                                key={`branch-select-${currentBranch}`}
-                                value={currentBranch}
-                                onChange={handleBranchChange}
+                             <Button 
+                                label={isSwitchingBranch ? <><FaSync className="spin" /> Switching...</> : <><FaCodeBranch /> {currentBranch || 'Select Branch'}</>}
+                                onClick={() => setShowBranchSelector(true)}
                                 disabled={hasLocalChanges || isSwitchingBranch}
-                                className="effect-management__select"
-                            >
-                                {availableBranches.map(branch => (
-                                    <option key={branch} value={branch}>{branch}</option>
-                                ))}
-                            </select>
+                            />
                             {hasLocalChanges && (
                                 <span className="branch-warning">Local changes - cannot switch</span>
-                            )}
-                            {isSwitchingBranch && (
-                                <span className="branch-switching">
-                                    <FaSync className="spin" /> Switching...
-                                </span>
                             )}
                         </div>
                     )}
@@ -770,6 +761,18 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
                 level to ensure proper z-index stacking and overlay behavior */}
             {showWifiSettings && ReactDOM.createPortal(
                 <WifiSettings onClose={() => setShowWifiSettings(false)} />,
+                document.body
+            )}
+
+            {/* Render BranchSelector modal */}
+            {showBranchSelector && ReactDOM.createPortal(
+                <BranchSelector 
+                    branches={availableBranches}
+                    currentBranch={currentBranch}
+                    onSelectBranch={handleBranchChange}
+                    onClose={() => setShowBranchSelector(false)}
+                    isSwitching={isSwitchingBranch}
+                />,
                 document.body
             )}
             </div>
