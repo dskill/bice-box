@@ -1857,6 +1857,23 @@ function getAvailableVisualizers(effectsRepoPath) {
     console.error(`Error scanning Shader visualizers directory ${shaderVisualsDir}:`, error);
   }
 
+  // Detect duplicate names across p5 and shader visualizers
+  const nameMap = new Map();
+  visualizers.forEach(v => {
+    if (!nameMap.has(v.name)) {
+      nameMap.set(v.name, []);
+    }
+    nameMap.get(v.name).push(v);
+  });
+  
+  // Log warnings for any duplicates found
+  nameMap.forEach((entries, name) => {
+    if (entries.length > 1) {
+      const paths = entries.map(e => `${e.path} (${e.type})`).join(', ');
+      console.warn(`[Visualizer Warning] Duplicate visualizer name "${name}" found in: ${paths}. Only the first will be selectable. Consider renaming to ensure unique names.`);
+    }
+  });
+
   visualizers.sort((a, b) => a.name.localeCompare(b.name)); // Sort alphabetically
   // console.log(`Found ${visualizers.length} total visualizers (P5 and Shaders):`, visualizers.map(v => `${v.name} (${v.type}) [${v.path}]`)); // Spam removed
   return visualizers;

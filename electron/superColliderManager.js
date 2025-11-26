@@ -182,24 +182,31 @@ function loadVisualizerContent(visualizerPath, getEffectsRepoPath) {
     }
 }
 
-function parseAndLoadShaderFromComment(scFileContent, getEffectsRepoPath, mainWindow, broadcastCallback = null) {
+function parseAndLoadVisualizerFromComment(scFileContent, getEffectsRepoPath, mainWindow, broadcastCallback = null) {
     /**
-     * Parse SC file for shader comments and auto-load the specified shader
-     * Expected comment format: //shader: shadername (assumes shaders/ path prefix)
+     * Parse SC file for visualizer comments and auto-load the specified visualizer
+     * Supported comment formats:
+     *   // shader: shadername   (loads from shaders/ directory)
+     *   // p5: sketchname       (loads from visual/ directory)
      * Auto-detects single-pass vs multi-pass shaders
      */
     const shaderMatch = scFileContent.match(/\/\/\s*shader:\s*(.+)/i);
+    const p5Match = scFileContent.match(/\/\/\s*p5:\s*(.+)/i);
     
-    if (!shaderMatch) {
-        return; // No shader comment found - this is not an error
+    if (!shaderMatch && !p5Match) {
+        return; // No visualizer comment found - this is not an error
     }
 
-    const shaderName = shaderMatch[1].trim();
-    console.log(`Found shader comment in SC file: ${shaderName}`);
+    // Determine which type of visualizer to load (shader takes precedence if both exist)
+    const isP5 = !shaderMatch && p5Match;
+    const visualizerName = isP5 ? p5Match[1].trim() : shaderMatch[1].trim();
+    const commentType = isP5 ? 'p5' : 'shader';
     
-    // Validate shader name
-    if (!shaderName || shaderName.length === 0) {
-        const errorMsg = 'Shader comment found but shader name is empty';
+    console.log(`Found ${commentType} comment in SC file: ${visualizerName}`);
+    
+    // Validate visualizer name
+    if (!visualizerName || visualizerName.length === 0) {
+        const errorMsg = `${commentType} comment found but name is empty`;
         console.error(errorMsg);
         if (mainWindow && mainWindow.webContents) {
             mainWindow.webContents.send('shader-loading-error', {
@@ -210,13 +217,13 @@ function parseAndLoadShaderFromComment(scFileContent, getEffectsRepoPath, mainWi
         return;
     }
 
-    // Validate shader name contains only safe characters
-    if (!/^[a-zA-Z0-9_-]+$/.test(shaderName)) {
-        const errorMsg = `Invalid shader name "${shaderName}". Only letters, numbers, hyphens, and underscores are allowed.`;
+    // Validate visualizer name contains only safe characters
+    if (!/^[a-zA-Z0-9_-]+$/.test(visualizerName)) {
+        const errorMsg = `Invalid ${commentType} name "${visualizerName}". Only letters, numbers, hyphens, and underscores are allowed.`;
         console.error(errorMsg);
         if (mainWindow && mainWindow.webContents) {
             mainWindow.webContents.send('shader-loading-error', {
-                shaderName: shaderName,
+                shaderName: visualizerName,
                 errorMessage: errorMsg
             });
         }
@@ -224,129 +231,196 @@ function parseAndLoadShaderFromComment(scFileContent, getEffectsRepoPath, mainWi
     }
     
     if (!mainWindow || !mainWindow.webContents) {
-        console.warn('MainWindow not available for shader auto-loading');
+        console.warn('MainWindow not available for visualizer auto-loading');
         return;
     }
 
     try {
         const effectsRepoPath = getEffectsRepoPath();
-        const shadersDir = path.join(effectsRepoPath, 'shaders');
         
-        // Validate that the shaders directory exists
-        if (!fs.existsSync(shadersDir)) {
-            const errorMsg = `Shaders directory not found: ${shadersDir}`;
-            console.error(errorMsg);
-            mainWindow.webContents.send('shader-loading-error', {
-                shaderName: shaderName,
-                errorMessage: errorMsg
-            });
-            return;
-        }
-        
-        // Check for multi-pass shader first (look for _image.glsl file)
-        const multiPassImageFile = path.join(shadersDir, `${shaderName}_image.glsl`);
-        const singlePassFile = path.join(shadersDir, `${shaderName}.glsl`);
-        
-        let shaderPath, shaderContent, shaderType;
-        
-        if (fs.existsSync(multiPassImageFile)) {
-            // Multi-pass shader detected
-            shaderPath = `shaders/${shaderName}`; // Base name for multi-pass
-            try {
-                shaderContent = loadMultiPassShader(shaderPath, effectsRepoPath);
-                shaderType = 'multi-pass';
-                console.log(`Successfully loaded multi-pass shader: ${shaderName}`);
-            } catch (error) {
-                const errorMsg = `Failed to load multi-pass shader "${shaderName}": ${error.message}`;
+        if (isP5) {
+            // Load p5.js visualizer from visual/ directory
+            const visualDir = path.join(effectsRepoPath, 'visual');
+            
+            if (!fs.existsSync(visualDir)) {
+                const errorMsg = `Visual directory not found: ${visualDir}`;
                 console.error(errorMsg);
                 mainWindow.webContents.send('shader-loading-error', {
-                    shaderName: shaderName,
+                    shaderName: visualizerName,
                     errorMessage: errorMsg
                 });
                 return;
             }
-        } else if (fs.existsSync(singlePassFile)) {
-            // Single-pass shader detected
-            shaderPath = `shaders/${shaderName}.glsl`;
+            
+            const p5FilePath = path.join(visualDir, `${visualizerName}.js`);
+            
+            if (!fs.existsSync(p5FilePath)) {
+                const errorMsg = `P5 visualizer "${visualizerName}" not found. Checked for: ${visualizerName}.js in ${visualDir}`;
+                console.warn(errorMsg);
+                mainWindow.webContents.send('shader-loading-error', {
+                    shaderName: visualizerName,
+                    errorMessage: errorMsg
+                });
+                return;
+            }
+            
             try {
-                shaderContent = fs.readFileSync(singlePassFile, 'utf-8');
-                shaderType = 'single-pass';
-                console.log(`Successfully loaded single-pass shader: ${shaderName}`);
+                const p5Content = fs.readFileSync(p5FilePath, 'utf-8');
                 
-                // Validate that the shader content is not empty
-                if (!shaderContent || shaderContent.trim().length === 0) {
-                    const errorMsg = `Shader file "${shaderName}.glsl" is empty or contains only whitespace`;
+                if (!p5Content || p5Content.trim().length === 0) {
+                    const errorMsg = `P5 file "${visualizerName}.js" is empty or contains only whitespace`;
                     console.error(errorMsg);
                     mainWindow.webContents.send('shader-loading-error', {
-                        shaderName: shaderName,
+                        shaderName: visualizerName,
                         errorMessage: errorMsg
                     });
                     return;
                 }
+                
+                const p5Path = `visual/${visualizerName}.js`;
+                const p5Data = {
+                    type: 'p5',
+                    path: p5Path,
+                    content: p5Content
+                };
+                mainWindow.webContents.send('auto-visualizer-loaded', p5Data);
+                console.log(`Auto-loaded p5 visualizer: ${visualizerName} -> ${p5Path}`);
+                
+                // Note: p5 visualizers are not broadcast to remote clients (they only support shaders)
+                
             } catch (error) {
-                const errorMsg = `Failed to read single-pass shader file "${shaderName}.glsl": ${error.message}`;
+                const errorMsg = `Failed to read p5 file "${visualizerName}.js": ${error.message}`;
                 console.error(errorMsg);
                 mainWindow.webContents.send('shader-loading-error', {
-                    shaderName: shaderName,
+                    shaderName: visualizerName,
                     errorMessage: errorMsg
                 });
                 return;
             }
         } else {
-            // No shader files found - provide detailed feedback
-            const checkedFiles = [
-                `${shaderName}_image.glsl (multi-pass)`,
-                `${shaderName}.glsl (single-pass)`
-            ];
-            const errorMsg = `Shader "${shaderName}" not found. Checked for: ${checkedFiles.join(', ')} in ${shadersDir}`;
-            console.warn(errorMsg);
-            mainWindow.webContents.send('shader-loading-error', {
-                shaderName: shaderName,
-                errorMessage: errorMsg
-            });
-            return;
-        }
-
-        // Successfully loaded shader content
-        if (shaderContent) {
-            const shaderData = {
-                type: 'shader',
-                path: shaderPath,
-                content: shaderContent
-            };
-            mainWindow.webContents.send('auto-visualizer-loaded', shaderData);
-            console.log(`Auto-loaded ${shaderType} shader: ${shaderName} -> ${shaderPath}`);
+            // Load shader visualizer from shaders/ directory
+            const shadersDir = path.join(effectsRepoPath, 'shaders');
             
-            // Also broadcast to remote visualizer clients
-            if (broadcastCallback) {
-                broadcastCallback({
-                    type: 'shaderUpdate',
-                    payload: {
-                        shaderPath: shaderPath,
-                        shaderContent: shaderContent
-                    }
+            if (!fs.existsSync(shadersDir)) {
+                const errorMsg = `Shaders directory not found: ${shadersDir}`;
+                console.error(errorMsg);
+                mainWindow.webContents.send('shader-loading-error', {
+                    shaderName: visualizerName,
+                    errorMessage: errorMsg
                 });
-                console.log(`Broadcasted auto-loaded shader to remote clients: ${shaderPath}`);
+                return;
             }
-        } else {
-            const errorMsg = `Shader "${shaderName}" loaded but content is null or undefined`;
-            console.error(errorMsg);
-            mainWindow.webContents.send('shader-loading-error', {
-                shaderName: shaderName,
-                errorMessage: errorMsg
-            });
+            
+            // Check for multi-pass shader first (look for _image.glsl file)
+            const multiPassImageFile = path.join(shadersDir, `${visualizerName}_image.glsl`);
+            const singlePassFile = path.join(shadersDir, `${visualizerName}.glsl`);
+            
+            let shaderPath, shaderContent, shaderType;
+            
+            if (fs.existsSync(multiPassImageFile)) {
+                // Multi-pass shader detected
+                shaderPath = `shaders/${visualizerName}`; // Base name for multi-pass
+                try {
+                    shaderContent = loadMultiPassShader(shaderPath, effectsRepoPath);
+                    shaderType = 'multi-pass';
+                    console.log(`Successfully loaded multi-pass shader: ${visualizerName}`);
+                } catch (error) {
+                    const errorMsg = `Failed to load multi-pass shader "${visualizerName}": ${error.message}`;
+                    console.error(errorMsg);
+                    mainWindow.webContents.send('shader-loading-error', {
+                        shaderName: visualizerName,
+                        errorMessage: errorMsg
+                    });
+                    return;
+                }
+            } else if (fs.existsSync(singlePassFile)) {
+                // Single-pass shader detected
+                shaderPath = `shaders/${visualizerName}.glsl`;
+                try {
+                    shaderContent = fs.readFileSync(singlePassFile, 'utf-8');
+                    shaderType = 'single-pass';
+                    console.log(`Successfully loaded single-pass shader: ${visualizerName}`);
+                    
+                    // Validate that the shader content is not empty
+                    if (!shaderContent || shaderContent.trim().length === 0) {
+                        const errorMsg = `Shader file "${visualizerName}.glsl" is empty or contains only whitespace`;
+                        console.error(errorMsg);
+                        mainWindow.webContents.send('shader-loading-error', {
+                            shaderName: visualizerName,
+                            errorMessage: errorMsg
+                        });
+                        return;
+                    }
+                } catch (error) {
+                    const errorMsg = `Failed to read single-pass shader file "${visualizerName}.glsl": ${error.message}`;
+                    console.error(errorMsg);
+                    mainWindow.webContents.send('shader-loading-error', {
+                        shaderName: visualizerName,
+                        errorMessage: errorMsg
+                    });
+                    return;
+                }
+            } else {
+                // No shader files found - provide detailed feedback
+                const checkedFiles = [
+                    `${visualizerName}_image.glsl (multi-pass)`,
+                    `${visualizerName}.glsl (single-pass)`
+                ];
+                const errorMsg = `Shader "${visualizerName}" not found. Checked for: ${checkedFiles.join(', ')} in ${shadersDir}`;
+                console.warn(errorMsg);
+                mainWindow.webContents.send('shader-loading-error', {
+                    shaderName: visualizerName,
+                    errorMessage: errorMsg
+                });
+                return;
+            }
+
+            // Successfully loaded shader content
+            if (shaderContent) {
+                const shaderData = {
+                    type: 'shader',
+                    path: shaderPath,
+                    content: shaderContent
+                };
+                mainWindow.webContents.send('auto-visualizer-loaded', shaderData);
+                console.log(`Auto-loaded ${shaderType} shader: ${visualizerName} -> ${shaderPath}`);
+                
+                // Also broadcast to remote visualizer clients
+                if (broadcastCallback) {
+                    broadcastCallback({
+                        type: 'shaderUpdate',
+                        payload: {
+                            shaderPath: shaderPath,
+                            shaderContent: shaderContent
+                        }
+                    });
+                    console.log(`Broadcasted auto-loaded shader to remote clients: ${shaderPath}`);
+                }
+            } else {
+                const errorMsg = `Shader "${visualizerName}" loaded but content is null or undefined`;
+                console.error(errorMsg);
+                mainWindow.webContents.send('shader-loading-error', {
+                    shaderName: visualizerName,
+                    errorMessage: errorMsg
+                });
+            }
         }
         
     } catch (error) {
-        const errorMsg = `Unexpected error loading shader "${shaderName}": ${error.message}`;
+        const errorMsg = `Unexpected error loading ${commentType} "${visualizerName}": ${error.message}`;
         console.error(errorMsg, error);
         if (mainWindow && mainWindow.webContents) {
             mainWindow.webContents.send('shader-loading-error', {
-                shaderName: shaderName,
+                shaderName: visualizerName,
                 errorMessage: errorMsg
             });
         }
     }
+}
+
+// Legacy alias for backward compatibility
+function parseAndLoadShaderFromComment(scFileContent, getEffectsRepoPath, mainWindow, broadcastCallback = null) {
+    return parseAndLoadVisualizerFromComment(scFileContent, getEffectsRepoPath, mainWindow, broadcastCallback);
 }
 
 function loadScFile(filePath, getEffectsRepoPath, mainWindow, broadcastCallback = null) {
