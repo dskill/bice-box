@@ -42,7 +42,6 @@ const {
   loadMultiPassShader,
   loadVisualizerContent
 } = require('./superColliderManager');
-const generativeEffectManager = require('./generativeEffectManager');
 const wifi = require('node-wifi');
 const { startHttpServer, stopHttpServer, broadcast } = require('./httpServer');
 
@@ -87,7 +86,6 @@ function getLogBuffer(numLines = 100, filter = null) {
     return logs.slice(startIndex).join('\n');
 }
 
-const runGenerator = process.argv.includes('--generate');
 const runHeadlessTest = process.argv.includes('--headless-test');
 const runGpuCheck = process.argv.includes('--gpu-check'); // Added gpu-check flag
 
@@ -426,51 +424,6 @@ function createWindow()
   }
 }
 
-async function testGenerativeManager() {
-    console.log('Running test for generativeEffectManager...');
-
-    const effectsRepo = getEffectsRepoPath();
-
-    const config = {
-        apiKey: process.env.GEMINI_API_KEY || 'MOCK_API_KEY', // Use actual key if available, else mock
-        effectsRepoPath: effectsRepo,
-        audioEffectsSubdir: 'audio',
-        jsonEffectsSubdir: 'effects',
-        promptTemplatePath: path.join(__dirname, '..', 'scripts', 'generative', 'farm_prompt_template.md'),
-        instructionsPath: path.join(__dirname, '..', 'scripts', 'generative', 'audio_effect_instructions.md'),
-        systemPromptPath: path.join(__dirname, '..', 'scripts', 'generative', 'system_prompt.md'),
-        geminiModel: 'gemini-1.5-pro-latest', // Model name, not used by mock in manager yet
-        tempPath: app.getPath('temp'),
-        mainWindow: mainWindow
-    };
-
-    try {
-        const result = await generativeEffectManager.generateAndValidateEffect(config);
-        console.log('--- Test Result from generateAndValidateEffect ---');
-        if (result) {
-            console.log('Success:', result.success);
-            console.log('Output Filename Hint:', result.outputFilenameHint);
-            console.log('Generated SC Code:\n', result.scCode);
-            console.log('Generated JSON Content:\n', result.jsonContent);
-            if (result.compilationSuccess) {
-                console.log('SC Compilation Success:', result.compilationSuccess);
-                console.log('Final SC Path:', result.finalScPath);
-                console.log('Final JSON Path:', result.finalJsonPath);
-            } else {
-                console.error('SC Compilation Failed. Error:', result.compilationError);
-            }
-            if (result.error && !result.compilationError) { // Display general error if not a compilation error
-                console.error('Error:', result.error);
-            }
-        } else {
-            console.error('Test function returned null or undefined.');
-        }
-        console.log('-------------------------------------------------');
-    } catch (error) {
-        console.error('Error during generative manager test:', error);
-    }
-}
-
 app.whenReady().then(() =>
 {
   console.log('App is ready');
@@ -553,13 +506,6 @@ app.whenReady().then(() =>
         getLogBuffer: getLogBuffer
     };
     startHttpServer(getState);
-
-    // Call the test function if --generate flag is present
-    if (runGenerator) { 
-      console.log('--generate flag detected. Running generation process...');
-      testGenerativeManager();
-    }
-    // Any other initializations that depend on the window or are not for headless mode can go here
   }
 }).catch(error =>
 {
