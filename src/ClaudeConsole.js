@@ -133,8 +133,8 @@ const ClaudeConsole = ({
         setIsClaudeResponding(true);
       }
       
-      // Check if Claude finished responding (cost info or error indicates end)
-      if ((newContent.includes('💰 Cost:') || newContent.includes('❌ Error:')) && isClaudeResponding) {
+      // Check if Claude finished responding (duration info or error indicates end)
+      if ((newContent.includes('⏱️ Duration:') || newContent.includes('❌ Error:')) && isClaudeResponding) {
         setIsClaudeResponding(false);
       }
     }
