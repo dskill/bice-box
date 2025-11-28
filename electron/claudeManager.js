@@ -363,9 +363,10 @@ class ClaudeManager {
                     console.log(`Stored session ID from streaming process: ${this.currentSessionId}`);
                 }
                 
-                // Send final metadata
-                if (message.total_cost_usd) {
-                    this.sendToRenderer(`\n💰 Cost: $${message.total_cost_usd.toFixed(4)} | Duration: ${message.duration_ms}ms | Turns: ${message.num_turns}\n`);
+                
+                // Send final metadata (duration and turns, but not cost)
+                if (message.duration_ms) {
+                    this.sendToRenderer(`\n⏱️ Duration: ${message.duration_ms}ms | Turns: ${message.num_turns}\n`);
                 }
                 
                 // Resolve the current request
