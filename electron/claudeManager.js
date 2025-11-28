@@ -2,12 +2,15 @@ const { spawn } = require('child_process');
 const path = require('path');
 
 class ClaudeManager {
-    constructor(effectsRepoPath) {
+    constructor(effectsRepoPath, stateGetters = {}) {
         this.effectsRepoPath = effectsRepoPath;
         this.currentSessionId = null;
         this.hasHadConversation = false; // Track if we've had any conversation for --continue
         this.mainWindow = null;
         this.abortController = null;
+        
+        // State getters for context injection
+        this.stateGetters = stateGetters;
         
         // Streaming JSON input process management (official Claude Code feature)
         this.streamingProcess = null;
@@ -21,8 +24,15 @@ class ClaudeManager {
         // AbortController for proper cancellation
         this.currentAbortController = null;
         
-        // Auto-start streaming process
-        this.startStreamingProcess();
+        // Don't auto-start - wait for effects to be loaded first
+        // Call startStreamingProcess() manually after effects are available
+    }
+    
+    // Check if the streaming process should be (re)started with updated context
+    ensureStreamingProcessStarted() {
+        if (!this.streamingProcess && !this.isStreamingProcessReady) {
+            this.startStreamingProcess();
+        }
     }
 
     setMainWindow(mainWindow) {
@@ -31,6 +41,106 @@ class ClaudeManager {
 
     hasActiveSession() {
         return this.hasHadConversation;
+    }
+
+    // Format the system prompt with available effects/visualizers (stable context)
+    formatSystemPromptContext() {
+        const parts = [];
+        
+        // Get available audio effects
+        if (this.stateGetters.getSynths) {
+            try {
+                const synths = this.stateGetters.getSynths();
+                if (synths && synths.length > 0) {
+                    const effectNames = synths.map(s => s.name);
+                    parts.push(`Available Audio Effects: ${effectNames.join(', ')}`);
+                }
+            } catch (e) {
+                console.warn('Failed to get synths for system prompt:', e.message);
+            }
+        }
+        
+        // Get available visualizers (shaders and p5.js)
+        if (this.stateGetters.getAvailableVisualizers) {
+            try {
+                const visualizers = this.stateGetters.getAvailableVisualizers();
+                if (visualizers && visualizers.length > 0) {
+                    const shaders = visualizers.filter(v => v.type === 'shader').map(v => v.name);
+                    const p5Sketches = visualizers.filter(v => v.type === 'p5').map(v => v.name);
+                    
+                    if (shaders.length > 0) {
+                        parts.push(`Available GLSL Shaders: ${shaders.join(', ')}`);
+                    }
+                    if (p5Sketches.length > 0) {
+                        parts.push(`Available p5.js Visualizers: ${p5Sketches.join(', ')}`);
+                    }
+                }
+            } catch (e) {
+                console.warn('Failed to get visualizers for system prompt:', e.message);
+            }
+        }
+        
+        if (parts.length === 0) {
+            return null;
+        }
+        
+        parts.push('\nNote: These lists only change when new effect files are added. Use list_effects or list_visualizers MCP tools only if you suspect the lists have changed.');
+        
+        return parts.join('\n');
+    }
+
+    // Format the current state to prepend to user messages (dynamic context)
+    formatCurrentStateContext() {
+        const parts = ['[Current State]'];
+        
+        // Get current effect and parameters
+        if (this.stateGetters.getCurrentEffectSnapshot) {
+            try {
+                const effect = this.stateGetters.getCurrentEffectSnapshot();
+                if (effect) {
+                    parts.push(`Effect: ${effect.name}`);
+                    
+                    // Format parameters with their specs
+                    if (effect.paramSpecs && effect.paramValues) {
+                        const paramLines = [];
+                        for (const [paramName, spec] of Object.entries(effect.paramSpecs)) {
+                            const value = effect.paramValues[paramName];
+                            if (value !== undefined && spec) {
+                                const min = spec.minval !== undefined ? spec.minval : '?';
+                                const max = spec.maxval !== undefined ? spec.maxval : '?';
+                                const defaultVal = spec.default !== undefined ? spec.default : '?';
+                                paramLines.push(`  - ${paramName}: ${value.toFixed(2)} (${min}-${max}, default: ${defaultVal})`);
+                            }
+                        }
+                        if (paramLines.length > 0) {
+                            parts.push('Parameters:');
+                            parts.push(...paramLines);
+                        }
+                    }
+                }
+            } catch (e) {
+                console.warn('Failed to get effect snapshot for context:', e.message);
+            }
+        }
+        
+        // Get current visualizer
+        if (this.stateGetters.getActiveVisualizerSnapshot) {
+            try {
+                const viz = this.stateGetters.getActiveVisualizerSnapshot();
+                if (viz) {
+                    parts.push(`Visualizer: ${viz.name} (${viz.type === 'shader' ? 'GLSL shader' : 'p5.js'})`);
+                }
+            } catch (e) {
+                console.warn('Failed to get visualizer snapshot for context:', e.message);
+            }
+        }
+        
+        // Only return context if we have more than just the header
+        if (parts.length <= 1) {
+            return null;
+        }
+        
+        return parts.join('\n');
     }
 
     // Find Node.js binary in various locations
@@ -212,6 +322,15 @@ class ClaudeManager {
                 '--verbose'
             ];
 
+            // Add system prompt with available effects/visualizers (stable context)
+            const systemPromptContext = this.formatSystemPromptContext();
+            if (systemPromptContext) {
+                // Escape single quotes for shell and wrap in single quotes
+                const escapedContext = systemPromptContext.replace(/'/g, "'\\''");
+                commandParts.push('--append-system-prompt', `'${escapedContext}'`);
+                console.log('Added system prompt context with available effects/visualizers');
+            }
+
             if (this.currentSessionId) {
                 commandParts.push('--resume', this.currentSessionId);
             }
@@ -382,6 +501,12 @@ class ClaudeManager {
 
     // Send message to streaming process using official streaming JSON input format
     async sendMessageWithStreamingProcess(message) {
+        // Auto-start streaming process if not running
+        if (!this.streamingProcess || !this.isStreamingProcessReady) {
+            console.log('Streaming process not ready, starting it now...');
+            await this.startStreamingProcess();
+        }
+        
         if (!this.streamingProcess || !this.isStreamingProcessReady) {
             throw new Error('Streaming process not ready');
         }
@@ -430,6 +555,16 @@ class ClaudeManager {
         }
         
         try {
+            // Get current state context to prepend to user message
+            const stateContext = this.formatCurrentStateContext();
+            let messageText = this.currentStreamingRequest.message;
+            
+            // Prepend current state if available
+            if (stateContext) {
+                messageText = `${stateContext}\n\n[User Message]\n${messageText}`;
+                console.log('Prepended current state context to user message');
+            }
+            
             // Send the message using official streaming JSON input format
             const userMessage = {
                 type: 'user',
@@ -438,7 +573,7 @@ class ClaudeManager {
                     content: [
                         {
                             type: 'text',
-                            text: this.currentStreamingRequest.message
+                            text: messageText
                         }
                     ]
                 }

@@ -257,6 +257,13 @@ function createWindow()
       const loaded = loadEffectsList(mainWindow, getEffectsRepoPath, getEffectsPath);
       try { (loaded || []).forEach(s => ensureEffectInStore(s.name, s.scFilePath)); } catch {}
       broadcastEffectsState(effectsStore.activeEffectName);
+      
+      // Start Claude streaming process now that effects are loaded
+      // This ensures the system prompt has the full effects list
+      if (claudeManager) {
+        console.log('Effects loaded, starting Claude streaming process with context...');
+        claudeManager.startStreamingProcess();
+      }
     };
     initializeSuperCollider(mainWindow, getEffectsRepoPath, loadEffectsCallback);
 
@@ -1888,7 +1895,15 @@ let claudeManager;
 
 // Initialize Claude manager
 function initializeClaudeManager() {
-    claudeManager = new ClaudeManager(getEffectsRepoPath());
+    // Pass state getters to ClaudeManager for context injection
+    const stateGetters = {
+        getSynths: () => synths,
+        getAvailableVisualizers: () => getAvailableVisualizers(getEffectsRepoPath()),
+        getCurrentEffectSnapshot: getActiveEffectSnapshot,
+        getActiveVisualizerSnapshot: getActiveVisualizerSnapshot
+    };
+    
+    claudeManager = new ClaudeManager(getEffectsRepoPath(), stateGetters);
     if (mainWindow) {
         claudeManager.setMainWindow(mainWindow);
     }
