@@ -23,9 +23,23 @@ function loadEffectsList(mainWindow, getEffectsRepoPath, getEffectsPath) {
             const scFilePath = path.join('audio', file); // Relative path for consistency
             const effectName = path.basename(file, '.sc'); // Use filename as effect name
             
+            // Parse category from file comment
+            let category = 'Uncategorized';
+            try {
+                const fullPath = path.join(audioEffectsPath, file);
+                const content = fs.readFileSync(fullPath, 'utf-8');
+                const categoryMatch = content.match(/\/\/\s*category:\s*(.+)/i);
+                if (categoryMatch) {
+                    category = categoryMatch[1].trim();
+                }
+            } catch (readError) {
+                console.warn(`Could not read category from ${file}: ${readError.message}`);
+            }
+            
             const audioEffect = {
                 name: effectName,
                 scFilePath: scFilePath,
+                category: category, // Add category field
                 params: {}, // Will be populated when SC file is loaded and specs are requested
                 isAudioEffect: true // Flag to distinguish from old JSON-based effects
             };

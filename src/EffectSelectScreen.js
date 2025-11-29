@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useMemo } from 'react';
 // Color import might be removed if styling changes significantly
 // import { colors } from './theme';
 
@@ -17,6 +17,36 @@ function EffectSelectScreen({
   const initialScrollTopRef = useRef(null);
   const lastUpdateTimeRef = useRef(0); // For throttling
   const DRAG_THRESHOLD = 15; // pixels - if user moves more than this, it's a drag not a tap
+  
+  // Two-step navigation state for audio effects
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  
+  // Derive categories from items (only for audio type)
+  const categories = useMemo(() => {
+    if (type !== 'audio') return [];
+    
+    const categoryMap = new Map();
+    items.forEach(item => {
+      const cat = item.category || 'Uncategorized';
+      if (!categoryMap.has(cat)) {
+        categoryMap.set(cat, { name: cat, count: 0 });
+      }
+      categoryMap.get(cat).count++;
+    });
+    
+    // Sort categories - put Utility at the end, others alphabetically
+    return Array.from(categoryMap.values()).sort((a, b) => {
+      if (a.name === 'Utility') return 1;
+      if (b.name === 'Utility') return -1;
+      return a.name.localeCompare(b.name);
+    });
+  }, [items, type]);
+  
+  // Get effects filtered by selected category
+  const filteredItems = useMemo(() => {
+    if (type !== 'audio' || !selectedCategory) return items;
+    return items.filter(item => (item.category || 'Uncategorized') === selectedCategory);
+  }, [items, selectedCategory, type]);
   
   // Touch scrolling handler for Raspberry Pi compatibility - matching ParamFader pattern
   useEffect(() => {
@@ -77,6 +107,13 @@ function EffectSelectScreen({
     };
   }, [isDragging]); // Removed hasDraggedBeyondThreshold from dependencies
 
+  // Reset scroll position when changing views
+  useEffect(() => {
+    if (containerRef.current) {
+      containerRef.current.scrollTop = 0;
+    }
+  }, [selectedCategory]);
+
   const handlePointerDown = (e) => {
     // Process all pointer events - on Pi, touch shows up as 'mouse'
     e.preventDefault();
@@ -102,6 +139,22 @@ function EffectSelectScreen({
     onSelect(type === 'visual' ? item : item);
   };
   
+  const handleCategoryClick = (categoryName) => {
+    // Prevent click if user has dragged beyond threshold
+    if (hasDraggedBeyondThresholdRef.current) {
+      return;
+    }
+    setSelectedCategory(categoryName);
+  };
+  
+  const handleBackToCategories = () => {
+    // Prevent click if user has dragged beyond threshold
+    if (hasDraggedBeyondThresholdRef.current) {
+      return;
+    }
+    setSelectedCategory(null);
+  };
+  
   // Use a generic name prettifier or just display the name directly
   const prettifyName = (name) => {
     if (!name) return '';
@@ -123,6 +176,20 @@ function EffectSelectScreen({
     return null; // Should not happen
   };
 
+  // Determine what to show based on type and navigation state
+  const showCategories = type === 'audio' && !selectedCategory;
+  const displayItems = showCategories ? categories : filteredItems;
+  
+  // Get title based on current view
+  const getTitle = () => {
+    if (type === 'preset') return 'Select Preset';
+    if (type === 'visual') return 'Select Visual Source';
+    if (type === 'audio') {
+      return selectedCategory ? selectedCategory : 'Select Category';
+    }
+    return 'Select';
+  };
+
   return (
     <div 
       className="effect-select-screen" 
@@ -134,30 +201,57 @@ function EffectSelectScreen({
         cursor: isDragging ? 'grabbing' : 'grab'
       }}
     >
-       <h2>Select {type === 'preset' ? 'Preset' : type === 'audio' ? 'Audio Source' : 'Visual Source'}</h2>
+      {/* Header with back button for effects view */}
+      <div className="effect-select-header">
+        {type === 'audio' && selectedCategory && (
+          <button 
+            className="effect-back-button"
+            onClick={handleBackToCategories}
+          >
+            ← Back
+          </button>
+        )}
+        <h2>{getTitle()}</h2>
+      </div>
        
-      <div className="effect-grid"> {/* Keep class name or make it generic? */} 
-        {items.map((item) => {
-          const itemPath = getPathForItem(item);
-          const isActive = itemPath === currentSourcePath;
-          return (
-            <div className="effect-tile-wrapper" key={type === 'preset' ? item.name : itemPath}> 
+      {showCategories ? (
+        // Category grid for audio effects
+        <div className="category-grid">
+          {categories.map((category) => (
+            <div className="category-tile-wrapper" key={category.name}>
               <button
-                className={`effect-tile ${isActive ? 'active' : ''}`}
-                onClick={() => handleButtonClick(item, itemPath)}
-                disabled={!itemPath} // Disable if path is missing (shouldn't happen with derived lists)
+                className="category-tile"
+                onClick={() => handleCategoryClick(category.name)}
               >
-                {/* Display the name from the item */}
-                <div className="effect-name">{prettifyName(item.name)}</div> 
-                {/* Optional: Display the path too? */}
-                {/* <div className="effect-path">{itemPath}</div> */}
+                <div className="category-name">{category.name}</div>
+                <div className="category-count">{category.count} effects</div>
               </button>
             </div>
-          );
-        })}
-      </div>
+          ))}
+        </div>
+      ) : (
+        // Effect grid (for effects within category, visual, or preset)
+        <div className="effect-grid">
+          {displayItems.map((item) => {
+            const itemPath = getPathForItem(item);
+            const isActive = itemPath === currentSourcePath;
+            return (
+              <div className="effect-tile-wrapper" key={type === 'preset' ? item.name : (itemPath || item.name)}> 
+                <button
+                  className={`effect-tile ${isActive ? 'active' : ''}`}
+                  onClick={() => handleButtonClick(item, itemPath)}
+                  disabled={!itemPath} // Disable if path is missing (shouldn't happen with derived lists)
+                >
+                  {/* Display the name from the item */}
+                  <div className="effect-name">{prettifyName(item.name)}</div> 
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
 
-export default EffectSelectScreen; 
+export default EffectSelectScreen;

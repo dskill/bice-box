@@ -4,90 +4,95 @@
   left: 20px;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   z-index: 1000;
 }
 
 .claude-button {
   top: 0px;
   left: 20px;
-  height: 60px;
+  height: 44px;
   z-index: 10;
-  padding: 8px 16px;
-  font-size: 16px;
-  color: rgb(198, 202, 224);
-  background-color: rgba(0, 0, 0, 0);
-  border: 1px solid rgba(198, 202, 224, 0.3);
-  border-radius: 5px;
+  padding: 0 14px;
+  font-family: 'Aldrich', 'Inconsolata', monospace;
+  font-size: 13px;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.45);
+  background-color: transparent;
+  border: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 0;
   cursor: pointer;
-  transition: background-color 0.3s, color 0.3s;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .claude-button:hover {
-  background-color: #61dafb;
-  color: #282c34;
+  color: rgba(255, 255, 255, 0.9);
+  border-bottom-color: rgba(255, 255, 255, 0.4);
 }
 
 .claude-button:disabled {
-  opacity: 0.6;
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
 .claude-button.open {
-  background-color: rgba(60, 64, 72, 0.9);
-  border-color: #82eaff;
+  color: rgba(255, 255, 255, 0.8);
+  border-bottom-color: rgba(255, 255, 255, 0.4);
 }
 
 .claude-button.recording {
-  background-color: rgba(204, 0, 0, 0.75);
-  border-color: #ff4d4d;
-  color: #ff4d4d;
+  color: rgba(255, 100, 100, 0.9);
+  border-bottom-color: rgba(255, 100, 100, 0.5);
 }
 
 .claude-button.thinking {
-  background-color: rgba(204, 0, 0, 0.75);
-  border-color: #ff4d4d;
-  color: #ff4d4d;
+  color: rgba(255, 100, 100, 0.8);
+  border-bottom-color: rgba(255, 100, 100, 0.4);
   animation: thinking-pulse 1.5s infinite;
   cursor: pointer;
 }
 
 .claude-button.thinking:hover {
-  background-color: rgba(255, 68, 68, 0.2);
-  border-color: #ff4444;
-  color: #ff6666;
+  color: rgba(255, 120, 120, 1);
+  border-bottom-color: rgba(255, 100, 100, 0.6);
 }
 
 .claude-console-close {
   background: none;
-  border: 1px solid rgba(198, 202, 224, 0.3);
-  color: #999;
-  font-size: 20px;
+  border: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.4);
+  font-family: 'Aldrich', 'Inconsolata', monospace;
+  font-size: 14px;
   cursor: pointer;
-  padding: 4px 10px;
-  line-height: 1.5;
-  border-radius: 5px;
-  height: 60px;
-  width: 60px;
-  transition: background-color 0.3s, color 0.3s;
+  padding: 10px 14px;
+  line-height: 1;
+  border-radius: 0;
+  height: auto;
+  width: auto;
+  transition: all 0.15s ease;
 }
 
 .claude-console-close:hover {
-  color: #fff;
-  background-color: rgba(198, 202, 224, 0.1);
+  color: rgba(255, 255, 255, 0.9);
+  border-bottom-color: rgba(255, 255, 255, 0.4);
 }
 
 .claude-console {
   position: fixed;
-  top: 70px;
+  top: 60px;
   left: 20px;
   right: 20px;
   bottom: 140px;
-  border-radius: 5px;
-  background-color: rgba(10, 10, 10, 0);
-  color: rgb(255, 255, 255);
-  font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
-  font-size: 14px;
+  border-radius: 0;
+  background-color: transparent;
+  color: rgba(255, 255, 255, 0.8);
+  font-family: 'Aldrich', 'Inconsolata', monospace;
+  font-size: 13px;
   padding: 0px;
   overflow-y: auto;
   z-index: 1000;
@@ -102,136 +107,114 @@
 /* Removed .claude-input-controls and .claude-input-form-header - now using floating controls */
 
 .claude-action-button {
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid #ffffff;
-  color: #ffffff;
-  padding: 5px 10px;
-  border-radius: 3px;
-  font-size: 12px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.6);
+  padding: 6px 10px;
+  border-radius: 0;
+  font-family: 'Aldrich', 'Inconsolata', monospace;
+  font-size: 11px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
 }
 
 .claude-action-button:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.2);
-  transform: scale(1.05);
+  color: rgba(255, 255, 255, 0.95);
+  border-bottom-color: rgba(255, 255, 255, 0.4);
 }
 
 .claude-action-button:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
 /* claude-status-indicator and claude-thinking-dots removed - status now in main button */
 
 @keyframes thinking-pulse {
-  0%, 100% { opacity: 0.6; }
+  0%, 100% { opacity: 0.5; }
   50% { opacity: 1; }
 }
 
 .claude-cancel-button {
-  background: rgba(255, 68, 68, 0.1);
-  border: 1px solid #ff4444;
-  color: #ff6666;
-  padding: 8px 16px;
-  border-radius: 3px;
-  font-size: 14px;
-  font-weight: 500;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgba(255, 100, 100, 0.3);
+  color: rgba(255, 120, 120, 0.8);
+  padding: 8px 14px;
+  border-radius: 0;
+  font-family: 'Aldrich', 'Inconsolata', monospace;
+  font-size: 12px;
+  font-weight: 400;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
   position: relative;
   overflow: hidden;
   white-space: nowrap;
-  min-width: 70px;
+  min-width: 60px;
 }
 
 .claude-cancel-button:hover {
-  background: rgba(255, 68, 68, 0.25);
-  color: #ff3333;
-  transform: scale(1.05);
-  border-color: #ff3333;
-  box-shadow: 0 2px 4px rgba(255, 68, 68, 0.2);
+  color: rgba(255, 150, 150, 1);
+  border-bottom-color: rgba(255, 100, 100, 0.5);
 }
 
 .claude-cancel-button:active {
-  transform: scale(0.98);
-  background: rgba(255, 68, 68, 0.3);
+  color: rgba(255, 100, 100, 0.7);
 }
 
 .claude-cancel-button:disabled {
   opacity: 0.4;
   cursor: not-allowed;
-  transform: none;
 }
 
 .claude-cancel-button:disabled:hover {
-  background: rgba(255, 68, 68, 0.1);
-  color: #ff6666;
-  transform: none;
+  color: rgba(255, 120, 120, 0.8);
 }
 
 .claude-controls {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .claude-reset-button {
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid #4488ff;
-  color: #6699ff;
-  padding: 4px 12px;
-  border-radius: 4px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgba(100, 150, 255, 0.3);
+  color: rgba(130, 170, 255, 0.8);
+  padding: 6px 10px;
+  border-radius: 0;
+  font-family: 'Aldrich', 'Inconsolata', monospace;
   font-size: 11px;
-  font-weight: 500;
+  font-weight: 400;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
   position: relative;
   overflow: hidden;
 }
 
 .claude-reset-button:hover {
-  background: rgba(68, 136, 255, 0.25);
-  color: #4488ff;
-  transform: scale(1.05);
-  border-color: #3377ee;
-  box-shadow: 0 2px 4px rgba(68, 136, 255, 0.2);
+  color: rgba(150, 190, 255, 1);
+  border-bottom-color: rgba(100, 150, 255, 0.5);
 }
 
 .claude-reset-button:active {
-  transform: scale(0.95);
-  box-shadow: 0 1px 2px rgba(68, 136, 255, 0.1);
-}
-
-.claude-cancel-button:before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 0;
-  height: 0;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 50%;
-  transform: translate(-50%, -50%);
-  transition: width 0.3s ease, height 0.3s ease;
-}
-
-.claude-cancel-button:hover:before {
-  width: 100%;
-  height: 100%;
+  color: rgba(100, 150, 255, 0.7);
 }
 
 .claude-output {
   flex: 1;
   margin: 0;
-  padding: 10px;
+  padding: 16px;
   text-align: left;
   overflow-y: auto;
-  background: rgba(0, 0, 0, 0.75);
+  background: rgba(8, 8, 12, 0.9);
   white-space: pre-wrap;
   /* Hide scrollbars */
   scrollbar-width: none; /* Firefox */
-  border-radius: 10px;
+  border-radius: 0;
+  border-left: 1px solid rgba(255, 255, 255, 0.06);
 
   -ms-overflow-style: none; /* Internet Explorer 10+ */
   /* Enable smooth touch scrolling */
@@ -248,53 +231,56 @@
 
 .claude-input-form {
   display: flex;
-  padding: 10px;
+  padding: 12px 16px;
   gap: 10px;
-  background: rgba(0, 0, 0, 0.3);
-  margin: 10px -15px -15px -15px;
-  border-top: 1px solid #333;
+  background: rgba(8, 8, 12, 0.95);
+  margin: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .claude-input {
   flex: 1;
-  background: rgba(0, 0, 0, 0.7);
-  border: 1px solid #333;
-  color: #00ff00;
-  padding: 8px;
-  border-radius: 3px;
-  font-family: 'Inconsolata', monospace;
-  font-size: 14px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.9);
+  padding: 8px 0;
+  border-radius: 0;
+  font-family: 'Aldrich', 'Inconsolata', monospace;
+  font-size: 13px;
 }
 
 .claude-input:focus {
   outline: none;
-  border-color: rgba(255, 255, 255, 0.2);
+  border-bottom-color: rgba(255, 255, 255, 0.4);
 }
 
 .claude-input:disabled {
-  opacity: 0.6;
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
 .claude-send-button {
-  background: rgba(0, 255, 0, 0.1);
-  border: 1px solid #00ff00;
-  color: #00ff00;
-  padding: 8px 16px;
-  border-radius: 3px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgba(100, 200, 100, 0.3);
+  color: rgba(130, 220, 130, 0.8);
+  padding: 8px 14px;
+  border-radius: 0;
+  font-family: 'Aldrich', 'Inconsolata', monospace;
+  font-size: 12px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
   white-space: nowrap;
-  min-width: 60px;
+  min-width: 50px;
 }
 
 .claude-send-button:hover:not(:disabled) {
-  background: rgba(0, 255, 0, 0.2);
+  color: rgba(150, 240, 150, 1);
+  border-bottom-color: rgba(100, 200, 100, 0.5);
 }
 
 .claude-send-button:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: not-allowed;
 }
-
- 

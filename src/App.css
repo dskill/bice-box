@@ -411,18 +411,23 @@ main {
 /* New button styles */
 button {
   font-family: 'Aldrich', 'Inconsolata', monospace;
-  font-size: 27px;
-  color: rgb(198, 202, 224);
+  font-size: 14px;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.5);
   background: none;
   border: none;
-  padding: 7.5px 15px;
+  padding: 8px 12px;
   cursor: pointer;
-  transition: color 0.3s ease;
+  transition: all 0.15s ease;
   text-transform: none;
 }
 
+button:hover {
+  color: rgba(255, 255, 255, 0.9);
+}
+
 button:active {
-  color: rgb(150, 155, 180);
+  color: rgba(255, 255, 255, 0.6);
 }
 
 /* Remove any existing styles that add borders or backgrounds to buttons */
@@ -524,14 +529,14 @@ button:active {
 }
 
 .effect-management__content {
-  background-color: rgba(0, 0, 0, .7);
-  color: rgb(198, 202, 224);
-  padding: 0px 30px;
+  background-color: rgba(8, 8, 12, 0.95);
+  color: rgba(255, 255, 255, 0.6);
+  padding: 20px 24px;
   margin-top: 0px;
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.2s ease, opacity 0.2s ease;
   overflow: hidden;
   text-align: right;
-  min-width: 200px;
+  min-width: 180px;
   opacity: 0;
   display: flex;
   flex-direction: column;
@@ -539,13 +544,19 @@ button:active {
   height: calc(100% - 40px);
   transform: translateX(100%);
   visibility: hidden;
-  border-radius: 10px;
+  border-radius: 0;
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .effect-management__content button {
-  color: rgb(198, 202, 224);
-  font-size: 16px; /* Reduced from 20px to better match nav button sizing */
-  transition: all 0.3s ease;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 13px;
+  font-weight: 400;
+  transition: all 0.15s ease;
+}
+
+.effect-management__content button:hover {
+  color: rgba(255, 255, 255, 0.9);
 }
 
 .effect-management__content--expanded {
@@ -569,16 +580,22 @@ button:active {
 
 /* Style for the custom select dropdowns within the management content */
 .effect-management__content .custom-select {
-  background-color: rgba(0, 0, 0, 0.5);
-  color: rgb(198, 202, 224);
-  border: 1px solid rgba(198, 202, 224, 0.3);
-  font-size: 20px;
+  background-color: transparent;
+  color: rgba(255, 255, 255, 0.6);
+  border: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  font-family: 'Aldrich', 'Inconsolata', monospace;
+  font-size: 13px;
+  border-radius: 0;
 }
 
 /* Style for labels within the management content */
 .effect-management__content label {
-  color: rgb(198, 202, 224);
-  font-size: 20px;
+  color: rgba(255, 255, 255, 0.4);
+  font-family: 'Aldrich', 'Inconsolata', monospace;
+  font-size: 11px;
+  font-weight: 300;
+  text-transform: uppercase;
 }
 
 .visualization-mode {
@@ -715,27 +732,30 @@ button:active {
   text-align: right;
   margin-top: auto;
   margin-bottom: 10px;
-  padding: 30px 20px;
-  color: rgb(198, 202, 224);
+  padding: 20px 0;
+  color: rgba(255, 255, 255, 0.25);
+  font-family: 'Aldrich', 'Inconsolata', monospace;
   font-size: 10px;
-  font-style: italic;
-  text-shadow: 1px 1px 3px rgba(0, 0, 0, 1); /* Added drop shadow */
+  font-weight: 300;
+  font-style: normal;
 }
 
 .nav-button {
   position: fixed;
   transform: translateY(-50%);
   z-index: 1000;
-  padding: 19px;
-  border: 1px solid rgba(198, 202, 224, 0.3);
-  border-radius: 5px;
+  padding: 10px 14px;
+  border: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0;
   background: none;
   cursor: pointer;
-  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
-  font-size: 24px;
-  color: rgb(198, 202, 224);
-  transition: all 0.3s ease;
-  text-shadow: 1px 1px 3px rgba(0, 0, 0, 1); /* Added drop shadow */
+  font-family: 'Aldrich', 'Inconsolata', monospace;
+  font-size: 13px;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.45);
+  transition: all 0.15s ease;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
 
 }
 
@@ -755,10 +775,10 @@ button:active {
   right: 0;
   bottom: 0;
   z-index: 2010;
-  background: rgba(0, 0, 0, .75);
+  background: rgba(8, 8, 12, 0.97);
   width: 100%;
   height: 100vh;
-  padding: 50px 20px 20px 20px;
+  padding: 60px 20px 40px 20px;
   box-sizing: border-box;
   overflow-y: auto;
   display: flex;
@@ -781,34 +801,33 @@ button:active {
 }
 
 .effect-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-  gap: 10px;
-  padding: 20px;
-  max-width: 1200px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 0 20px;
+  max-width: 500px;
   width: 90%;
   margin: 0;
 }
 
 .effect-tile-wrapper {
   display: flex;
-  align-items: center;
-  justify-content: center;
+  align-items: stretch;
 }
 
 .effect-tile {
-  width: 100px;
-  height: 65px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 6px; /* Slightly less rounded */
+  width: 100%;
+  border: none;
+  border-radius: 0;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.1s ease;
   position: relative;
-  background: rgba(40, 40, 45, 0.9); /* Darker background */
+  background: transparent;
   display: flex;
   align-items: center;
-  justify-content: center;
-  padding: 10px;
+  justify-content: flex-start;
+  padding: 7px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 /* Remove the ::before pseudo-element since we don't need the waveform effect anymore */
@@ -816,24 +835,49 @@ button:active {
   display: none;
 }
 
+.effect-tile:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.effect-tile:hover .effect-name {
+  color: rgba(255, 255, 255, 1);
+  transform: translateX(6px);
+}
+
+.effect-tile:active {
+  background: rgba(255, 255, 255, 0.05);
+}
+
 .effect-tile.active {
-  border: 1px solid rgba(255, 255, 255, 0.9); /* Active border stays thin but bright */
-  background: rgba(55, 55, 60, 1); /* Slightly lighter dark for active state */
+  background: transparent;
+}
+
+.effect-tile.active::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 60%;
+  background: rgba(255, 255, 255, 0.8);
 }
 
 .effect-name {
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(255, 255, 255, 0.55);
   font-family: 'Aldrich', 'Inconsolata', monospace;
-  font-size: 12px;
-  text-align: center;
-  transition: color 0.3s ease;
+  font-size: 0.8em;
+  font-weight: 400;
+  text-align: left;
+  transition: all 0.15s ease;
   line-height: 1.2;
   word-wrap: break-word;
+  padding-left: 8px;
 }
 
-.effect-tile-wrapper .effect-tile.active .effect-name {
-  color: rgba(255, 255, 255, 1);
-  text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+.effect-tile.active .effect-name {
+  color: rgba(255, 255, 255, 0.95);
+  font-weight: 500;
 }
 
 /* Update the select-screen-button styles */
@@ -920,11 +964,11 @@ button:active {
 .effect-management__buttons {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 0;
   align-items: flex-end;
   width: 100%;
-  padding-right: 5px;
-  padding-top: 20px; /* Added buffer before the first button */
+  padding-right: 0;
+  padding-top: 10px;
 }
 
 .effect-management__device-selectors {
@@ -977,55 +1021,60 @@ button:active {
 .toggle-button {
     display: inline-block;
     font-family: 'Aldrich', 'Inconsolata', monospace;
-    font-size: 21px;
-    background: rgba(0, 0, 0, 0.0);
-    border: 1px solid rgba(198, 202, 224, 0.3);
-    border-radius: 5px;
-    padding: 23px 13px;
+    font-size: 13px;
+    font-weight: 400;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 0;
+    padding: 10px 14px;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all 0.15s ease;
     text-transform: none;
-    color: rgb(198, 202, 224);
-    text-shadow: 1px 1px 5px rgba(0, 0, 0, 1); /* Added drop shadow */
-
+    color: rgba(255, 255, 255, 0.45);
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
 }
 
 /* Specific styles for the tools toggle button */
 .effect-management .toggle-button {
   margin-right: 10px;
-  /* Inherit or explicitly set styles to match nav-buttons */
-  font-family: 'Aldrich', 'Inconsolata', monospace; /* Match font */
-  padding: 0 10px; /* Reduce horizontal padding */
-  border: 1px solid rgba(198, 202, 224, 0.3); /* Match border */
-  border-radius: 5px; /* Match border radius */
-  color: rgb(198, 202, 224); /* Match color */
-  background: none; /* Ensure no background */
-  text-shadow: 1px 1px 3px rgba(0, 0, 0, 1); /* Match shadow */
-  text-align: center; /* Center text */
-  transition: all 0.3s ease; /* Match transition */
-  height: 60px; /* Set fixed height */
-  display: flex; /* Enable flexbox for centering */
-  align-items: center; /* Center vertically */
-  justify-content: center; /* Center horizontally */
-  line-height: 1.1; /* Match line height */
-  font-size: 0.9em; /* Apply smaller font size directly */
-  font-weight: 500; /* Apply slightly bolder font */
+  font-family: 'Aldrich', 'Inconsolata', monospace;
+  padding: 0 14px;
+  border: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 0;
+  color: rgba(255, 255, 255, 0.45);
+  background: transparent;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+  text-align: center;
+  transition: all 0.15s ease;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.2;
+  font-size: 13px;
+  font-weight: 400;
 }
 
 /* Ensure hover matches */
 .effect-management .toggle-button:hover {
-  color: white;
-  background-color: rgba(198, 202, 224, 0.1);
+  color: rgba(255, 255, 255, 0.9);
+  border-bottom-color: rgba(255, 255, 255, 0.4);
 }
 
 /* Add these additional toggle button styles */
 .toggle-button.on {
-    color: white;
-    opacity: 0.8;
+    color: rgba(255, 255, 255, 0.8);
 }
 
 .toggle-button.off {
-    opacity: 0.8;
+    color: rgba(255, 255, 255, 0.45);
+}
+
+.toggle-button:hover {
+    color: rgba(255, 255, 255, 0.9);
+    border-bottom-color: rgba(255, 255, 255, 0.4);
 }
 
 .toggle-button:focus {
@@ -1254,39 +1303,42 @@ button:disabled {
     bottom: 20px;
     left: 20px;
     right: 20px;
-    background-color: rgba(43, 38, 55, 0.95);
-    border: 1px solid #ff4444;
-    border-radius: 4px;
-    padding: 15px;
-    color: #ff9999;
-    font-family: 'Courier New', monospace;
-    font-size: 14px;
-    max-height: 200px;
+    background-color: rgba(8, 8, 12, 0.95);
+    border: none;
+    border-left: 2px solid rgba(255, 80, 80, 0.6);
+    border-radius: 0;
+    padding: 12px 16px;
+    color: rgba(255, 150, 150, 0.9);
+    font-family: 'Aldrich', 'Inconsolata', monospace;
+    font-size: 12px;
+    max-height: 180px;
     overflow-y: auto;
     z-index: 1000;
     white-space: pre-wrap;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
 }
 
 .sc-error-header {
-    color: #ff4444;
-    font-weight: bold;
+    color: rgba(255, 100, 100, 0.9);
+    font-family: 'Aldrich', 'Inconsolata', monospace;
+    font-weight: 500;
+    font-size: 11px;
+    text-transform: uppercase;
     margin-bottom: 8px;
 }
 
 .sc-error-close {
     position: absolute;
-    top: 10px;
-    right: 10px;
+    top: 8px;
+    right: 12px;
     background: none;
     border: none;
-    color: #ff9999;
+    color: rgba(255, 150, 150, 0.6);
     cursor: pointer;
-    font-size: 18px;
+    font-size: 14px;
 }
 
 .sc-error-close:hover {
-    color: #ff4444;
+    color: rgba(255, 150, 150, 1);
 }
 
 .shader-error-display {
@@ -1294,86 +1346,92 @@ button:disabled {
     bottom: 20px;
     left: 20px;
     right: 20px;
-    background-color: rgba(43, 38, 55, 0.95);
-    border: 1px solid #ff8800;
-    border-radius: 4px;
-    padding: 15px;
-    color: #ffcc99;
-    font-family: 'Courier New', monospace;
-    font-size: 14px;
-    max-height: 200px;
+    background-color: rgba(8, 8, 12, 0.95);
+    border: none;
+    border-left: 2px solid rgba(255, 160, 80, 0.6);
+    border-radius: 0;
+    padding: 12px 16px;
+    color: rgba(255, 200, 150, 0.9);
+    font-family: 'Aldrich', 'Inconsolata', monospace;
+    font-size: 12px;
+    max-height: 180px;
     overflow-y: auto;
     z-index: 1000;
     white-space: pre-wrap;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
 }
 
 .shader-error-header {
-    color: #ff8800;
-    font-weight: bold;
+    color: rgba(255, 160, 80, 0.9);
+    font-family: 'Aldrich', 'Inconsolata', monospace;
+    font-weight: 500;
+    font-size: 11px;
+    text-transform: uppercase;
     margin-bottom: 8px;
 }
 
 .shader-error-close {
     position: absolute;
-    top: 10px;
-    right: 10px;
+    top: 8px;
+    right: 12px;
     background: none;
     border: none;
-    color: #ffcc99;
+    color: rgba(255, 200, 150, 0.6);
     cursor: pointer;
-    font-size: 18px;
+    font-size: 14px;
 }
 
 .shader-error-close:hover {
-    color: #ff8800;
+    color: rgba(255, 200, 150, 1);
 }
 
 /* Override fixed positioning for nav buttons inside the source selector */
 .source-select-container .nav-button {
-  position: static; /* Override fixed positioning */
-  transform: none;  /* Remove vertical transform */
-  font-family: 'Aldrich', 'Inconsolata', monospace; /* Match general button font */
-  padding: 0 15px; /* Horizontal padding only */
-  border: 1px solid rgba(198, 202, 224, 0.3); /* Ensure border is visible */
-  border-radius: 5px; /* Ensure border radius is applied */
-  flex: 0 0 auto; /* Prevent buttons from growing/shrinking */
-  text-align: center; /* Center text */
-  height: 60px; /* Set fixed height */
-  display: flex; /* Enable flexbox */
-  flex-direction: column; /* Stack label and value vertically */
-  align-items: center; /* Center items horizontally */
-  justify-content: center; /* Center vertically */
-  line-height: normal; /* Reset line height, rely on flex */
-  font-size: inherit; /* Reset font size, apply to children */
-  font-weight: normal; /* Reset font weight */
+  position: static;
+  transform: none;
+  font-family: 'Aldrich', 'Inconsolata', monospace;
+  padding: 0 16px;
+  border: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 0;
+  flex: 0 0 auto;
+  text-align: center;
+  height: 44px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  background: transparent;
 }
 
-/* Style for the spans inside the source select buttons - Restore these rules */
+/* Style for the spans inside the source select buttons */
 .source-select-container .nav-button span {
-  display: inline; /* Let flexbox handle layout */
-  text-align: center; /* Ensure text inside span is centered */
+  display: block;
+  text-align: center;
 }
 
 .source-select-container .nav-button .button-label {
-  font-size: 0.65em; /* Make label smaller */
-  opacity: 0.8; /* Make label slightly less prominent */
-  display: block; /* Ensure label takes full width for centering */
-  margin-bottom: 3px; /* Add space */
-  line-height: 1; /* Adjust line height for the smaller text */
+  font-size: 0.65em;
+  font-weight: 300;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.35);
+  margin-bottom: 2px;
 }
 
 .source-select-container .nav-button .button-value {
-  font-size: 0.9em; /* Slightly smaller value text to fit better */
-  line-height: 1.1; /* Adjust line height */
-  font-weight: 500; /* Slightly bolder */
-  display: block; /* Ensure value takes full width for centering and wrapping */
+  font-size: 0.85em;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.7);
 }
 
 /* Ensure hover effect works correctly */
 .source-select-container .nav-button:hover {
-  color: white;
-  background-color: rgba(198, 202, 224, 0.1); /* Add subtle background on hover */
+  border-bottom-color: rgba(255, 255, 255, 0.4);
+}
+
+.source-select-container .nav-button:hover .button-value {
+  color: rgba(255, 255, 255, 1);
 }
 
 /* Remove the original nav-button positioning */
@@ -1390,18 +1448,121 @@ button:disabled {
   display: none;
 }
 
-/* Styles for the EffectSelectScreen title */
+/* Styles for the EffectSelectScreen header */
+.effect-select-header {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  width: 90%;
+  max-width: 900px;
+  margin: 0 0 30px 0;
+  position: relative;
+  z-index: 1010;
+}
+
 .effect-select-screen h2 {
-  color: #f0f0f0; /* Light color */
+  color: rgba(255, 255, 255, 0.4);
   text-align: left;
-  width: 90%; /* Keep width consistent with grid */
-  max-width: 1200px; /* Keep max-width consistent */
-  margin: 0 0 20px 0; /* Remove auto margins, keep bottom margin */
-  padding-left: 0; /* Remove specific left padding */
-  font-size: 2em; /* Make it larger */
-  font-weight: 500;
-  position: relative; /* Needed for z-index */
-  z-index: 1010; /* Ensure it's above overlay */
+  margin: 0;
+  padding-left: 0;
+  font-family: 'Aldrich', 'Inconsolata', monospace;
+  font-size: 0.9em;
+  font-weight: 300;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  flex: 1;
+}
+
+/* Back button for category navigation */
+.effect-back-button {
+  font-family: 'Aldrich', 'Inconsolata', monospace;
+  font-size: 0.85em;
+  font-weight: 400;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.5);
+  background: transparent;
+  border: none;
+  border-left: 2px solid rgba(255, 255, 255, 0.2);
+  padding: 8px 0 8px 15px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.effect-back-button:hover {
+  color: rgba(255, 255, 255, 0.9);
+  border-left-color: rgba(255, 255, 255, 0.5);
+}
+
+.effect-back-button:active {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* Category grid styles */
+.category-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 20px;
+  max-width: 500px;
+  width: 90%;
+  margin: 0;
+}
+
+.category-tile-wrapper {
+  display: flex;
+  align-items: stretch;
+}
+
+.category-tile {
+  width: 100%;
+  border: none;
+  cursor: pointer;
+  transition: all 0.1s ease;
+  position: relative;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.category-tile:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.category-tile:hover .category-name {
+  color: rgba(255, 255, 255, 1);
+  transform: translateX(6px);
+}
+
+.category-tile:hover .category-count {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.category-tile:active {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.category-name {
+  color: rgba(255, 255, 255, 0.55);
+  font-family: 'Aldrich', 'Inconsolata', monospace;
+  font-size: 0.8em;
+  font-weight: 400;
+  text-align: left;
+  padding-left: 8px;
+  transition: all 0.15s ease;
+}
+
+.category-count {
+  color: rgba(255, 255, 255, 0.2);
+  font-family: 'Aldrich', 'Inconsolata', monospace;
+  font-size: 0.7em;
+  font-weight: 300;
+  text-align: right;
+  padding-right: 8px;
 }
 
 .effect-nav-buttons-container {

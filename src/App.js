@@ -89,7 +89,8 @@ function App() {
           // Use effect name primarily, but maybe just path? Or find a common name?
           // For now, using the path as a key and storing the first associated name.
           name: synth.name, // Or potentially just the filename? 
-          scFilePath: synth.scFilePath
+          scFilePath: synth.scFilePath,
+          category: synth.category || 'Uncategorized' // Include category for tree navigation
         });
       }
     });
