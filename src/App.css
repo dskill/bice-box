@@ -1420,9 +1420,18 @@ button:disabled {
 }
 
 .source-select-container .nav-button .button-value {
-  font-size: 0.85em;
+  font-size: 14px;
   font-weight: 400;
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* Single effect select button - just shows effect name */
+.source-select-container .effect-select-button {
+  padding: 0 20px;
+}
+
+.source-select-container .effect-select-button .button-value {
+  font-size: 14px;
 }
 
 /* Ensure hover effect works correctly */
@@ -1448,14 +1457,55 @@ button:disabled {
   display: none;
 }
 
+/* Tab bar for switching between audio and visual */
+.effect-select-tabs {
+  display: flex;
+  gap: 0;
+  width: 90%;
+  max-width: 500px;
+  margin: 0 0 20px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.effect-tab {
+  font-family: 'Aldrich', 'Inconsolata', monospace;
+  font-size: 13px;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.35);
+  background: transparent;
+  border: none;
+  padding: 10px 20px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  position: relative;
+}
+
+.effect-tab:hover {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.effect-tab.active {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.effect-tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.6);
+}
+
 /* Styles for the EffectSelectScreen header */
 .effect-select-header {
   display: flex;
   align-items: center;
   gap: 20px;
   width: 90%;
-  max-width: 900px;
-  margin: 0 0 30px 0;
+  max-width: 500px;
+  margin: 0 0 20px 0;
   position: relative;
   z-index: 1010;
 }

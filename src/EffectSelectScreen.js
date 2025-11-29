@@ -1,32 +1,35 @@
 import React, { useRef, useEffect, useState, useMemo } from 'react';
-// Color import might be removed if styling changes significantly
-// import { colors } from './theme';
 
 function EffectSelectScreen({ 
-  type, // 'audio' or 'visual' or 'preset'
-  items, // Array of sources or presets
-  onSelect, // Function called with the selected path (scFilePath/p5SketchPath) or preset name
+  audioItems, // Array of audio sources with category
+  visualItems, // Array of visual sources
+  onSelectAudio, // Function called with selected audio item
+  onSelectVisual, // Function called with selected visual item
   onClose, // Function called to close the screen
-  currentSourcePath // The path of the currently active source for highlighting
+  currentAudioPath, // Currently active audio source path
+  currentVisualPath // Currently active visual source path
 }) {
   const containerRef = useRef(null);
   const [isDragging, setIsDragging] = useState(false);
-  const hasDraggedBeyondThresholdRef = useRef(false); // Use ref instead of state to avoid re-renders
+  const hasDraggedBeyondThresholdRef = useRef(false);
   const initialYRef = useRef(null);
   const initialXRef = useRef(null);
   const initialScrollTopRef = useRef(null);
-  const lastUpdateTimeRef = useRef(0); // For throttling
-  const DRAG_THRESHOLD = 15; // pixels - if user moves more than this, it's a drag not a tap
+  const lastUpdateTimeRef = useRef(0);
+  const DRAG_THRESHOLD = 15;
   
-  // Two-step navigation state for audio effects
+  // Tab state: 'audio' or 'visual'
+  const [activeTab, setActiveTab] = useState('audio');
+  
+  // Category navigation state for audio
   const [selectedCategory, setSelectedCategory] = useState(null);
   
-  // Derive categories from items (only for audio type)
+  // Derive categories from audio items
   const categories = useMemo(() => {
-    if (type !== 'audio') return [];
+    if (!audioItems) return [];
     
     const categoryMap = new Map();
-    items.forEach(item => {
+    audioItems.forEach(item => {
       const cat = item.category || 'Uncategorized';
       if (!categoryMap.has(cat)) {
         categoryMap.set(cat, { name: cat, count: 0 });
@@ -40,22 +43,21 @@ function EffectSelectScreen({
       if (b.name === 'Utility') return -1;
       return a.name.localeCompare(b.name);
     });
-  }, [items, type]);
+  }, [audioItems]);
   
   // Get effects filtered by selected category
-  const filteredItems = useMemo(() => {
-    if (type !== 'audio' || !selectedCategory) return items;
-    return items.filter(item => (item.category || 'Uncategorized') === selectedCategory);
-  }, [items, selectedCategory, type]);
+  const filteredAudioItems = useMemo(() => {
+    if (!audioItems || !selectedCategory) return audioItems || [];
+    return audioItems.filter(item => (item.category || 'Uncategorized') === selectedCategory);
+  }, [audioItems, selectedCategory]);
   
-  // Touch scrolling handler for Raspberry Pi compatibility - matching ParamFader pattern
+  // Touch scrolling handler
   useEffect(() => {
     const handlePointerMove = (e) => {
       if (!isDragging || !containerRef.current) {
         return;
       }
       
-      // Throttle updates to 60fps like ParamFader
       const now = performance.now();
       if (now - lastUpdateTimeRef.current < 16) return;
       lastUpdateTimeRef.current = now;
@@ -66,14 +68,12 @@ function EffectSelectScreen({
       const deltaX = e.clientX - initialXRef.current;
       const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
       
-      // Check if we've moved beyond the drag threshold (only set once)
       if (distance > DRAG_THRESHOLD && !hasDraggedBeyondThresholdRef.current) {
         hasDraggedBeyondThresholdRef.current = true;
       }
       
       const newScrollTop = initialScrollTopRef.current - deltaY;
       
-      // Use requestAnimationFrame for smooth scrolling
       requestAnimationFrame(() => {
         if (containerRef.current) {
           containerRef.current.scrollTop = newScrollTop;
@@ -87,14 +87,12 @@ function EffectSelectScreen({
       initialXRef.current = null;
       initialScrollTopRef.current = null;
       
-      // Reset drag threshold flag after a short delay to allow click prevention
       setTimeout(() => {
         hasDraggedBeyondThresholdRef.current = false;
       }, 100);
     };
 
     if (isDragging) {
-      // Add listeners to window like ParamFader does
       window.addEventListener('pointermove', handlePointerMove, { passive: false });
       window.addEventListener('pointerup', handlePointerUp);
       window.addEventListener('pointercancel', handlePointerUp);
@@ -105,17 +103,16 @@ function EffectSelectScreen({
       window.removeEventListener('pointerup', handlePointerUp);
       window.removeEventListener('pointercancel', handlePointerUp);
     };
-  }, [isDragging]); // Removed hasDraggedBeyondThreshold from dependencies
+  }, [isDragging]);
 
   // Reset scroll position when changing views
   useEffect(() => {
     if (containerRef.current) {
       containerRef.current.scrollTop = 0;
     }
-  }, [selectedCategory]);
+  }, [selectedCategory, activeTab]);
 
   const handlePointerDown = (e) => {
-    // Process all pointer events - on Pi, touch shows up as 'mouse'
     e.preventDefault();
     e.stopPropagation();
     
@@ -126,68 +123,54 @@ function EffectSelectScreen({
     initialYRef.current = e.clientY;
     initialXRef.current = e.clientX;
     initialScrollTopRef.current = scrollTop;
-    lastUpdateTimeRef.current = 0; // Reset throttle timer
+    lastUpdateTimeRef.current = 0;
   };
 
-  const handleButtonClick = (item, itemPath) => {
-    // Prevent click if user has dragged beyond threshold
-    if (hasDraggedBeyondThresholdRef.current) {
-      return;
-    }
-    
-    // For audio, pass the full item so caller knows the effect name
-    onSelect(type === 'visual' ? item : item);
+  const handleAudioClick = (item) => {
+    if (hasDraggedBeyondThresholdRef.current) return;
+    onSelectAudio(item);
+  };
+  
+  const handleVisualClick = (item) => {
+    if (hasDraggedBeyondThresholdRef.current) return;
+    onSelectVisual(item);
   };
   
   const handleCategoryClick = (categoryName) => {
-    // Prevent click if user has dragged beyond threshold
-    if (hasDraggedBeyondThresholdRef.current) {
-      return;
-    }
+    if (hasDraggedBeyondThresholdRef.current) return;
     setSelectedCategory(categoryName);
   };
   
   const handleBackToCategories = () => {
-    // Prevent click if user has dragged beyond threshold
-    if (hasDraggedBeyondThresholdRef.current) {
-      return;
-    }
+    if (hasDraggedBeyondThresholdRef.current) return;
     setSelectedCategory(null);
   };
   
-  // Use a generic name prettifier or just display the name directly
+  const handleTabClick = (tab) => {
+    if (hasDraggedBeyondThresholdRef.current) return;
+    setActiveTab(tab);
+    setSelectedCategory(null); // Reset category when switching tabs
+  };
+  
   const prettifyName = (name) => {
     if (!name) return '';
-    // Keep existing prettification for now
     name = name.replace(/_/g, " ");
     return name.replace(/(?:^|\s)\S/g, function(a) { return a.toUpperCase(); });
   };
 
   const handleBackgroundClick = (e) => {
     if (e.target.classList.contains('effect-select-screen')) {
-      onClose(); // Use onClose instead of onSelectEffect(null)
+      onClose();
     }
   };
 
-  const getPathForItem = (item) => {
-    if (type === 'audio') return item.scFilePath;
-    if (type === 'visual') return item.path;
-    if (type === 'preset') return item.name; // Use name as identifier for presets
-    return null; // Should not happen
-  };
-
-  // Determine what to show based on type and navigation state
-  const showCategories = type === 'audio' && !selectedCategory;
-  const displayItems = showCategories ? categories : filteredItems;
+  // Determine what to show based on tab and navigation state
+  const showCategories = activeTab === 'audio' && !selectedCategory;
   
   // Get title based on current view
   const getTitle = () => {
-    if (type === 'preset') return 'Select Preset';
-    if (type === 'visual') return 'Select Visual Source';
-    if (type === 'audio') {
-      return selectedCategory ? selectedCategory : 'Select Category';
-    }
-    return 'Select';
+    if (activeTab === 'visual') return 'Visual';
+    return selectedCategory ? selectedCategory : 'Category';
   };
 
   return (
@@ -197,13 +180,29 @@ function EffectSelectScreen({
       ref={containerRef}
       onPointerDown={handlePointerDown}
       style={{ 
-        touchAction: 'none', // Match ParamFader
+        touchAction: 'none',
         cursor: isDragging ? 'grabbing' : 'grab'
       }}
     >
+      {/* Tab bar */}
+      <div className="effect-select-tabs">
+        <button 
+          className={`effect-tab ${activeTab === 'audio' ? 'active' : ''}`}
+          onClick={() => handleTabClick('audio')}
+        >
+          Audio
+        </button>
+        <button 
+          className={`effect-tab ${activeTab === 'visual' ? 'active' : ''}`}
+          onClick={() => handleTabClick('visual')}
+        >
+          Visual
+        </button>
+      </div>
+
       {/* Header with back button for effects view */}
       <div className="effect-select-header">
-        {type === 'audio' && selectedCategory && (
+        {activeTab === 'audio' && selectedCategory && (
           <button 
             className="effect-back-button"
             onClick={handleBackToCategories}
@@ -214,35 +213,51 @@ function EffectSelectScreen({
         <h2>{getTitle()}</h2>
       </div>
        
-      {showCategories ? (
-        // Category grid for audio effects
-        <div className="category-grid">
-          {categories.map((category) => (
-            <div className="category-tile-wrapper" key={category.name}>
-              <button
-                className="category-tile"
-                onClick={() => handleCategoryClick(category.name)}
-              >
-                <div className="category-name">{category.name}</div>
-                <div className="category-count">{category.count} effects</div>
-              </button>
-            </div>
-          ))}
-        </div>
+      {activeTab === 'audio' ? (
+        showCategories ? (
+          // Category grid for audio effects
+          <div className="category-grid">
+            {categories.map((category) => (
+              <div className="category-tile-wrapper" key={category.name}>
+                <button
+                  className="category-tile"
+                  onClick={() => handleCategoryClick(category.name)}
+                >
+                  <div className="category-name">{category.name}</div>
+                  <div className="category-count">{category.count}</div>
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          // Effect list for selected category
+          <div className="effect-grid">
+            {filteredAudioItems.map((item) => {
+              const isActive = item.scFilePath === currentAudioPath;
+              return (
+                <div className="effect-tile-wrapper" key={item.scFilePath}> 
+                  <button
+                    className={`effect-tile ${isActive ? 'active' : ''}`}
+                    onClick={() => handleAudioClick(item)}
+                  >
+                    <div className="effect-name">{prettifyName(item.name)}</div> 
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )
       ) : (
-        // Effect grid (for effects within category, visual, or preset)
+        // Visual effects list
         <div className="effect-grid">
-          {displayItems.map((item) => {
-            const itemPath = getPathForItem(item);
-            const isActive = itemPath === currentSourcePath;
+          {(visualItems || []).map((item) => {
+            const isActive = item.path === currentVisualPath;
             return (
-              <div className="effect-tile-wrapper" key={type === 'preset' ? item.name : (itemPath || item.name)}> 
+              <div className="effect-tile-wrapper" key={item.path}> 
                 <button
                   className={`effect-tile ${isActive ? 'active' : ''}`}
-                  onClick={() => handleButtonClick(item, itemPath)}
-                  disabled={!itemPath} // Disable if path is missing (shouldn't happen with derived lists)
+                  onClick={() => handleVisualClick(item)}
                 >
-                  {/* Display the name from the item */}
                   <div className="effect-name">{prettifyName(item.name)}</div> 
                 </button>
               </div>

@@ -28,8 +28,7 @@ function App() {
   const [currentShaderPath, setCurrentShaderPath] = useState(null); // New state for shader path
   const [currentShaderContent, setCurrentShaderContent] = useState(''); // New state for shader content
   const [error, setError] = useState(null);
-  const [showAudioSelector, setShowAudioSelector] = useState(false);
-  const [showVisualSelector, setShowVisualSelector] = useState(false);
+  const [showEffectSelector, setShowEffectSelector] = useState(false);
   const [visualizerList, setVisualizerList] = useState([]); // State for direct visualizers
   const [currentAudioParams, setCurrentAudioParams] = useState([]); // State for active audio params
   const [effectsRepoStatus, setEffectsRepoStatus] = useState({
@@ -231,7 +230,7 @@ function App() {
     const { fromMcp = false } = options;
     if (!selectedVisual || !selectedVisual.path || !selectedVisual.type) {
       console.log('Visual selection cancelled or invalid item');
-      if (!fromMcp) setShowVisualSelector(false);
+      if (!fromMcp) setShowEffectSelector(false);
       return;
     }
 
@@ -247,8 +246,8 @@ function App() {
         electron.ipcRenderer.send('set-current-visual-source', selectedVisual.path);
       }
     }
-    if (!fromMcp) setShowVisualSelector(false);
-  }, [setShowVisualSelector]);
+    if (!fromMcp) setShowEffectSelector(false);
+  }, []);
 
   const pullEffectsRepo = () => {
     return new Promise((resolve, reject) => {
@@ -478,7 +477,7 @@ function App() {
   const handleAudioSelect = useCallback((selected) => {
     if (!selected) {
       console.log('Audio selection cancelled or invalid path');
-      setShowAudioSelector(false);
+      setShowEffectSelector(false);
       return;
     }
     const scFilePath = selected.scFilePath || selected;
@@ -488,37 +487,25 @@ function App() {
     if (electron && electron.ipcRenderer && effectName) {
       electron.ipcRenderer.send('effects/actions:set_current_effect', { name: effectName });
     }
-    setShowAudioSelector(false);
-  }, [setCurrentAudioSource, setShowAudioSelector]);
-
-  // Opens the audio selector
-  const openAudioSelect = () => {
-    console.log("Open Audio Selector triggered");
-    setShowAudioSelector(true);
-    setShowVisualSelector(false);
-  };
+    setShowEffectSelector(false);
+  }, [setCurrentAudioSource]);
   
-  // Updated to fetch visualizer list on demand
-  const openVisualSelect = async () => {
-    console.log("Open Visual Selector triggered");
-    // Fetch the list before showing the selector
+  // Opens the combined effect selector and fetches visualizers
+  const openEffectSelect = async () => {
+    console.log("Open Effect Selector triggered");
+    // Fetch the visualizer list
     try {
       if (electron) {
         console.log('Fetching available visualizers...');
         const fetchedVisualizers = await electron.ipcRenderer.invoke('get-visualizers');
         console.log('Received visualizers:', fetchedVisualizers);
         setVisualizerList(fetchedVisualizers || []); 
-        setShowVisualSelector(true); // Show selector only after successful fetch
-        setShowAudioSelector(false); 
-      } else {
-         throw new Error("Electron IPC not available");
       }
     } catch (err) {
       console.error("Failed to fetch visualizers:", err);
-      setError("Could not load visualizer list.");
       setVisualizerList([]); // Clear list on error
-      setShowVisualSelector(false); // Ensure selector is hidden
     }
+    setShowEffectSelector(true);
   };
 
   // --- Handlers for Claude Voice Interaction ---
@@ -676,10 +663,8 @@ function App() {
         currentVisualContent={currentVisualContent}
         currentShaderPath={currentShaderPath}
         currentShaderContent={currentShaderContent}
-        currentAudioParams={currentAudioParams}
-        // Pass handlers to open selectors
-        onOpenAudioSelect={openAudioSelect} 
-        onOpenVisualSelect={openVisualSelect} 
+        // Pass handler to open effect selector
+        onOpenEffectSelect={openEffectSelect}
         devMode={devMode}
         paramValues={paramValues}
       />
@@ -753,25 +738,16 @@ function App() {
         </div>
       </div>
 
-      {/* Render selectors conditionally based on new state */}
-      { showAudioSelector && (
+      {/* Render combined effect selector */}
+      { showEffectSelector && (
           <EffectSelectScreen
-            type="audio"
-            items={audioSources} 
-            onSelect={handleAudioSelect} // Use the new handler
-            // Pass current source for potential highlighting
-            currentSourcePath={currentAudioSource} 
-            // Need a way to close the selector without selection (e.g., back button)
-            onClose={() => setShowAudioSelector(false)}
-          />
-      )}
-       { showVisualSelector && (
-          <EffectSelectScreen
-            type="visual"
-            items={visualizerList} // Use the new visualizerList state
-            onSelect={handleVisualSelect} 
-            currentSourcePath={currentVisualSource}
-            onClose={() => setShowVisualSelector(false)}
+            audioItems={audioSources}
+            visualItems={visualizerList}
+            onSelectAudio={handleAudioSelect}
+            onSelectVisual={handleVisualSelect}
+            currentAudioPath={currentAudioSource}
+            currentVisualPath={currentVisualSource}
+            onClose={() => setShowEffectSelector(false)}
           />
       )}
       {scError && (

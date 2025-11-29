@@ -7,8 +7,7 @@ function VisualizationMode({
   currentVisualContent,
   currentShaderPath,
   currentShaderContent,
-  onOpenAudioSelect, 
-  onOpenVisualSelect,
+  onOpenEffectSelect,
   devMode,
   paramValues
 }) {
@@ -25,30 +24,16 @@ function VisualizationMode({
     return name;
   };
 
-  const activeVisualName = currentShaderPath 
-    ? prettifySourceName(currentShaderPath) 
-    : prettifySourceName(currentVisualSourcePath);
-
   return (
     <div className="visualization-mode" style={{ touchAction: 'none' }}>
       
       <div className="source-select-container">
         <button 
-          className="nav-button audio-select-button" 
-          onClick={onOpenAudioSelect}
+          className="nav-button effect-select-button" 
+          onClick={onOpenEffectSelect}
         >
-          <span className="button-label">Audio:</span>
           <span className="button-value">{prettifySourceName(currentAudioSourcePath)}</span>
         </button>
-        {devMode && (
-          <button 
-            className="nav-button visual-select-button" 
-            onClick={onOpenVisualSelect}
-          >
-            <span className="button-label">Visual:</span>
-            <span className="button-value">{activeVisualName}</span>
-          </button>
-        )}
       </div>
 
       <VisualizationCanvas 
