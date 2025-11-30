@@ -7,7 +7,11 @@ function EffectSelectScreen({
   onSelectVisual, // Function called with selected visual item
   onClose, // Function called to close the screen
   currentAudioPath, // Currently active audio source path
-  currentVisualPath // Currently active visual source path
+  currentVisualPath, // Currently active visual source path
+  initialTab = 'audio', // Remember last tab
+  initialCategory = null, // Remember last category
+  onTabChange, // Callback when tab changes
+  onCategoryChange // Callback when category changes
 }) {
   const containerRef = useRef(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -18,11 +22,11 @@ function EffectSelectScreen({
   const lastUpdateTimeRef = useRef(0);
   const DRAG_THRESHOLD = 15;
   
-  // Tab state: 'audio' or 'visual'
-  const [activeTab, setActiveTab] = useState('audio');
+  // Tab state: 'audio' or 'visual' - initialized from prop
+  const [activeTab, setActiveTab] = useState(initialTab);
   
-  // Category navigation state for audio
-  const [selectedCategory, setSelectedCategory] = useState(null);
+  // Category navigation state for audio - initialized from prop
+  const [selectedCategory, setSelectedCategory] = useState(initialCategory);
   
   // Derive categories from audio items
   const categories = useMemo(() => {
@@ -139,17 +143,20 @@ function EffectSelectScreen({
   const handleCategoryClick = (categoryName) => {
     if (hasDraggedBeyondThresholdRef.current) return;
     setSelectedCategory(categoryName);
+    if (onCategoryChange) onCategoryChange(categoryName);
   };
   
   const handleBackToCategories = () => {
     if (hasDraggedBeyondThresholdRef.current) return;
     setSelectedCategory(null);
+    if (onCategoryChange) onCategoryChange(null);
   };
   
   const handleTabClick = (tab) => {
     if (hasDraggedBeyondThresholdRef.current) return;
     setActiveTab(tab);
-    setSelectedCategory(null); // Reset category when switching tabs
+    if (onTabChange) onTabChange(tab);
+    // Don't reset category when switching tabs - preserve it
   };
   
   const prettifyName = (name) => {

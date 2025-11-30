@@ -29,6 +29,8 @@ function App() {
   const [currentShaderContent, setCurrentShaderContent] = useState(''); // New state for shader content
   const [error, setError] = useState(null);
   const [showEffectSelector, setShowEffectSelector] = useState(false);
+  const [lastEffectTab, setLastEffectTab] = useState('audio'); // Remember last tab
+  const [lastEffectCategory, setLastEffectCategory] = useState(null); // Remember last category
   const [visualizerList, setVisualizerList] = useState([]); // State for direct visualizers
   const [currentAudioParams, setCurrentAudioParams] = useState([]); // State for active audio params
   const [effectsRepoStatus, setEffectsRepoStatus] = useState({
@@ -748,6 +750,10 @@ function App() {
             currentAudioPath={currentAudioSource}
             currentVisualPath={currentVisualSource}
             onClose={() => setShowEffectSelector(false)}
+            initialTab={lastEffectTab}
+            initialCategory={lastEffectCategory}
+            onTabChange={setLastEffectTab}
+            onCategoryChange={setLastEffectCategory}
           />
       )}
       {scError && (
