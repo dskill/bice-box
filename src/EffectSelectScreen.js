@@ -191,8 +191,16 @@ function EffectSelectScreen({
         cursor: isDragging ? 'grabbing' : 'grab'
       }}
     >
-      {/* Tab bar */}
+      {/* Tab bar with back button */}
       <div className="effect-select-tabs">
+        {activeTab === 'audio' && selectedCategory ? (
+          <button 
+            className="effect-back-button"
+            onClick={handleBackToCategories}
+          >
+            ←
+          </button>
+        ) : null}
         <button 
           className={`effect-tab ${activeTab === 'audio' ? 'active' : ''}`}
           onClick={() => handleTabClick('audio')}
@@ -207,18 +215,12 @@ function EffectSelectScreen({
         </button>
       </div>
 
-      {/* Header with back button for effects view */}
-      <div className="effect-select-header">
-        {activeTab === 'audio' && selectedCategory && (
-          <button 
-            className="effect-back-button"
-            onClick={handleBackToCategories}
-          >
-            ← Back
-          </button>
-        )}
-        <h2>{getTitle()}</h2>
-      </div>
+      {/* Category/section title */}
+      {(activeTab === 'audio' && selectedCategory) && (
+        <div className="effect-select-header">
+          <h2>{selectedCategory}</h2>
+        </div>
+      )}
        
       {activeTab === 'audio' ? (
         showCategories ? (
