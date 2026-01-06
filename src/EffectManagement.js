@@ -3,8 +3,9 @@ import Button from './Button';
 import ToggleButton from './ToggleButton'; // Import ToggleButton
 import WifiSettings from './WifiSettings'; // Import WifiSettings
 import BranchSelector from './BranchSelector'; // Import BranchSelector
+import CommitPreview from './CommitPreview'; // Import CommitPreview
 import './App.css';
-import { FaSync, FaCheck, FaExclamationTriangle, FaDownload, FaWifi, FaCodeBranch } from 'react-icons/fa';
+import { FaSync, FaCheck, FaExclamationTriangle, FaDownload, FaWifi, FaCodeBranch, FaCloudUploadAlt } from 'react-icons/fa';
 import ReactDOM from 'react-dom';
 import QRCode from 'react-qr-code';
 
@@ -32,6 +33,7 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
     const [hasLocalChanges, setHasLocalChanges] = useState(false);
     const [isSwitchingBranch, setIsSwitchingBranch] = useState(false);
     const [showBranchSelector, setShowBranchSelector] = useState(false);
+    const [showCommitPreview, setShowCommitPreview] = useState(false);
     const [isPlatformRaspberryPi, setIsPlatformRaspberryPi] = useState(false);
 
     useEffect(() =>
@@ -687,13 +689,20 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
                     {/* Hidden but keeping code: {renderAppUpdateButton()} */}
                     {/* Hidden but keeping code: {renderSyncButton()} */}
                     
-                    {/* Show discard button only when there are local changes */}
+                    {/* Show commit/discard buttons only when there are local changes */}
                     {hasLocalChanges && (
-                        <Button 
-                            label="Discard Local Changes"
-                            onClick={handleDiscardChanges}
-                            className="discard-changes-button"
-                        />
+                        <>
+                            <Button
+                                label={<><FaCloudUploadAlt /> Commit & Push</>}
+                                onClick={() => setShowCommitPreview(true)}
+                                className="commit-push-button"
+                            />
+                            <Button
+                                label="Discard Local Changes"
+                                onClick={handleDiscardChanges}
+                                className="discard-changes-button"
+                            />
+                        </>
                     )}
                     
                     <Button 
@@ -766,12 +775,24 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
 
             {/* Render BranchSelector modal */}
             {showBranchSelector && ReactDOM.createPortal(
-                <BranchSelector 
+                <BranchSelector
                     branches={availableBranches}
                     currentBranch={currentBranch}
                     onSelectBranch={handleBranchChange}
                     onClose={() => setShowBranchSelector(false)}
                     isSwitching={isSwitchingBranch}
+                />,
+                document.body
+            )}
+
+            {/* Render CommitPreview modal */}
+            {showCommitPreview && ReactDOM.createPortal(
+                <CommitPreview
+                    onClose={() => setShowCommitPreview(false)}
+                    onSuccess={() => {
+                        setHasLocalChanges(false);
+                        checkLocalChanges();
+                    }}
                 />,
                 document.body
             )}

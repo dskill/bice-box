@@ -23,7 +23,7 @@ const path = require('path');
 const fs = require('fs');
 const util = require('util');
 const chokidar = require('chokidar');
-const { exec } = require('child_process');
+const { exec, spawn } = require('child_process');
 const os = require('os');
 const networkInterfaces = os.networkInterfaces();
 const openaiApiKey = process.env.OPENAI_API_KEY;
@@ -1343,6 +1343,180 @@ ipcMain.on('switch-git-branch', async (event, branchName) =>
     console.error('[switch-git-branch] Error switching branch:', error);
     const errorMessage = error.stderr || error.message || 'Unknown error switching branch';
     event.reply('switch-branch-error', errorMessage);
+  }
+});
+
+// Get git diff for commit preview
+ipcMain.on('get-git-diff', async (event) =>
+{
+  const effectsRepoPath = getEffectsRepoPath();
+  console.log('[get-git-diff] Getting diff at:', effectsRepoPath);
+
+  try
+  {
+    const execOptions = {
+      cwd: effectsRepoPath,
+      shell: true,
+      maxBuffer: 1024 * 1024 * 5 // 5MB buffer for large diffs
+    };
+
+    // Get list of changed files
+    const statusResult = await execPromise('git status --porcelain', execOptions);
+    const changedFiles = statusResult.stdout.trim().split('\n').filter(line => line.trim());
+
+    // Get the diff
+    const diffResult = await execPromise('git diff', execOptions);
+
+    // Also get diff of staged files and untracked file contents
+    const stagedDiffResult = await execPromise('git diff --cached', execOptions);
+
+    console.log('[get-git-diff] Found', changedFiles.length, 'changed files');
+    event.reply('git-diff-reply', {
+      changedFiles,
+      diff: diffResult.stdout + stagedDiffResult.stdout,
+      success: true
+    });
+  }
+  catch (error)
+  {
+    console.error('[get-git-diff] Error getting diff:', error);
+    const errorMessage = error.stderr || error.message || 'Unknown error getting diff';
+    event.reply('git-diff-reply', { success: false, error: errorMessage });
+  }
+});
+
+// Generate commit message using Claude
+ipcMain.on('generate-commit-message', async (event, diffContent) =>
+{
+  console.log('[generate-commit-message] Generating commit message for diff...');
+
+  try
+  {
+    const prompt = `Generate a concise git commit message for these changes to an audio effects repository. The message should have a subject line (max 72 chars) that clearly describes what changed. Reply with only the commit message, no explanation or markdown formatting.
+
+Changes:
+${diffContent}`;
+
+    let output = '';
+    let errorOutput = '';
+    let hasReplied = false;
+
+    // Use shell with heredoc to safely pass multiline prompt with special characters
+    const claude = spawn('sh', ['-c', `claude -p "$(cat)"`], {
+      env: { ...process.env },
+      stdio: ['pipe', 'pipe', 'pipe']
+    });
+
+    // Write prompt to stdin and close it
+    claude.stdin.write(prompt);
+    claude.stdin.end();
+
+    // Add timeout to prevent hanging
+    const timeout = setTimeout(() => {
+      if (!hasReplied) {
+        hasReplied = true;
+        console.error('[generate-commit-message] Timeout - Claude took too long');
+        claude.kill();
+        event.reply('commit-message-reply', {
+          success: false,
+          error: 'Timeout generating commit message',
+          fallbackMessage: 'Update effects'
+        });
+      }
+    }, 30000); // 30 second timeout
+
+    claude.stdout.on('data', (data) => {
+      output += data.toString();
+    });
+
+    claude.stderr.on('data', (data) => {
+      errorOutput += data.toString();
+      console.log('[generate-commit-message] stderr:', data.toString());
+    });
+
+    claude.on('close', (code) => {
+      clearTimeout(timeout);
+      if (hasReplied) return;
+      hasReplied = true;
+
+      if (code === 0 && output.trim())
+      {
+        console.log('[generate-commit-message] Generated message:', output.trim());
+        event.reply('commit-message-reply', { success: true, message: output.trim() });
+      }
+      else
+      {
+        console.error('[generate-commit-message] Claude exited with code:', code, 'stderr:', errorOutput);
+        event.reply('commit-message-reply', {
+          success: false,
+          error: errorOutput || 'Failed to generate commit message',
+          fallbackMessage: 'Update effects'
+        });
+      }
+    });
+
+    claude.on('error', (err) => {
+      clearTimeout(timeout);
+      if (hasReplied) return;
+      hasReplied = true;
+
+      console.error('[generate-commit-message] Failed to spawn claude:', err);
+      event.reply('commit-message-reply', {
+        success: false,
+        error: 'Claude not available',
+        fallbackMessage: 'Update effects'
+      });
+    });
+  }
+  catch (error)
+  {
+    console.error('[generate-commit-message] Error:', error);
+    event.reply('commit-message-reply', {
+      success: false,
+      error: error.message,
+      fallbackMessage: 'Update effects'
+    });
+  }
+});
+
+// Commit and push changes
+ipcMain.on('git-commit-and-push', async (event, commitMessage) =>
+{
+  const effectsRepoPath = getEffectsRepoPath();
+  console.log('[git-commit-and-push] Committing and pushing at:', effectsRepoPath);
+
+  try
+  {
+    const execOptions = {
+      cwd: effectsRepoPath,
+      shell: true
+    };
+
+    // Stage all changes
+    console.log('[git-commit-and-push] Staging all changes...');
+    await execPromise('git add -A', execOptions);
+
+    // Commit with the message (escape quotes in message)
+    const escapedMessage = commitMessage.replace(/"/g, '\\"');
+    console.log('[git-commit-and-push] Committing with message:', commitMessage);
+    await execPromise(`git commit -m "${escapedMessage}"`, execOptions);
+
+    // Get current branch
+    const branchResult = await execPromise('git rev-parse --abbrev-ref HEAD', execOptions);
+    const currentBranch = branchResult.stdout.trim();
+
+    // Push to origin
+    console.log(`[git-commit-and-push] Pushing to origin/${currentBranch}...`);
+    await execPromise(`git push origin ${currentBranch}`, execOptions);
+
+    console.log('[git-commit-and-push] Successfully committed and pushed');
+    event.reply('git-commit-push-reply', { success: true });
+  }
+  catch (error)
+  {
+    console.error('[git-commit-and-push] Error:', error);
+    const errorMessage = error.stderr || error.message || 'Unknown error committing/pushing';
+    event.reply('git-commit-push-reply', { success: false, error: errorMessage });
   }
 });
 
