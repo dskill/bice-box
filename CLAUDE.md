@@ -9,8 +9,9 @@
 ## Build/Development Commands
 - `npm run dev` - Start development with hot reloading
 - `npm run build:electron` - Build for standard systems
-- `npm run build:electron:pi` - Build for Raspberry Pi (arm64)
-- `npm run clean` - Clean build artifacts
+
+## Release Workflow (Preferred)
+- `npm run release:patch:ci` - Bumps version (patch), commits, pushes with tags, and triggers GitHub Actions to build arm64 for Raspberry Pi
 
 ## Code Style Guidelines
 - **React Components**: Function components with hooks pattern
