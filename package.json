@@ -39,7 +39,7 @@
     "build:electron": "source .venv/bin/activate && react-scripts build && electron-builder build",
     "build:electron:pi": "NODE_OPTIONS=--max_old_space_size=512 react-scripts build  && electron-builder build --linux --arm64",
     "release:publish": "react-scripts build && electron-builder build --linux --arm64 --publish always",
-    "release:patch:publish": "npm version patch -m \"chore(release): version %s\" && git push --follow-tags && npm run release:publish",
+    "release:patch:ci": "npm version patch -m \"chore(release): version %s\" && git push --follow-tags",
     "test:visuals": "node scripts/visual-test-runner.js",
     "farm:audio": "node scripts/generative/farm-audio.js",
     "generate:audio": "electron . --generate",
