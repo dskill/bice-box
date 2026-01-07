@@ -7,9 +7,6 @@
   "dependencies": {
     "@google/genai": "^0.13.0",
     "@modelcontextprotocol/sdk": "^1.13.2",
-    "@testing-library/jest-dom": "^5.17.0",
-    "@testing-library/react": "^13.4.0",
-    "@testing-library/user-event": "^13.5.0",
     "@use-gesture/react": "^10.3.1",
     "axios": "^1.6.2",
     "express": "^5.1.0",
@@ -40,10 +37,8 @@
     "build:electron:pi": "NODE_OPTIONS=--max_old_space_size=512 react-scripts build  && electron-builder build --linux --arm64",
     "release:publish": "react-scripts build && electron-builder build --linux --arm64 --publish always",
     "release:patch:ci": "npm version patch -m \"chore(release): version %s\" && git push --follow-tags",
-    "test:visuals": "node scripts/visual-test-runner.js",
     "farm:audio": "node scripts/generative/farm-audio.js",
-    "generate:audio": "electron . --generate",
-    "test": "electron . --headless-test"
+    "generate:audio": "electron . --generate"
   },
   "build": {
     "appId": "com.drewskillman.bicebox",
@@ -100,8 +95,7 @@
   },
   "eslintConfig": {
     "extends": [
-      "react-app",
-      "react-app/jest"
+      "react-app"
     ]
   },
   "browserslist": {

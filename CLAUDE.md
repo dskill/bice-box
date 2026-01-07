@@ -1,30 +1,56 @@
-# CLAUDE.md - Bice-Box Project Guidelines
+# CLAUDE.md - Bice-Box
 
-## Repository Structure
-- **Main App**: `/Users/drew/src/bice-box` - Electron/React application
-- **Effects Repository**: `/Users/drew/bice-box-effects` - Audio/visual effects
-  - Contains effects (JSON), audio (SC) and visual (JS) files
-  - Used by the main app at runtime
+Audiovisual effects processor: live audio in → processed audio + synchronized visuals out. Built for Raspberry Pi, runs on Mac for development.
 
-## Build/Development Commands
-- `npm run dev` - Start development with hot reloading
-- `npm run build:electron` - Build for standard systems
+## Architecture
 
-## Release Workflow (Preferred)
-- `npm run release:patch:ci` - Bumps version (patch), commits, pushes with tags, and triggers GitHub Actions to build arm64 for Raspberry Pi
+```
+┌─────────────────┐     OSC      ┌─────────────────┐
+│  SuperCollider  │◄────────────►│    Electron     │
+│  (Audio Engine) │              │  (Orchestrator) │
+└─────────────────┘              └────────┬────────┘
+                                          │ IPC
+                                 ┌────────▼────────┐
+                                 │      React      │
+                                 │  (UI + Visuals) │
+                                 └─────────────────┘
+```
 
-## Code Style Guidelines
-- **React Components**: Function components with hooks pattern
-- **Imports**: Group by external/internal, alphabetical order
-- **Error Handling**: Try/catch blocks with descriptive error messages
-- **Naming**: camelCase for variables/functions, PascalCase for components
-- **Electron IPC**: Promise pattern with timeouts for IPC calls
-- **Formatting**: 2-space indentation, single quotes
+**Why SuperCollider as separate process?**
+- Real-time audio DSP with <10ms latency (Web Audio can't match this)
+- Hot-swap effects without app restart - load new `.sc` files on the fly
+- Battle-tested audio engine used in professional music production
+- Vast ecosystem of synthesis algorithms and audio analysis tools
+- Process isolation: audio keeps running if UI crashes
+- Direct hardware access: MIDI controllers talk straight to SC, bypassing UI latency
 
-## Effects Repository Guidelines
-- **Effects**: JSON files in `/effects` directory
-- **Audio**: SuperCollider files in `/audio` directory
-- **Visual**: p5.js sketch files in `/visual` directory
-- **Structure**: Each effect has a JSON config linking to its audio/visual files
+**External control (MIDI, OSC, hardware):**
+```
+MIDI Controller ──► SuperCollider ──► OSC broadcast ──► Electron ──► React UI
+                    (instant audio)                     (UI updates reflect changes)
+```
+Controllers bypass the app entirely for zero-latency audio response. SC broadcasts parameter changes back, keeping UI faders in sync. This means physical knobs feel instant while the UI follows.
 
-This project is an Audiovisual Effects Processor designed for Raspberry Pi with Electron and React that processes audio input and generates synchronized visuals.
+**Layer responsibilities:**
+- **SuperCollider**: All audio processing, FFT analysis, parameter control
+- **Electron**: Process management, OSC bridge, file system, MCP server
+- **React**: Touch UI, GLSL/p5.js visualizers, parameter faders
+
+## Repos
+- **Main App**: `/Users/drew/src/bice-box` - Electron/React
+- **Effects**: `/Users/drew/bice-box-effects` - Has its own CLAUDE.md with MCP tools and skills
+
+## Commands
+- `npm run dev` - Development with hot reloading
+- `npm run build:electron` - Build for Mac
+- `npm run build:electron:pi` - Build for Raspberry Pi (arm64)
+
+## Release
+```bash
+npm run release:patch:ci   # Bump version, commit, push with tags
+npm run release:publish    # Build arm64 and publish to GitHub
+```
+
+## Code Style
+- Function components with hooks, 2-space indent, single quotes
+- camelCase variables/functions, PascalCase components
