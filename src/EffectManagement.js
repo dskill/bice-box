@@ -574,36 +574,23 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
         />
     );
 
-    // Run checks on mount and when menu expands
+    // Run checks when menu expands (mount initialization handled by other effects)
     useEffect(() =>
     {
-        const runChecks = () =>
+        if (isExpanded)
         {
-            // Check IP
+            // Refresh data when menu opens
             fetchIp();
 
-            // Check app updates
             if (electron && electron.ipcRenderer)
             {
                 electron.ipcRenderer.send('check-app-update');
             }
 
-            // Check effects repo
             onCheckEffectsRepo();
-            
-            // Check for local changes
             checkLocalChanges();
-        };
-
-        // Run on mount
-        runChecks();
-
-        // Also run when menu is expanded
-        if (isExpanded)
-        {
-            runChecks();
         }
-    }, [isExpanded]); // Run on mount and when isExpanded changes
+    }, [isExpanded]);
 
     // Keep update status in sync
     useEffect(() =>

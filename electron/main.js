@@ -164,21 +164,6 @@ process.on('unhandledRejection', (reason, promise) =>
 
 console.log('Logging initialized');
 
-// Enable live reload for Electron
-if (isDev)
-{
-  try
-  {
-    require('electron-reloader')(module, {
-      debug: true,
-      watchRenderer: true
-    });
-  } catch (err)
-  {
-    console.log('Error loading electron-reloader:', err);
-  }
-}
-
 function createWindow()
 {
   console.log('Creating main window...');

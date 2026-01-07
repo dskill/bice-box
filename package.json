@@ -36,9 +36,7 @@
     "build:electron": "source .venv/bin/activate && react-scripts build && electron-builder build",
     "build:electron:pi": "NODE_OPTIONS=--max_old_space_size=512 react-scripts build  && electron-builder build --linux --arm64",
     "release:publish": "react-scripts build && electron-builder build --linux --arm64 --publish always",
-    "release:patch:ci": "npm version patch -m \"chore(release): version %s\" && git push --follow-tags",
-    "farm:audio": "node scripts/generative/farm-audio.js",
-    "generate:audio": "electron . --generate"
+    "release:patch:ci": "npm version patch -m \"chore(release): version %s\" && git push --follow-tags"
   },
   "build": {
     "appId": "com.drewskillman.bicebox",
@@ -113,7 +111,6 @@
     "cross-env": "^7.0.3",
     "electron": "^36.2.1",
     "electron-builder": "^25.1.8",
-    "electron-reloader": "^1.2.3",
     "node-abi": "^4.9.0",
     "wait-on": "^8.0.0"
   },
