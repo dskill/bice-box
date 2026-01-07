@@ -1,22 +1,25 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FaSync, FaCheck, FaExclamationTriangle, FaCodeBranch } from 'react-icons/fa';
+import { FaSync, FaCheck, FaExclamationTriangle, FaCodeBranch, FaTrash } from 'react-icons/fa';
 import './App.css';
 
 const electron = window.electron;
 
-function CommitPreview({ onClose, onSuccess }) {
+function CommitPreview({ onClose, onSuccess, onDiscard }) {
     const [changedFiles, setChangedFiles] = useState([]);
     const [commitMessage, setCommitMessage] = useState('');
     const [isLoadingDiff, setIsLoadingDiff] = useState(true);
     const [isGeneratingMessage, setIsGeneratingMessage] = useState(false);
     const [isCommitting, setIsCommitting] = useState(false);
+    const [isDiscarding, setIsDiscarding] = useState(false);
     const [error, setError] = useState('');
 
     // Use refs to access callbacks without re-running effect
     const onCloseRef = useRef(onClose);
     const onSuccessRef = useRef(onSuccess);
+    const onDiscardRef = useRef(onDiscard);
     onCloseRef.current = onClose;
     onSuccessRef.current = onSuccess;
+    onDiscardRef.current = onDiscard;
 
     // Guard against React StrictMode double-mounting
     const hasRequestedDiff = useRef(false);
@@ -102,8 +105,30 @@ function CommitPreview({ onClose, onSuccess }) {
         electron.ipcRenderer.send('git-commit-and-push', commitMessage.trim());
     };
 
+    const handleDiscard = () => {
+        if (!window.confirm('Are you sure you want to discard all local changes? This cannot be undone.')) {
+            return;
+        }
+
+        setIsDiscarding(true);
+        setError('');
+
+        electron.ipcRenderer.send('discard-git-changes');
+
+        electron.ipcRenderer.once('discard-changes-success', () => {
+            setIsDiscarding(false);
+            if (onDiscardRef.current) onDiscardRef.current();
+            onCloseRef.current();
+        });
+
+        electron.ipcRenderer.once('discard-changes-error', (event, err) => {
+            setIsDiscarding(false);
+            setError(`Failed to discard changes: ${err}`);
+        });
+    };
+
     const handleKeyDown = (e) => {
-        if (e.key === 'Escape' && !isCommitting) {
+        if (e.key === 'Escape' && !isCommitting && !isDiscarding) {
             onClose();
         }
     };
@@ -111,20 +136,22 @@ function CommitPreview({ onClose, onSuccess }) {
     useEffect(() => {
         document.addEventListener('keydown', handleKeyDown);
         return () => document.removeEventListener('keydown', handleKeyDown);
-    }, [isCommitting]);
+    }, [isCommitting, isDiscarding]);
 
     const isLoading = isLoadingDiff || isGeneratingMessage;
-    const canCommit = !isLoading && !isCommitting && commitMessage.trim() && changedFiles.length > 0;
+    const isBusy = isCommitting || isDiscarding;
+    const canCommit = !isLoading && !isBusy && commitMessage.trim() && changedFiles.length > 0;
+    const canDiscard = !isLoading && !isBusy && changedFiles.length > 0;
 
     return (
         <>
-            <div className="wifi-settings-overlay" onClick={isCommitting ? undefined : onClose}></div>
+            <div className="wifi-settings-overlay" onClick={isBusy ? undefined : onClose}></div>
             <div className="wifi-settings-modal commit-preview-modal">
                 <div className="wifi-header">
                     <div className="wifi-status">
                         <div className="status-connected">
                             <FaCodeBranch className="status-icon" />
-                            <span>Commit & Push Changes</span>
+                            <span>Local Changes</span>
                         </div>
                     </div>
                 </div>
@@ -174,13 +201,24 @@ function CommitPreview({ onClose, onSuccess }) {
                     </>
                 )}
 
-                <div className="wifi-settings-button-container">
+                <div className="wifi-settings-button-container local-changes-buttons">
                     <button
                         onClick={onClose}
-                        disabled={isCommitting}
+                        disabled={isBusy}
                         className="commit-cancel-btn"
                     >
                         Cancel
+                    </button>
+                    <button
+                        onClick={handleDiscard}
+                        disabled={!canDiscard}
+                        className="commit-discard-btn"
+                    >
+                        {isDiscarding ? (
+                            <><FaSync className="spin" /> Discarding...</>
+                        ) : (
+                            <><FaTrash /> Discard</>
+                        )}
                     </button>
                     <button
                         onClick={handleCommit}

@@ -1784,3 +1784,33 @@ button:disabled {
   border-color: #ccc !important;
   cursor: not-allowed;
 }
+
+.commit-discard-btn {
+  background-color: transparent !important;
+  border: 1px solid #ef4444 !important;
+  color: #ef4444 !important;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.commit-discard-btn:hover:not(:disabled) {
+  background-color: rgba(239, 68, 68, 0.1) !important;
+}
+
+.commit-discard-btn:disabled {
+  border-color: #ccc !important;
+  color: #ccc !important;
+  cursor: not-allowed;
+}
+
+.local-changes-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.local-changes-button {
+  color: #f59e0b !important;
+  border: 1px solid #f59e0b !important;
+}

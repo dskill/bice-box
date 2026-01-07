@@ -5,7 +5,7 @@ import WifiSettings from './WifiSettings'; // Import WifiSettings
 // import BranchSelector from './BranchSelector'; // Disabled - all effects now on main
 import CommitPreview from './CommitPreview'; // Import CommitPreview
 import './App.css';
-import { FaSync, FaCheck, FaExclamationTriangle, FaDownload, FaWifi, FaCodeBranch, FaCloudUploadAlt } from 'react-icons/fa';
+import { FaSync, FaCheck, FaExclamationTriangle, FaDownload, FaWifi, FaCodeBranch } from 'react-icons/fa';
 import ReactDOM from 'react-dom';
 import QRCode from 'react-qr-code';
 
@@ -627,27 +627,6 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
         reloadEffectList();
     };
 
-    const handleDiscardChanges = () => {
-        if (!window.confirm('Are you sure you want to discard all local changes? This cannot be undone.')) {
-            return;
-        }
-
-        console.log('Discarding local changes...');
-        electron.ipcRenderer.send('discard-git-changes');
-        
-        electron.ipcRenderer.once('discard-changes-success', () => {
-            console.log('Local changes discarded successfully');
-            setHasLocalChanges(false);
-            checkLocalChanges(); // Verify
-            reloadEffectList(); // Reload effects in case files changed
-        });
-        
-        electron.ipcRenderer.once('discard-changes-error', (event, error) => {
-            console.error('Failed to discard changes:', error);
-            setErrorMessage(`Failed to discard changes: ${error}`);
-        });
-    };
-
     return (
         <div 
             className={`effect-management-modal ${isExpanded ? 'effect-management-modal--expanded' : ''}`}
@@ -672,20 +651,13 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
                     {/* Hidden but keeping code: {renderAppUpdateButton()} */}
                     {/* Hidden but keeping code: {renderSyncButton()} */}
                     
-                    {/* Show commit/discard buttons only when there are local changes */}
+                    {/* Show local changes button when there are uncommitted changes */}
                     {hasLocalChanges && (
-                        <>
-                            <Button
-                                label={<><FaCloudUploadAlt /> Commit & Push</>}
-                                onClick={() => setShowCommitPreview(true)}
-                                className="commit-push-button"
-                            />
-                            <Button
-                                label="Discard Local Changes"
-                                onClick={handleDiscardChanges}
-                                className="discard-changes-button"
-                            />
-                        </>
+                        <Button
+                            label={<><FaCodeBranch /> Local Changes</>}
+                            onClick={() => setShowCommitPreview(true)}
+                            className="local-changes-button"
+                        />
                     )}
                     
                     <Button 
@@ -765,6 +737,11 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
                     onSuccess={() => {
                         setHasLocalChanges(false);
                         checkLocalChanges();
+                    }}
+                    onDiscard={() => {
+                        setHasLocalChanges(false);
+                        checkLocalChanges();
+                        reloadEffectList();
                     }}
                 />,
                 document.body
