@@ -1401,9 +1401,24 @@ ${diffContent}`;
     let errorOutput = '';
     let hasReplied = false;
 
+    // Build extended PATH like ClaudeManager does (needed for Pi where claude is in ~/.local/bin)
+    const homeDir = os.homedir();
+    const extendedPath = [
+      process.env.PATH,
+      homeDir ? path.join(homeDir, '.local', 'bin') : null,
+      '/usr/local/bin',
+      homeDir ? path.join(homeDir, '.nvm', 'versions', 'node', 'v20.18.0', 'bin') : null,
+    ].filter(Boolean).join(path.delimiter);
+
+    const cleanEnv = {
+      ...process.env,
+      PATH: extendedPath,
+      NODE_OPTIONS: '',
+    };
+
     // Use shell with heredoc to safely pass multiline prompt with special characters
     const claude = spawn('sh', ['-c', `claude -p "$(cat)"`], {
-      env: { ...process.env },
+      env: cleanEnv,
       stdio: ['pipe', 'pipe', 'pipe']
     });
 

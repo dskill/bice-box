@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Button from './Button';
 import ToggleButton from './ToggleButton'; // Import ToggleButton
 import WifiSettings from './WifiSettings'; // Import WifiSettings
-import BranchSelector from './BranchSelector'; // Import BranchSelector
+// import BranchSelector from './BranchSelector'; // Disabled - all effects now on main
 import CommitPreview from './CommitPreview'; // Import CommitPreview
 import './App.css';
 import { FaSync, FaCheck, FaExclamationTriangle, FaDownload, FaWifi, FaCodeBranch, FaCloudUploadAlt } from 'react-icons/fa';
@@ -667,24 +667,7 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
                 <div className="effect-management__buttons">
                     {renderWifiButton()}
                     
-                    {/* Branch Selector - Show when not on Pi, or when on Pi with WiFi */}
-                    {(() => {
-                        // const hasConnectivity = !isPlatformRaspberryPi || wifiStatus.connected;
-                        // console.log('Dropdown render - isPi:', isPlatformRaspberryPi, 'wifiConnected:', wifiStatus.connected, 'hasConnectivity:', hasConnectivity, 'branches:', availableBranches.length);
-                        return null;
-                    })()}
-                    {(!isPlatformRaspberryPi || wifiStatus.connected) && availableBranches.length > 0 && (
-                        <div className="branch-selector">
-                             <Button 
-                                label={isSwitchingBranch ? <><FaSync className="spin" /> Switching...</> : <><FaCodeBranch /> {currentBranch || 'Select Branch'}</>}
-                                onClick={() => setShowBranchSelector(true)}
-                                disabled={hasLocalChanges || isSwitchingBranch}
-                            />
-                            {hasLocalChanges && (
-                                <span className="branch-warning">Local changes - cannot switch</span>
-                            )}
-                        </div>
-                    )}
+                    {/* Branch Selector - Disabled: all effects now on main branch */}
                     
                     {/* Hidden but keeping code: {renderAppUpdateButton()} */}
                     {/* Hidden but keeping code: {renderSyncButton()} */}
@@ -773,17 +756,7 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
                 document.body
             )}
 
-            {/* Render BranchSelector modal */}
-            {showBranchSelector && ReactDOM.createPortal(
-                <BranchSelector
-                    branches={availableBranches}
-                    currentBranch={currentBranch}
-                    onSelectBranch={handleBranchChange}
-                    onClose={() => setShowBranchSelector(false)}
-                    isSwitching={isSwitchingBranch}
-                />,
-                document.body
-            )}
+            {/* BranchSelector disabled - all effects now on main branch */}
 
             {/* Render CommitPreview modal */}
             {showCommitPreview && ReactDOM.createPortal(
