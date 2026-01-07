@@ -141,7 +141,7 @@ function CommitPreview({ onClose, onSuccess, onDiscard }) {
     const isLoading = isLoadingDiff || isGeneratingMessage;
     const isBusy = isCommitting || isDiscarding;
     const canCommit = !isLoading && !isBusy && commitMessage.trim() && changedFiles.length > 0;
-    const canDiscard = !isLoading && !isBusy && changedFiles.length > 0;
+    const canDiscard = !isLoadingDiff && !isBusy && changedFiles.length > 0; // Can discard once we see files, don't need commit message
 
     return (
         <>
