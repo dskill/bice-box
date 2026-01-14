@@ -244,12 +244,15 @@ function EffectSelectScreen({
             {filteredAudioItems.map((item) => {
               const isActive = item.scFilePath === currentAudioPath;
               return (
-                <div className="effect-tile-wrapper" key={item.scFilePath}> 
+                <div className="effect-tile-wrapper" key={item.scFilePath}>
                   <button
                     className={`effect-tile ${isActive ? 'active' : ''}`}
                     onClick={() => handleAudioClick(item)}
                   >
-                    <div className="effect-name">{prettifyName(item.name)}</div> 
+                    <div className="effect-name">{prettifyName(item.name)}</div>
+                    {item.description && (
+                      <div className="effect-description">{item.description}</div>
+                    )}
                   </button>
                 </div>
               );

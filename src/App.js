@@ -87,7 +87,8 @@ function App() {
         sources.set(synth.scFilePath, {
           name: synth.name,
           scFilePath: synth.scFilePath,
-          category: synth.category || 'Uncategorized'
+          category: synth.category || 'Uncategorized',
+          description: synth.description || ''
         });
       }
     });

@@ -824,7 +824,8 @@ button:active {
   position: relative;
   background: transparent;
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: flex-start;
   justify-content: flex-start;
   padding: 7px 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
@@ -878,6 +879,30 @@ button:active {
 .effect-tile.active .effect-name {
   color: rgba(255, 255, 255, 0.95);
   font-weight: 500;
+}
+
+.effect-description {
+  color: rgba(255, 255, 255, 0.35);
+  font-family: 'Aldrich', 'Inconsolata', monospace;
+  font-size: 0.85em;
+  font-weight: 400;
+  text-align: left;
+  padding-left: 8px;
+  padding-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  transition: all 0.15s ease;
+}
+
+.effect-tile:hover .effect-description {
+  color: rgba(255, 255, 255, 0.5);
+  transform: translateX(6px);
+}
+
+.effect-tile.active .effect-description {
+  color: rgba(255, 255, 255, 0.55);
 }
 
 /* Update the select-screen-button styles */
