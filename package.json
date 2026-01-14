@@ -25,6 +25,7 @@
     "zod": "^3.25.67"
   },
   "scripts": {
+    "//dev": "Preferred: run in tmux split pane with: tmux split-window -h \"npm run dev\"",
     "dev": "concurrently \"npm run dev:react\" \"wait-on -v http://127.0.0.1:3000 && npm run dev:electron\"",
     "dev:react": "cross-env BROWSER=none react-scripts start",
     "dev:electron": "cross-env NODE_ENV=development electron .",

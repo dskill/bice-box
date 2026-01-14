@@ -48,7 +48,6 @@ function CommitPreview({ onClose, onSuccess, onDiscard }) {
             setIsLoadingDiff(false);
             if (data.success) {
                 setChangedFiles(data.changedFiles);
-                // Start generating commit message with files and diff
                 generateCommitMessageFromDiff(data.diff, data.changedFiles);
             } else {
                 setError(data.error || 'Failed to get diff');
@@ -81,7 +80,6 @@ function CommitPreview({ onClose, onSuccess, onDiscard }) {
         electron.ipcRenderer.on('commit-message-reply', handleCommitMessageReply);
         electron.ipcRenderer.on('git-commit-push-reply', handleCommitPushReply);
 
-        // Request diff - only once, guarded against StrictMode double-mount
         if (!hasRequestedDiff.current) {
             hasRequestedDiff.current = true;
             electron.ipcRenderer.send('get-git-diff');
@@ -92,7 +90,7 @@ function CommitPreview({ onClose, onSuccess, onDiscard }) {
             electron.ipcRenderer.removeListener('commit-message-reply', handleCommitMessageReply);
             electron.ipcRenderer.removeListener('git-commit-push-reply', handleCommitPushReply);
         };
-    }, []); // Empty deps - only run once on mount
+    }, []);
 
     const handleCommit = () => {
         if (!commitMessage.trim()) {
@@ -127,13 +125,13 @@ function CommitPreview({ onClose, onSuccess, onDiscard }) {
         });
     };
 
-    const handleKeyDown = (e) => {
-        if (e.key === 'Escape' && !isCommitting && !isDiscarding) {
-            onClose();
-        }
-    };
-
     useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (e.key === 'Escape' && !isCommitting && !isDiscarding) {
+                onCloseRef.current();
+            }
+        };
+
         document.addEventListener('keydown', handleKeyDown);
         return () => document.removeEventListener('keydown', handleKeyDown);
     }, [isCommitting, isDiscarding]);
@@ -141,7 +139,7 @@ function CommitPreview({ onClose, onSuccess, onDiscard }) {
     const isLoading = isLoadingDiff || isGeneratingMessage;
     const isBusy = isCommitting || isDiscarding;
     const canCommit = !isLoading && !isBusy && commitMessage.trim() && changedFiles.length > 0;
-    const canDiscard = !isLoadingDiff && !isBusy && changedFiles.length > 0; // Can discard once we see files, don't need commit message
+    const canDiscard = !isLoadingDiff && !isBusy && changedFiles.length > 0;
 
     return (
         <>

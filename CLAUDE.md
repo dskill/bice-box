@@ -42,6 +42,7 @@ Controllers bypass the app entirely for zero-latency audio response. SC broadcas
 
 ## Commands
 - `npm run dev` - Development with hot reloading
+  - Preferred: run in a tmux split pane (`tmux split-window -h "npm run dev"`)
 - `npm run build:electron` - Build for Mac
 - `npm run build:electron:pi` - Build for Raspberry Pi (arm64)
 

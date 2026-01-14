@@ -7,14 +7,13 @@ import EffectManagement from './EffectManagement';
 import ClaudeConsole from './ClaudeConsole';
 import './App.css';
 
-// Add this style to your existing CSS or create a new style block
 const styles = {
   app: {
-    cursor: 'none', // Hide cursor at the React level
-    userSelect: 'none', // Prevent text selection
-    WebkitUserSelect: 'none', // For Safari
-    MozUserSelect: 'none', // For Firefox
-    msUserSelect: 'none', // For IE/Edge
+    cursor: 'none',
+    userSelect: 'none',
+    WebkitUserSelect: 'none',
+    MozUserSelect: 'none',
+    msUserSelect: 'none',
   }
 };
 
@@ -81,169 +80,127 @@ function App() {
     return () => window.removeEventListener('resize', calculateFaderLayout);
   }, [currentAudioParams]);
 
-  // --- Derived State for Selectors ---
   const audioSources = useMemo(() => {
     const sources = new Map();
     synths.forEach(synth => {
       if (synth.scFilePath && !sources.has(synth.scFilePath)) {
         sources.set(synth.scFilePath, {
-          // Use effect name primarily, but maybe just path? Or find a common name?
-          // For now, using the path as a key and storing the first associated name.
-          name: synth.name, // Or potentially just the filename? 
+          name: synth.name,
           scFilePath: synth.scFilePath,
-          category: synth.category || 'Uncategorized' // Include category for tree navigation
+          category: synth.category || 'Uncategorized'
         });
       }
     });
-    // Sort by name for consistent display
     return Array.from(sources.values()).sort((a, b) => a.name.localeCompare(b.name));
   }, [synths]);
 
   const reloadEffectList = useCallback(() => {
-    console.log("Requesting a reload of all effects...");
-    if (electron) {
-        electron.ipcRenderer.send('reload-all-effects');
-    } else {
-        console.warn('Electron is not available');
-    }
+    electron?.ipcRenderer?.send('reload-all-effects');
   }, []);
 
   useEffect(() => {
+    if (!electron) return;
+
     const handleEffectsData = (event, data) => {
-        // console.log("Received effects-data:", data); // Spam removed
-        if (Array.isArray(data)) {
-            setSynths(prevSynths => {
-                // Only set initial effect if the synths list was previously empty
-                if (prevSynths.length === 0 && data.length > 0) {
-                    const firstEffect = data[0];
-                    setCurrentAudioSource(firstEffect.scFilePath);
-                    setCurrentAudioParams(firstEffect.params || {});
-                    console.log("Initial audio effect set:", { 
-                        audio: firstEffect.scFilePath
-                    });
-                }
-                return data;
-            });
-        } else {
-            console.warn("Received invalid audio effects data", data);
+      if (!Array.isArray(data)) {
+        console.warn("Received invalid audio effects data", data);
+        return;
+      }
+
+      setSynths(prevSynths => {
+        if (prevSynths.length === 0 && data.length > 0) {
+          const firstEffect = data[0];
+          setCurrentAudioSource(firstEffect.scFilePath);
+          setCurrentAudioParams(firstEffect.params || {});
         }
+        return data;
+      });
     };
 
-    if (electron) {
-        electron.ipcRenderer.on('effects-data', handleEffectsData);
-        return () => {
-            electron.ipcRenderer.removeListener('effects-data', handleEffectsData);
-        };
-    }
+    electron.ipcRenderer.on('effects-data', handleEffectsData);
+    return () => {
+      electron.ipcRenderer.removeListener('effects-data', handleEffectsData);
+    };
   }, []);
 
   const checkEffectsRepoStatus = useCallback(async () => {
     if (!electron) return;
-    
-    setEffectsRepoStatus(prev => ({ 
-      ...prev, 
-      isChecking: true,
-      error: null
-    }));
-    
+
+    setEffectsRepoStatus(prev => ({ ...prev, isChecking: true, error: null }));
+
     try {
-      // The actual data from main.js will be the second argument to the listener
       const statusPayload = await new Promise((resolve, reject) => {
         electron.ipcRenderer.send('check-effects-repo');
-        
+
         const timeout = setTimeout(() => {
-          // Clean up listeners to prevent memory leaks if timeout occurs
           electron.ipcRenderer.removeAllListeners('effects-repo-status');
           electron.ipcRenderer.removeAllListeners('effects-repo-error');
           reject(new Error('Request to check effects repo timed out'));
-        }, 10000); // 10 second timeout
+        }, 10000);
 
         electron.ipcRenderer.once('effects-repo-status', (event, data) => {
           clearTimeout(timeout);
-          electron.ipcRenderer.removeAllListeners('effects-repo-error'); // Clean up other listener
-          console.log('App.js: Received effects-repo-status with data:', data);
+          electron.ipcRenderer.removeAllListeners('effects-repo-error');
           if (typeof data === 'object' && data !== null && typeof data.hasUpdates === 'boolean') {
-            resolve(data); // Resolve with the actual data object { hasUpdates: ... }
+            resolve(data);
           } else {
-            console.warn('App.js: Invalid data received for effects-repo-status', data);
             reject(new Error('Invalid data received for effects repo status'));
           }
         });
-        
+
         electron.ipcRenderer.once('effects-repo-error', (event, errorDetails) => {
           clearTimeout(timeout);
-          electron.ipcRenderer.removeAllListeners('effects-repo-status'); // Clean up other listener
-          console.error('App.js: Received effects-repo-error with details:', errorDetails);
-          // errorDetails is expected to be { error: errorMessage, needsAttention: true }
-          reject(errorDetails); 
+          electron.ipcRenderer.removeAllListeners('effects-repo-status');
+          reject(errorDetails);
         });
       });
 
-      console.log('App.js: Promise resolved with statusPayload:', statusPayload);
       setEffectsRepoStatus({
-        hasUpdates: Boolean(statusPayload.hasUpdates), // Now statusPayload should be the {hasUpdates: ...} object
-        lastChecked: new Date(), // Set lastChecked to now
+        hasUpdates: Boolean(statusPayload.hasUpdates),
+        lastChecked: new Date(),
         isChecking: false,
         error: null
       });
-    } catch (errorObject) { // Renamed to errorObject to avoid confusion
-      console.error('App.js: Error in checkEffectsRepoStatus catch block:', errorObject);
+    } catch (errorObject) {
+      console.error('Error checking effects repo:', errorObject);
       setEffectsRepoStatus(prev => ({
         ...prev,
         isChecking: false,
-        // If errorObject is from effects-repo-error, it has an 'error' property with the message
-        // Otherwise, it might be the timeout Error object, which has a 'message' property
         error: errorObject.error || errorObject.message || 'Failed to check for updates'
       }));
     }
   }, []);
 
-  const handleScReady = useCallback((event) => {
-    console.log('SuperCollider is ready');
-    // On SC ready, request activation via unified action by effect name
-    if (currentAudioSource && synths && synths.length > 0) {
-      const match = synths.find(s => s.scFilePath && s.scFilePath.toLowerCase() === currentAudioSource.toLowerCase());
-      if (match && electron && electron.ipcRenderer) {
+  const handleScReady = useCallback(() => {
+    if (!electron?.ipcRenderer) return;
+
+    if (currentAudioSource && synths?.length > 0) {
+      const match = synths.find(s => s.scFilePath?.toLowerCase() === currentAudioSource.toLowerCase());
+      if (match) {
         electron.ipcRenderer.send('effects/actions:set_current_effect', { name: match.name });
-        console.log(`Requested activation of effect: ${match.name}`);
       }
-    } else if (synths.length > 0) {
-      const first = synths[0];
-      if (first && electron && electron.ipcRenderer) {
-        electron.ipcRenderer.send('effects/actions:set_current_effect', { name: first.name });
-        console.log(`Requested activation of first effect: ${first.name}`);
-      }
+    } else if (synths?.length > 0) {
+      electron.ipcRenderer.send('effects/actions:set_current_effect', { name: synths[0].name });
     }
   }, [currentAudioSource, synths]);
 
   useEffect(() => {
-    // The initLoad ref is no longer needed here as the listener handles the initial setup.
     reloadEffectList();
-    checkEffectsRepoStatus()
-    .catch(err => {
+    checkEffectsRepoStatus().catch(err => {
       console.error("Failed to initialize:", err);
       setError("Failed to initialize. Check the console for more details.");
     });
   }, [reloadEffectList, checkEffectsRepoStatus]);
 
-  // Legacy event listeners removed - now using unified effects/state
-
-  const handleVisualSelect = useCallback(async (selectedVisual, options = {}) => { // Expects the full visual object
+  const handleVisualSelect = useCallback(async (selectedVisual, options = {}) => {
     const { fromMcp = false } = options;
-    if (!selectedVisual || !selectedVisual.path || !selectedVisual.type) {
-      console.log('Visual selection cancelled or invalid item');
+    if (!selectedVisual?.path || !selectedVisual?.type) {
       if (!fromMcp) setShowEffectSelector(false);
       return;
     }
 
-    const visualizerName = selectedVisual.name;
-    console.log(`Selecting visual: ${visualizerName}`);
-
-    if (electron && electron.ipcRenderer && visualizerName) {
-      // Use unified action to set current visualizer
-      electron.ipcRenderer.send('visualizers/actions:set_current_visualizer', { name: visualizerName });
-      
-      // Also send the legacy event for hot-reloading (if not from MCP)
+    if (electron?.ipcRenderer && selectedVisual.name) {
+      electron.ipcRenderer.send('visualizers/actions:set_current_visualizer', { name: selectedVisual.name });
       if (!fromMcp) {
         electron.ipcRenderer.send('set-current-visual-source', selectedVisual.path);
       }
@@ -253,210 +210,157 @@ function App() {
 
   const pullEffectsRepo = () => {
     return new Promise((resolve, reject) => {
-      if (electron) {
-        electron.ipcRenderer.send('pull-effects-repo');
-        electron.ipcRenderer.once('pull-effects-repo-success', (event, message) => {
-          console.log('Effects repo pulled successfully:', message);
-          // After pull, main.js reloads effects and sends 'effects-data' automatically.
-          // The persistent listener will update the state.
-          resolve(message);
-        });
-        electron.ipcRenderer.once('pull-effects-repo-error', (event, error) => {
-          console.error('Error pulling effects repo:', error);
-          setError(`Failed to pull effects repo: ${error}`); 
-          reject(new Error(error));
-        });
-      } else {
-        console.warn('Electron is not available for pullEffectsRepo');
+      if (!electron) {
         reject(new Error("Electron not available"));
+        return;
       }
+
+      electron.ipcRenderer.send('pull-effects-repo');
+      electron.ipcRenderer.once('pull-effects-repo-success', (event, message) => {
+        resolve(message);
+      });
+      electron.ipcRenderer.once('pull-effects-repo-error', (event, error) => {
+        console.error('Error pulling effects repo:', error);
+        setError(`Failed to pull effects repo: ${error}`);
+        reject(new Error(error));
+      });
     });
   };
 
-  // Handler for 'auto-visualizer-loaded' IPC messages (from SC file comments)
   const handleAutoVisualizerLoaded = useCallback(async (event, data) => {
-    console.log(`App.js: Received auto-visualizer-loaded. Raw data:`, data);
-    if (data && data.type && data.path && data.content !== undefined) {
-      const { type, path } = data;
-      console.log(`App.js: Auto-loading visualizer: ${path} (type: ${type})`);
-      
-      // First, get the list of visualizers to find the name
-      try {
-        const visualizers = await electron.ipcRenderer.invoke('visualizers/queries:list_visualizers');
-        if (visualizers && visualizers.visualizers) {
-          // Find the visualizer that matches this path
-          const matchingVisualizer = visualizers.visualizers.find(v => v.path === path);
-          if (matchingVisualizer) {
-            // Use the unified action to set the current visualizer
-            electron.ipcRenderer.send('visualizers/actions:set_current_visualizer', { name: matchingVisualizer.name });
-            console.log(`Auto-loaded ${type} visualizer using unified action:`, matchingVisualizer.name);
-          } else {
-            console.warn(`Could not find visualizer with path: ${path}`);
-            // Fallback to just setting visual source for hot-reloading
-            electron.ipcRenderer.send('set-current-visual-source', path);
-          }
-        } else {
-          // Fallback to just setting visual source for hot-reloading
-          electron.ipcRenderer.send('set-current-visual-source', path);
-        }
-      } catch (error) {
-        console.error('Error auto-loading visualizer:', error);
-        // Fallback to just setting visual source for hot-reloading
+    if (!data?.type || !data?.path || data.content === undefined) return;
+
+    const { path } = data;
+    try {
+      const visualizers = await electron.ipcRenderer.invoke('visualizers/queries:list_visualizers');
+      const matchingVisualizer = visualizers?.visualizers?.find(v => v.path === path);
+      if (matchingVisualizer) {
+        electron.ipcRenderer.send('visualizers/actions:set_current_visualizer', { name: matchingVisualizer.name });
+      } else {
         electron.ipcRenderer.send('set-current-visual-source', path);
       }
-    } else {
-      console.warn('App.js: Received auto-visualizer-loaded with invalid or missing data payload.', data);
+    } catch (error) {
+      console.error('Error auto-loading visualizer:', error);
+      electron.ipcRenderer.send('set-current-visual-source', path);
     }
   }, []);
 
-  // Legacy mcp-visual-source-changed listener removed - now using unified visualizers/state
-
   const handleVisualEffectUpdate = useCallback((event, payload) => {
-    if (!payload) {
-        console.warn('App.js: visual-effect-updated received no payload.');
-        return;
-    }
-    const { p5SketchPath: updatedPath, p5SketchContent } = payload; 
+    if (!payload) return;
 
-    // Only apply if this is a hot-reload update (path matches current)
-    if (currentVisualSource && currentVisualSource.toLowerCase() === updatedPath.toLowerCase()) {
-      console.log('App.js: Hot-reload p5 visual update for:', updatedPath);
+    const { p5SketchPath: updatedPath, p5SketchContent } = payload;
+    if (currentVisualSource?.toLowerCase() === updatedPath?.toLowerCase()) {
       setCurrentVisualContent(p5SketchContent);
-    } else {
-      console.log('App.js: Ignoring visual-effect-updated - likely handled by visualizers/state');
     }
   }, [currentVisualSource, setCurrentVisualContent]);
 
   const handleScErrorCallback = useCallback((event, errorData) => {
-    console.log("SC error received:", errorData);
     setScError(errorData);
   }, [setScError]);
 
   const handleShaderErrorCallback = useCallback((event, errorData) => {
-    console.log("Shader loading error received:", errorData);
     setShaderError(errorData);
   }, [setShaderError]);
 
   const handleDevModeChange = useCallback((event, newMode) => {
-    console.log('Dev mode changed:', newMode);
     setDevMode(newMode);
   }, [setDevMode]);
 
-  // This useEffect might need adjustment based on how visual updates are handled
   useEffect(() => {
-    if (electron) {
-      electron.ipcRenderer.on('visual-effect-updated', handleVisualEffectUpdate);
+    if (!electron) return;
 
-      return () => {
-        electron.ipcRenderer.removeListener('visual-effect-updated', handleVisualEffectUpdate);
-      };
-    }
+    electron.ipcRenderer.on('visual-effect-updated', handleVisualEffectUpdate);
+    return () => {
+      electron.ipcRenderer.removeListener('visual-effect-updated', handleVisualEffectUpdate);
+    };
   }, [currentVisualSource, synths, handleVisualEffectUpdate]);
 
   useEffect(() => {
-    // Add this new effect for sc-ready
-    if (electron) {
-      electron.ipcRenderer.on('sc-ready', handleScReady);
+    if (!electron) return;
 
-      return () => {
-        electron.ipcRenderer.removeListener('sc-ready', handleScReady);
-      };
-    }
+    electron.ipcRenderer.on('sc-ready', handleScReady);
+    return () => {
+      electron.ipcRenderer.removeListener('sc-ready', handleScReady);
+    };
   }, [currentAudioSource, synths, handleScReady]);
 
   useEffect(() => {
-    if (electron) {
-        electron.ipcRenderer.on('sc-compilation-error', handleScErrorCallback);
+    if (!electron) return;
 
-        return () => {
-            electron.ipcRenderer.removeListener('sc-compilation-error', handleScErrorCallback);
-        };
-    }
+    electron.ipcRenderer.on('sc-compilation-error', handleScErrorCallback);
+    return () => {
+      electron.ipcRenderer.removeListener('sc-compilation-error', handleScErrorCallback);
+    };
   }, [handleScErrorCallback]);
 
   useEffect(() => {
-    if (electron) {
-        electron.ipcRenderer.on('shader-loading-error', handleShaderErrorCallback);
+    if (!electron) return;
 
-        return () => {
-            electron.ipcRenderer.removeListener('shader-loading-error', handleShaderErrorCallback);
-        };
-    }
+    electron.ipcRenderer.on('shader-loading-error', handleShaderErrorCallback);
+    return () => {
+      electron.ipcRenderer.removeListener('shader-loading-error', handleShaderErrorCallback);
+    };
   }, [handleShaderErrorCallback]);
 
   useEffect(() => {
-    if (electron && electron.ipcRenderer) {
-      // Get initial dev mode state and platform info
-      electron.ipcRenderer.invoke('get-dev-mode').then(setDevMode);
-      electron.ipcRenderer.invoke('get-platform-info').then(setPlatformInfo);
+    if (!electron?.ipcRenderer) return;
 
-      // Listen for changes to dev mode
-      electron.ipcRenderer.on('dev-mode-changed', handleDevModeChange);
+    electron.ipcRenderer.invoke('get-dev-mode').then(setDevMode);
+    electron.ipcRenderer.invoke('get-platform-info').then(setPlatformInfo);
+    electron.ipcRenderer.on('dev-mode-changed', handleDevModeChange);
 
-      return () => {
-        electron.ipcRenderer.removeListener('dev-mode-changed', handleDevModeChange);
-      };
-    }
+    return () => {
+      electron.ipcRenderer.removeListener('dev-mode-changed', handleDevModeChange);
+    };
   }, [handleDevModeChange]);
 
-  // Subscribe to unified effects/state broadcast from main
   const lastEffectUpdateRef = useRef({ name: null, paramValues: null, timestamp: 0 });
-  
+
   useEffect(() => {
-    // Handle effects state updates from SuperCollider
+    if (!electron?.ipcRenderer) return;
+
     const handleEffectsState = (event, payload) => {
-      if (!payload || !payload.effect) return;
+      if (!payload?.effect) return;
       const { effect } = payload;
-      
-      // Debounce duplicate updates with identical parameter values
+
       const now = Date.now();
       const paramValuesStr = JSON.stringify(effect.paramValues || {});
-      if (lastEffectUpdateRef.current.name === effect.name && 
+      if (lastEffectUpdateRef.current.name === effect.name &&
           lastEffectUpdateRef.current.paramValues === paramValuesStr &&
           now - lastEffectUpdateRef.current.timestamp < 50) {
-        // Ignore duplicate parameter updates
         return;
       }
-      
+
       lastEffectUpdateRef.current = { name: effect.name, paramValues: paramValuesStr, timestamp: now };
-      
-      // Parameter updates received from SuperCollider
-      
+
       if (effect.scFilePath) setCurrentAudioSource(effect.scFilePath);
       if (effect.paramSpecs) setCurrentAudioParams(effect.paramSpecs);
-      if (effect.paramValues) {
-        // Update UI parameter values
-        setParamValues(effect.paramValues);
-      }
+      if (effect.paramValues) setParamValues(effect.paramValues);
     };
-    if (electron && electron.ipcRenderer) {
-      electron.ipcRenderer.on('effects/state', handleEffectsState);
-      return () => {
-        electron.ipcRenderer.removeListener('effects/state', handleEffectsState);
-      };
-    }
+
+    electron.ipcRenderer.on('effects/state', handleEffectsState);
+    return () => {
+      electron.ipcRenderer.removeListener('effects/state', handleEffectsState);
+    };
   }, []);
 
-  // Subscribe to unified visualizers/state broadcast from main
   const lastVisualizerUpdateRef = useRef({ name: null, timestamp: 0 });
-  
+
   useEffect(() => {
-    if (!electron || !electron.ipcRenderer) return;
-    
+    if (!electron?.ipcRenderer) return;
+
     const handleVisualizersState = (event, payload) => {
-      if (!payload || !payload.visualizer) return;
+      if (!payload?.visualizer) return;
       const { visualizer } = payload;
-      
-      // Debounce duplicate updates from multiple listeners (React StrictMode)
+
       const now = Date.now();
-      if (lastVisualizerUpdateRef.current.name === visualizer.name && 
+      if (lastVisualizerUpdateRef.current.name === visualizer.name &&
           now - lastVisualizerUpdateRef.current.timestamp < 50) {
-        console.log('App.js: Ignoring duplicate visualizers/state for:', visualizer.name);
         return;
       }
-      
+
       lastVisualizerUpdateRef.current = { name: visualizer.name, timestamp: now };
-      
+
       if (visualizer.type === 'shader') {
         setCurrentShaderPath(visualizer.path);
         setCurrentShaderContent(visualizer.content || '');
@@ -469,7 +373,7 @@ function App() {
         setCurrentShaderContent('');
       }
     };
-    
+
     electron.ipcRenderer.on('visualizers/state', handleVisualizersState);
     return () => {
       electron.ipcRenderer.removeListener('visualizers/state', handleVisualizersState);
@@ -478,39 +382,32 @@ function App() {
 
   const handleAudioSelect = useCallback((selected) => {
     if (!selected) {
-      console.log('Audio selection cancelled or invalid path');
       setShowEffectSelector(false);
       return;
     }
+
     const scFilePath = selected.scFilePath || selected;
     const effectName = selected.name;
-    console.log(`Selecting audio source: ${scFilePath}`);
     if (scFilePath) setCurrentAudioSource(scFilePath);
-    if (electron && electron.ipcRenderer && effectName) {
+    if (electron?.ipcRenderer && effectName) {
       electron.ipcRenderer.send('effects/actions:set_current_effect', { name: effectName });
     }
     setShowEffectSelector(false);
   }, [setCurrentAudioSource]);
-  
-  // Opens the combined effect selector and fetches visualizers
+
   const openEffectSelect = async () => {
-    console.log("Open Effect Selector triggered");
-    // Fetch the visualizer list
     try {
       if (electron) {
-        console.log('Fetching available visualizers...');
         const fetchedVisualizers = await electron.ipcRenderer.invoke('get-visualizers');
-        console.log('Received visualizers:', fetchedVisualizers);
-        setVisualizerList(fetchedVisualizers || []); 
+        setVisualizerList(fetchedVisualizers || []);
       }
     } catch (err) {
       console.error("Failed to fetch visualizers:", err);
-      setVisualizerList([]); // Clear list on error
+      setVisualizerList([]);
     }
     setShowEffectSelector(true);
   };
 
-  // --- Handlers for Claude Voice Interaction ---
   const handleOpenConsole = useCallback(() => {
     setIsClaudeConsoleOpen(true);
   }, []);
@@ -519,17 +416,16 @@ function App() {
     setIsClaudeConsoleOpen(false);
   }, []);
 
-  // Track Claude's responding state at the App level to handle cancellation
   const [isClaudeResponding, setIsClaudeResponding] = useState(false);
 
   const handleInteractionStart = useCallback((e) => {
-    if (e && e.preventDefault) e.preventDefault(); // Stop touch from firing mouse events
-    if (isClaudeResponding) return; // Don't record if already responding
+    e?.preventDefault();
+    if (isClaudeResponding) return;
     setIsRecording(true);
   }, [isClaudeResponding]);
 
   const handleInteractionEnd = useCallback((e) => {
-    if (e && e.preventDefault) e.preventDefault();
+    e?.preventDefault();
     setIsRecording(false);
   }, []);
 
@@ -538,95 +434,64 @@ function App() {
       setIsClaudeResponding(false);
       electron.ipcRenderer.send('cancel-claude');
     }
-  }, [electron, isClaudeResponding]);
+  }, [isClaudeResponding]);
 
-  // --- Handlers for SC/Effects ---
   const handleTranscriptionComplete = useCallback((text) => {
-    console.log("Transcription complete:", text);
-    if (electron) {
-      electron.ipcRenderer.send('send-to-claude', text);
-    }
+    electron?.ipcRenderer?.send('send-to-claude', text);
   }, []);
 
   const handleParamChange = useCallback((paramName, value) => {
-    // Re-enabled: Fixed the actual feedback loop in main.js
-    if (electron && electron.ipcRenderer) {
-      electron.ipcRenderer.send('effects/actions:set_effect_parameters', { params: { [paramName]: value } });
-    }
+    electron?.ipcRenderer?.send('effects/actions:set_effect_parameters', { params: { [paramName]: value } });
   }, []);
 
-  // Handler for 'shader-effect-updated' IPC messages (primarily for hot-reload)
   const handleShaderEffectUpdated = useCallback((event, data) => {
-    console.log('App.js: Received shader-effect-updated. Raw data:', data);
+    if (!data?.shaderPath || data.shaderContent === undefined) return;
 
-    // Validate the payload shape coming from main.js
-    if (!data || typeof data !== 'object' || data.shaderPath === undefined || data.shaderContent === undefined) {
-      console.warn('App.js: shader-effect-updated received with invalid payload.', data);
-      return;
-    }
-
-    const { shaderPath, shaderContent } = data;
-    
-    // Only apply if this is a hot-reload update (path matches current)
-    if (currentShaderPath && currentShaderPath.toLowerCase() === shaderPath.toLowerCase()) {
-      console.log('App.js: Hot-reload shader update for:', shaderPath);
-      setCurrentShaderContent(shaderContent);
-    } else {
-      console.log('App.js: Ignoring shader-effect-updated - likely handled by visualizers/state');
+    if (currentShaderPath?.toLowerCase() === data.shaderPath.toLowerCase()) {
+      setCurrentShaderContent(data.shaderContent);
     }
   }, [currentShaderPath, setCurrentShaderContent]);
 
-  // Handler for MIDI CC 117 push-to-talk events
   const handleMidiCC117 = useCallback((event, data) => {
-    console.log('App.js: Received MIDI CC117 push-to-talk:', data);
-    
-    if (data && typeof data.pressed === 'boolean') {
-      if (data.pressed) {
-        // CC 117 pressed
-        if (isClaudeResponding) {
-            // If thinking, cancel
-            console.log('MIDI CC117: Cancelling Claude request');
-            handleCancelClaude();
-        } else {
-            // If not thinking, start recording and ensure console is open
-            console.log('MIDI CC117: Starting recording');
-            if (!isClaudeConsoleOpen) {
-                setIsClaudeConsoleOpen(true);
-            }
-            setIsRecording(true);
-        }
+    if (typeof data?.pressed !== 'boolean') return;
+
+    if (data.pressed) {
+      if (isClaudeResponding) {
+        handleCancelClaude();
       } else {
-        // CC 117 released - stop recording
-        console.log('MIDI CC117: Stopping recording');
-        setIsRecording(false);
+        if (!isClaudeConsoleOpen) setIsClaudeConsoleOpen(true);
+        setIsRecording(true);
       }
+    } else {
+      setIsRecording(false);
     }
   }, [isClaudeResponding, isClaudeConsoleOpen, handleCancelClaude]);
 
-  // Effect for general IPC listeners (like settings, wifi, etc.)
   useEffect(() => {
+    if (!electron?.ipcRenderer) return;
+
     electron.ipcRenderer.on('shader-effect-updated', handleShaderEffectUpdated);
     return () => {
-        electron.ipcRenderer.removeAllListeners('shader-effect-updated');
+      electron.ipcRenderer.removeAllListeners('shader-effect-updated');
     };
   }, [handleShaderEffectUpdated]);
 
-  // Effect for auto-visualizer-loaded IPC listener
   useEffect(() => {
+    if (!electron?.ipcRenderer) return;
+
     electron.ipcRenderer.on('auto-visualizer-loaded', handleAutoVisualizerLoaded);
     return () => {
-        electron.ipcRenderer.removeAllListeners('auto-visualizer-loaded');
+      electron.ipcRenderer.removeAllListeners('auto-visualizer-loaded');
     };
   }, [handleAutoVisualizerLoaded]);
 
-  // Effect for MIDI CC 117 push-to-talk IPC listener
   useEffect(() => {
-    if (electron && electron.ipcRenderer) {
-      electron.ipcRenderer.on('midi-cc117', handleMidiCC117);
-      return () => {
-        electron.ipcRenderer.removeAllListeners('midi-cc117');
-      };
-    }
+    if (!electron?.ipcRenderer) return;
+
+    electron.ipcRenderer.on('midi-cc117', handleMidiCC117);
+    return () => {
+      electron.ipcRenderer.removeAllListeners('midi-cc117');
+    };
   }, [handleMidiCC117]);
 
   if (error) {
