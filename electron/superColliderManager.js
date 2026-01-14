@@ -788,7 +788,7 @@ async function testCompileScFile(filePath) {
         
         // Load the file, then try to create a test synth to catch runtime errors
         // We'll send multiple commands and collect all output
-        const scCommand = `("${filePath}").load; s.sync; Synth("${effectName}", [\\in_bus, 999, \\out, 999]); ("${uniqueMarker}:LOADED").postln;`;
+        const scCommand = `("${filePath}").load; fork { s.sync; Synth("${effectName}", [\\in_bus, 999, \\out, 999]); ("${uniqueMarker}:LOADED").postln; };`;
         
         let output = '';
         let errorOutput = '';
