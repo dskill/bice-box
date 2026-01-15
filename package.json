@@ -29,6 +29,7 @@
     "dev": "concurrently \"npm run dev:react\" \"wait-on -v http://127.0.0.1:3000 && npm run dev:electron\"",
     "dev:react": "cross-env BROWSER=none react-scripts start",
     "dev:electron": "cross-env NODE_ENV=development electron .",
+    "dev:debug": "concurrently \"npm run dev:react\" \"wait-on -v http://127.0.0.1:3000 && cross-env NODE_ENV=development electron . --remote-debugging-port=9222\"",
     "build:react": "react-scripts build",
     "build:react:pi": "NODE_OPTIONS=--max_old_space_size=512 npm run build:react",
     "start:electron": "cross-env electron .",

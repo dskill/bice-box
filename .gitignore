@@ -142,3 +142,6 @@ Thumbs.db
 build/
 dist/
 
+# Playwright MCP screenshots
+.playwright-mcp/
+

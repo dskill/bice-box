@@ -55,3 +55,6 @@ npm run release:publish    # Build arm64 and publish to GitHub
 ## Code Style
 - Function components with hooks, 2-space indent, single quotes
 - camelCase variables/functions, PascalCase components
+
+## Documentation
+- `docs/ui.md` - UI design guidelines, Pi display constraints (800x480), CSS performance rules, Playwright MCP setup for visual testing
