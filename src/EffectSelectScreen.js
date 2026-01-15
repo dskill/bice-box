@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, useMemo } from 'react';
+import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react';
 
 function EffectSelectScreen({
   audioItems, // Array of audio sources with category
@@ -25,6 +25,16 @@ function EffectSelectScreen({
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
+
+  // Touch scrolling state for Pi compatibility
+  const [isDragging, setIsDragging] = useState(false);
+  const hasDraggedBeyondThresholdRef = useRef(false);
+  const initialYRef = useRef(null);
+  const initialXRef = useRef(null);
+  const initialScrollTopRef = useRef(null);
+  const activeScrollContainerRef = useRef(null);
+  const lastUpdateTimeRef = useRef(0);
+  const DRAG_THRESHOLD = 15;
 
   // Derive categories from audio items
   const categories = useMemo(() => {
@@ -82,15 +92,94 @@ function EffectSelectScreen({
     }
   }, [selectedCategory, activeTab, searchQuery]);
 
+  // Touch scrolling handler for Pi compatibility - matching ClaudeConsole pattern
+  useEffect(() => {
+    const handlePointerMove = (e) => {
+      if (!isDragging || !activeScrollContainerRef.current) {
+        return;
+      }
+
+      // Throttle updates to 60fps
+      const now = performance.now();
+      if (now - lastUpdateTimeRef.current < 16) return;
+      lastUpdateTimeRef.current = now;
+
+      e.preventDefault();
+
+      const deltaY = e.clientY - initialYRef.current;
+      const deltaX = e.clientX - initialXRef.current;
+      const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+
+      // Check if we've moved beyond the drag threshold (only set once)
+      if (distance > DRAG_THRESHOLD && !hasDraggedBeyondThresholdRef.current) {
+        hasDraggedBeyondThresholdRef.current = true;
+      }
+
+      const newScrollTop = initialScrollTopRef.current - deltaY;
+
+      // Use requestAnimationFrame for smooth scrolling
+      requestAnimationFrame(() => {
+        if (activeScrollContainerRef.current) {
+          activeScrollContainerRef.current.scrollTop = newScrollTop;
+        }
+      });
+    };
+
+    const handlePointerUp = () => {
+      setIsDragging(false);
+      initialYRef.current = null;
+      initialXRef.current = null;
+      initialScrollTopRef.current = null;
+      activeScrollContainerRef.current = null;
+
+      // Reset drag threshold flag after a short delay to allow click prevention
+      setTimeout(() => {
+        hasDraggedBeyondThresholdRef.current = false;
+      }, 100);
+    };
+
+    if (isDragging) {
+      window.addEventListener('pointermove', handlePointerMove, { passive: false });
+      window.addEventListener('pointerup', handlePointerUp);
+      window.addEventListener('pointercancel', handlePointerUp);
+    }
+
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+      window.removeEventListener('pointercancel', handlePointerUp);
+    };
+  }, [isDragging]);
+
+  const handlePointerDown = useCallback((e, scrollContainerRef) => {
+    // Process all pointer events - on Pi, touch shows up as 'mouse'
+    e.preventDefault();
+    e.stopPropagation();
+
+    const scrollContainer = scrollContainerRef?.current;
+    const scrollTop = scrollContainer?.scrollTop || 0;
+
+    setIsDragging(true);
+    hasDraggedBeyondThresholdRef.current = false;
+    initialYRef.current = e.clientY;
+    initialXRef.current = e.clientX;
+    initialScrollTopRef.current = scrollTop;
+    activeScrollContainerRef.current = scrollContainer;
+    lastUpdateTimeRef.current = 0; // Reset throttle timer
+  }, []);
+
   const handleAudioClick = (item) => {
+    if (hasDraggedBeyondThresholdRef.current) return;
     onSelectAudio(item);
   };
 
   const handleVisualClick = (item) => {
+    if (hasDraggedBeyondThresholdRef.current) return;
     onSelectVisual(item);
   };
 
   const handleCategoryClick = (categoryName) => {
+    if (hasDraggedBeyondThresholdRef.current) return;
     setSelectedCategory(categoryName);
     setSearchQuery(''); // Clear search when selecting category
     setIsSearching(false);
@@ -98,6 +187,7 @@ function EffectSelectScreen({
   };
 
   const handleTabClick = (tab) => {
+    if (hasDraggedBeyondThresholdRef.current) return;
     setActiveTab(tab);
     setSearchQuery(''); // Clear search when switching tabs
     setIsSearching(false);
@@ -115,6 +205,7 @@ function EffectSelectScreen({
   };
 
   const handleSearchClear = () => {
+    if (hasDraggedBeyondThresholdRef.current) return;
     setSearchQuery('');
     setIsSearching(false);
   };
@@ -126,6 +217,7 @@ function EffectSelectScreen({
   };
 
   const handleBackgroundClick = (e) => {
+    if (hasDraggedBeyondThresholdRef.current) return;
     if (e.target.classList.contains('effect-select-screen')) {
       onClose();
     }
@@ -179,7 +271,12 @@ function EffectSelectScreen({
         {activeTab === 'audio' ? (
           <>
             {/* Category sidebar */}
-            <div className="effect-categories-sidebar" ref={categoriesListRef}>
+            <div
+              className="effect-categories-sidebar"
+              ref={categoriesListRef}
+              onPointerDown={(e) => handlePointerDown(e, categoriesListRef)}
+              style={{ touchAction: 'none', cursor: isDragging ? 'grabbing' : 'default' }}
+            >
               {categories.map((category) => {
                 const isSelected = category.name === selectedCategory && !isSearching;
                 return (
@@ -196,14 +293,19 @@ function EffectSelectScreen({
             </div>
 
             {/* Effects list */}
-            <div className="effect-list-container" ref={effectsListRef}>
+            <div className="effect-list-container">
               <div className="effect-list-header">
                 <span className="effect-list-title">
                   {isSearching ? `Results for "${searchQuery}"` : selectedCategory}
                 </span>
                 <span className="effect-list-count">{effectCount} effects</span>
               </div>
-              <div className="effect-list">
+              <div
+                className="effect-list"
+                ref={effectsListRef}
+                onPointerDown={(e) => handlePointerDown(e, effectsListRef)}
+                style={{ touchAction: 'none', cursor: isDragging ? 'grabbing' : 'default' }}
+              >
                 {filteredAudioItems.map((item) => {
                   const isActive = item.scFilePath === currentAudioPath;
                   return (
@@ -229,12 +331,17 @@ function EffectSelectScreen({
           </>
         ) : (
           /* Visual effects - full width list */
-          <div className="effect-list-container visual-full-width" ref={effectsListRef}>
+          <div className="effect-list-container visual-full-width">
             <div className="effect-list-header">
               <span className="effect-list-title">Visual Effects</span>
               <span className="effect-list-count">{effectCount} effects</span>
             </div>
-            <div className="effect-list">
+            <div
+              className="effect-list"
+              ref={effectsListRef}
+              onPointerDown={(e) => handlePointerDown(e, effectsListRef)}
+              style={{ touchAction: 'none', cursor: isDragging ? 'grabbing' : 'default' }}
+            >
               {(visualItems || []).map((item) => {
                 const isActive = item.path === currentVisualPath;
                 return (
