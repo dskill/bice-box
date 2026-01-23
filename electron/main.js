@@ -415,9 +415,6 @@ function createWindow()
     // Set up file watcher for hot reloading
     setupEffectsWatcher();
 
-    // Check for updates periodically
-    checkForAppUpdate();
-
     // Initialize Claude manager
     initializeClaudeManager();
     
