@@ -45,9 +45,20 @@ const {
 const wifi = require('node-wifi');
 const { startHttpServer, stopHttpServer, broadcast } = require('./httpServer');
 
+// Auto-updater (production only)
+let initAutoUpdater = null;
+const isDevelopment = process.env.NODE_ENV === 'development';
+if (!isDevelopment) {
+  try {
+    const autoUpdaterModule = require('./autoUpdater');
+    initAutoUpdater = autoUpdaterModule.initAutoUpdater;
+  } catch (err) {
+    console.log('[AutoUpdater] Not available:', err.message);
+  }
+}
+
 let mainWindow;
 let oscManager;
-let updateAvailable = false;
 let devMode = false;
 
 let activeAudioSourcePath = null; // To store the path of the user-selected audio effect
@@ -453,6 +464,11 @@ app.whenReady().then(() =>
     // Not headless test, so proceed with window creation and other modes
     createWindow();
     console.log('Window creation initiated.');
+
+    // Initialize auto-updater (production only)
+    if (initAutoUpdater && mainWindow) {
+      initAutoUpdater(mainWindow);
+    }
 
     // Start the MCP HTTP server
     const getState = {
@@ -1569,104 +1585,6 @@ ipcMain.on('get-version', (event) =>
 {
   console.log("Sending version:", appVersion);
   event.reply('version-reply', appVersion);
-});
-
-async function checkForAppUpdate()
-{
-  let latestVersion;
-  try
-  {
-    // First try GitHub API
-    const response = await axios.get(`https://api.github.com/repos/dskill/bice-box/releases/latest`);
-    latestVersion = response.data.tag_name.replace('v', '');
-    const currentVersion = packageJson.version;
-
-    console.log(`Checking app version: current=${currentVersion}, latest=${latestVersion}`);
-    updateAvailable = compareVersions(currentVersion, latestVersion) === 'smaller';
-  } catch (error)
-  {
-    console.log('GitHub API failed or rate limited, trying alternative method...');
-    try
-    {
-      // Fallback to getting redirect URL of latest release
-      const response = await axios.get('https://github.com/dskill/bice-box/releases/latest', {
-        maxRedirects: 0,
-        validateStatus: status => status >= 200 && status < 400
-      });
-
-      // Extract version from the redirect URL
-      const redirectUrl = response.request.res.responseUrl || response.headers.location;
-      latestVersion = redirectUrl.split('/').pop().replace('v', '');
-      const currentVersion = packageJson.version;
-
-      if (!latestVersion)
-      {
-        throw new Error('Could not extract version from redirect URL');
-      }
-
-      console.log(`Checking app version (fallback method): current=${currentVersion}, latest=${latestVersion}`);
-      updateAvailable = compareVersions(currentVersion, latestVersion) === 'smaller';
-    } catch (fallbackError)
-    {
-      console.error('Error checking for app update (both methods failed):', fallbackError);
-      return false;
-    }
-  }
-
-  if (mainWindow && mainWindow.webContents)
-  {
-    mainWindow.webContents.send('app-update-status', {
-      hasUpdate: updateAvailable,
-      currentVersion: packageJson.version,
-      latestVersion
-    });
-  }
-
-  return updateAvailable;
-}
-
-function compareVersions(current, latest)
-{
-  if (current === latest) return 'equal';
-  const currentParts = current.split('.').map(Number);
-  const latestParts = latest.split('.').map(Number);
-
-  for (let i = 0; i < 3; i++)
-  {
-    if (currentParts[i] < latestParts[i]) return 'smaller';
-    if (currentParts[i] > latestParts[i]) return 'greater';
-  }
-  return 'equal';
-}
-
-// Add these IPC handlers
-ipcMain.on('check-app-update', async (event) =>
-{
-  await checkForAppUpdate();
-});
-
-ipcMain.on('update-app', async (event) =>
-{
-  const command = process.platform === 'darwin' ?
-    'curl -L https://raw.githubusercontent.com/dskill/bice-box/main/scripts/install.sh | bash -s -- -r' :
-    'curl -L https://raw.githubusercontent.com/dskill/bice-box/main/scripts/install.sh | bash -s -- -r';
-
-  console.log('Updating app with command:', command);
-  // TODO: actually figure out if an error occurred and report it
-  exec(command, (error, stdout, stderr) =>
-  {
-    if (error)
-    {
-      console.error('Error updating app:', error);
-      event.reply('app-update-error', error.message);
-    } else
-    {
-      console.log('App update initiated:', stdout);
-    }
-  });
-
-  app.exit(0);
-
 });
 
 ipcMain.on('quit-app', () =>

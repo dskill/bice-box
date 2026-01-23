@@ -21,8 +21,13 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
     const [ipAddress, setIpAddress] = useState('');
     const [version, setVersion] = useState('');
     const [isPulling, setIsPulling] = useState(false);
-    const [appUpdateStatus, setAppUpdateStatus] = useState({ hasUpdate: false, currentVersion: '', latestVersion: '' });
-    const [isUpdatingApp, setIsUpdatingApp] = useState(false);
+    // Auto-update state: 'idle' | 'checking' | 'available' | 'downloading' | 'ready' | 'error'
+    const [autoUpdateState, setAutoUpdateState] = useState({
+        status: 'idle',
+        version: null,
+        downloadPercent: 0,
+        error: null
+    });
     const [hasUpdates, setHasUpdates] = useState(false);
     const [showWifiSettings, setShowWifiSettings] = useState(false);
     const [wifiStatus, setWifiStatus] = useState({ connected: false, ssid: null });
@@ -71,23 +76,24 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
     useEffect(() => {
         if (!electron || !electron.ipcRenderer) return;
 
-        const handleAppUpdateStatus = (event, status) => {
-            setAppUpdateStatus(status);
-            setIsUpdatingApp(false);
+        const handleAutoUpdateStatus = (event, data) => {
+            const { status, version, percent, message, currentVersion } = data;
+            setAutoUpdateState(prev => ({
+                ...prev,
+                status: status || prev.status,
+                version: version || prev.version,
+                downloadPercent: percent || 0,
+                error: status === 'error' ? message : null
+            }));
+            if (status === 'error') {
+                setErrorMessage(`App update failed: ${message}`);
+            }
         };
 
-        const handleAppUpdateError = (event, error) => {
-            setErrorMessage(`App update failed: ${error}`);
-            setIsUpdatingApp(false);
-        };
-
-        electron.ipcRenderer.on('app-update-status', handleAppUpdateStatus);
-        electron.ipcRenderer.on('app-update-error', handleAppUpdateError);
-        electron.ipcRenderer.send('check-app-update');
+        electron.ipcRenderer.on('auto-update-status', handleAutoUpdateStatus);
 
         return () => {
-            electron.ipcRenderer.removeListener('app-update-status', handleAppUpdateStatus);
-            electron.ipcRenderer.removeListener('app-update-error', handleAppUpdateError);
+            electron.ipcRenderer.removeListener('auto-update-status', handleAutoUpdateStatus);
         };
     }, []);
 
@@ -289,19 +295,32 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
             });
     };
 
-    const handleUpdateApp = () => {
-        setIsUpdatingApp(true);
-        electron.ipcRenderer.send('update-app');
+    const handleCheckUpdate = async () => {
+        if (!electron?.ipcRenderer) return;
+        setAutoUpdateState(prev => ({ ...prev, status: 'checking' }));
+        try {
+            await electron.ipcRenderer.invoke('check-for-updates');
+        } catch (err) {
+            setAutoUpdateState(prev => ({ ...prev, status: 'error', error: err.message }));
+        }
+    };
+
+    const handleDownloadUpdate = async () => {
+        if (!electron?.ipcRenderer) return;
+        try {
+            await electron.ipcRenderer.invoke('download-update');
+        } catch (err) {
+            setAutoUpdateState(prev => ({ ...prev, status: 'error', error: err.message }));
+        }
+    };
+
+    const handleInstallUpdate = () => {
+        if (!electron?.ipcRenderer) return;
+        electron.ipcRenderer.invoke('install-update');
     };
 
     const handleQuit = () => {
         electron?.ipcRenderer?.send('quit-app');
-    };
-
-    const handleCheckUpdate = () => {
-        setIsUpdatingApp(true);
-        electron.ipcRenderer.send('check-app-update');
-        setTimeout(() => setIsUpdatingApp(false), 5000);
     };
 
     const renderSyncButton = () =>
@@ -357,36 +376,57 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
         );
     };
 
-    const renderAppUpdateButton = () =>
-    {
-        if (isUpdatingApp)
-        {
-            return (
-                <Button
-                    label={<><FaSync className="spin" /> Checking for Updates...</>}
-                    disabled={true}
-                />
-            );
-        }
+    const renderAppUpdateButton = () => {
+        const { status, version, downloadPercent } = autoUpdateState;
 
-        if (appUpdateStatus.hasUpdate)
-        {
-            return (
-                <Button
-                    //onClick={handleUpdateApp}
-                    label={<><FaDownload /> Reboot to Apply</>}
-                    className="update-available"
-                />
-            );
+        switch (status) {
+            case 'checking':
+                return (
+                    <Button
+                        label={<><FaSync className="spin" /> Checking for Updates...</>}
+                        disabled={true}
+                    />
+                );
+            case 'available':
+                return (
+                    <Button
+                        onClick={handleDownloadUpdate}
+                        label={<><FaDownload style={{ color: '#ff8c00' }} /> Download v{version}</>}
+                        className="update-available"
+                    />
+                );
+            case 'downloading':
+                return (
+                    <Button
+                        label={<><FaSync className="spin" /> Downloading {downloadPercent}%</>}
+                        disabled={true}
+                    />
+                );
+            case 'ready':
+                return (
+                    <Button
+                        onClick={handleInstallUpdate}
+                        label={<><FaDownload style={{ color: '#4CAF50' }} /> Install &amp; Restart</>}
+                        className="update-ready"
+                    />
+                );
+            case 'error':
+                return (
+                    <Button
+                        label={<><FaExclamationTriangle /> Update Failed - Retry</>}
+                        onClick={handleCheckUpdate}
+                        className="error-button"
+                    />
+                );
+            default: // 'idle'
+                return (
+                    <Button
+                        label={<><FaCheck /> App Up to Date</>}
+                        onClick={handleCheckUpdate}
+                        className="up-to-date"
+                    />
+                );
         }
-
-        return (
-            <Button
-                label={<><FaCheck /> App Up to Date</>}
-                onClick={handleCheckUpdate}
-                className="up-to-date"
-            />
-        );
     };
 
     const renderWifiButton = () => (
@@ -408,14 +448,15 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
         if (!isExpanded) return;
 
         refreshIpAddress();
-        electron?.ipcRenderer?.send('check-app-update');
+        handleCheckUpdate();
         onCheckEffectsRepo();
         checkLocalChanges();
     }, [isExpanded]);
 
     useEffect(() => {
-        setHasUpdates(effectsRepoStatus.hasUpdates || appUpdateStatus.hasUpdate);
-    }, [effectsRepoStatus.hasUpdates, appUpdateStatus.hasUpdate]);
+        const hasAppUpdate = autoUpdateState.status === 'available' || autoUpdateState.status === 'ready';
+        setHasUpdates(effectsRepoStatus.hasUpdates || hasAppUpdate);
+    }, [effectsRepoStatus.hasUpdates, autoUpdateState.status]);
 
     const handleWifiButtonClick = () => setShowWifiSettings(true);
 
@@ -448,12 +489,12 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
             <div className={`effect-management__content ${isExpanded ? 'effect-management__content--expanded' : ''}`}>
                 <div className="effect-management__buttons">
                     {renderWifiButton()}
-                    
+
                     {/* Branch Selector - Disabled: all effects now on main branch */}
-                    
-                    {/* Hidden but keeping code: {renderAppUpdateButton()} */}
+
+                    {renderAppUpdateButton()}
                     {/* Hidden but keeping code: {renderSyncButton()} */}
-                    
+
                     {/* Show local changes button when there are uncommitted changes */}
                     {hasLocalChanges && (
                         <Button

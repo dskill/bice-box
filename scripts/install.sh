@@ -33,7 +33,7 @@ case "$OS" in
         ;;
     "Linux")
         if [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then
-            BUILD_SUFFIX="-arm64.zip"
+            BUILD_SUFFIX="-arm64.AppImage"
             echo ">> Detected Linux ARM64 (Raspberry Pi)"
         else
             echo "!! This application only supports Raspberry Pi (ARM64)"
@@ -61,8 +61,15 @@ version_compare() {
 
 # Check if app is already installed and get current version
 CURRENT_VERSION=""
-if [ -f "$INSTALL_DIR/$APP_NAME" ]; then
-    CURRENT_VERSION=$("$INSTALL_DIR/$APP_NAME" --version 2>/dev/null || echo "")
+EXISTING_EXECUTABLE=""
+# Check for AppImage first, then regular binary
+if [ -f "$INSTALL_DIR/$APP_NAME.AppImage" ]; then
+    EXISTING_EXECUTABLE="$INSTALL_DIR/$APP_NAME.AppImage"
+    CURRENT_VERSION=$("$EXISTING_EXECUTABLE" --version 2>/dev/null || echo "")
+    echo ">> Current version: ${CURRENT_VERSION:-unknown}"
+elif [ -f "$INSTALL_DIR/$APP_NAME" ]; then
+    EXISTING_EXECUTABLE="$INSTALL_DIR/$APP_NAME"
+    CURRENT_VERSION=$("$EXISTING_EXECUTABLE" --version 2>/dev/null || echo "")
     echo ">> Current version: ${CURRENT_VERSION:-unknown}"
 fi
 
@@ -97,18 +104,18 @@ if [ ! -z "$CURRENT_VERSION" ]; then
         echo ">> You already have the latest version installed!"
         if [ "$RUN_AFTER_INSTALL" = true ]; then
             echo "[INFO] Starting $APP_NAME..."
-            "$INSTALL_DIR/$APP_NAME"
+            "$EXISTING_EXECUTABLE"
         else
-            echo "[INFO] To run the application, use: $INSTALL_DIR/$APP_NAME"
+            echo "[INFO] To run the application, use: $EXISTING_EXECUTABLE"
         fi
         exit 0
     elif [ "$COMPARE_RESULT" = "greater" ]; then
         echo "!! Your installed version is newer than the latest release"
         if [ "$RUN_AFTER_INSTALL" = true ]; then
             echo "[INFO] Starting $APP_NAME..."
-            "$INSTALL_DIR/$APP_NAME"
+            "$EXISTING_EXECUTABLE"
         else
-            echo "[INFO] To run the application, use: $INSTALL_DIR/$APP_NAME"
+            echo "[INFO] To run the application, use: $EXISTING_EXECUTABLE"
         fi
         exit 0
     fi
@@ -135,18 +142,29 @@ fi
 echo ">> Creating installation directory..."
 mkdir -p "$INSTALL_DIR"
 
-# Unzip the application
-echo ">> Extracting files..."
-unzip -o "$TMP_FILE" -d "$INSTALL_DIR"
+# Install based on file type
+if [[ "$BUILD_SUFFIX" == *.AppImage ]]; then
+    # AppImage: move and make executable
+    echo ">> Installing AppImage..."
+    mv "$TMP_FILE" "$INSTALL_DIR/$APP_NAME.AppImage"
+    chmod +x "$INSTALL_DIR/$APP_NAME.AppImage"
 
-# Clean up
-echo ">> Cleaning up..."
-rm "$TMP_FILE"
+    # Create symlink for convenience
+    ln -sf "$INSTALL_DIR/$APP_NAME.AppImage" "$INSTALL_DIR/$APP_NAME"
+
+    EXECUTABLE="$INSTALL_DIR/$APP_NAME.AppImage"
+else
+    # ZIP: extract as before
+    echo ">> Extracting files..."
+    unzip -o "$TMP_FILE" -d "$INSTALL_DIR"
+    rm "$TMP_FILE"
+    EXECUTABLE="$INSTALL_DIR/$APP_NAME"
+fi
 
 echo "[INFO] Installation complete! You can find $APP_NAME in $INSTALL_DIR"
 if [ "$RUN_AFTER_INSTALL" = true ]; then
     echo "[INFO] Starting $APP_NAME..."
-    "$INSTALL_DIR/$APP_NAME"
+    "$EXECUTABLE"
 else
-    echo "[INFO] To run the application, use: $INSTALL_DIR/$APP_NAME"
+    echo "[INFO] To run the application, use: $EXECUTABLE"
 fi 

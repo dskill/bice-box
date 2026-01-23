@@ -5,6 +5,7 @@
   "version": "0.1.215",
   "private": true,
   "dependencies": {
+    "electron-updater": "^6.3.9",
     "@google/genai": "^0.13.0",
     "@modelcontextprotocol/sdk": "^1.13.2",
     "@use-gesture/react": "^10.3.1",
@@ -58,10 +59,12 @@
     },
     "linux": {
       "target": [
-        "zip"
+        {
+          "target": "AppImage",
+          "arch": ["arm64"]
+        }
       ],
       "category": "Audio",
-      "defaultArch": "arm64",
       "artifactName": "${productName}-${version}-${arch}.${ext}",
       "icon": "assets/icon.png",
       "asarUnpack": [
@@ -77,8 +80,8 @@
         "zip"
       ],
       "hardenedRuntime": true,
-      "entitlements": "build/entitlements.mac.plist",
-      "entitlementsInherit": "build/entitlements.mac.plist",
+      "entitlements": "assets/entitlements.mac.plist",
+      "entitlementsInherit": "assets/entitlements.mac.plist",
       "extendInfo": {
         "NSMicrophoneUsageDescription": "This app requires microphone access for audio input."
       },
