@@ -85,11 +85,7 @@ ipcMain.handle('download-update', async () => {
 });
 
 ipcMain.handle('install-update', () => {
-  // On Linux/AppImage, quitAndInstall doesn't always relaunch properly
-  // Use app.relaunch() to ensure restart
-  if (process.platform === 'linux') {
-    app.relaunch();
-  }
+  // quitAndInstall: first param is isSilent, second is isForceRunAfter
   autoUpdater.quitAndInstall(false, true);
 });
 
