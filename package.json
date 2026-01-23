@@ -2,7 +2,7 @@
   "name": "bice-box",
   "main": "electron/main.js",
   "homepage": ".",
-  "version": "0.1.215",
+  "version": "0.1.216",
   "private": true,
   "dependencies": {
     "electron-updater": "^6.3.9",
@@ -61,7 +61,9 @@
       "target": [
         {
           "target": "AppImage",
-          "arch": ["arm64"]
+          "arch": [
+            "arm64"
+          ]
         }
       ],
       "category": "Audio",
