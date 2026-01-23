@@ -129,14 +129,22 @@ console.log = function ()
 {
   logStream.write(util.format.apply(null, arguments) + '\n');
   addToLogBuffer('LOG', ...arguments); // Add to our buffer
-  originalConsoleLog.apply(console, arguments);
+  try {
+    originalConsoleLog.apply(console, arguments);
+  } catch (e) {
+    // Ignore EPIPE errors from broken pipes (prevents runaway log loops)
+  }
 };
 
 console.error = function ()
 {
   logStream.write('ERROR: ' + util.format.apply(null, arguments) + '\n');
   addToLogBuffer('ERROR', ...arguments); // Add to our buffer
-  originalConsoleError.apply(console, arguments);
+  try {
+    originalConsoleError.apply(console, arguments);
+  } catch (e) {
+    // Ignore EPIPE errors from broken pipes (prevents runaway log loops)
+  }
 };
 
 // Also override console.warn
@@ -145,7 +153,11 @@ console.warn = function ()
 {
   logStream.write('WARN: ' + util.format.apply(null, arguments) + '\n');
   addToLogBuffer('WARN', ...arguments); // Add to our buffer
-  originalConsoleWarn.apply(console, arguments);
+  try {
+    originalConsoleWarn.apply(console, arguments);
+  } catch (e) {
+    // Ignore EPIPE errors from broken pipes (prevents runaway log loops)
+  }
 };
 
 function getEffectsPath()
