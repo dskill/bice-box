@@ -39,12 +39,16 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: bice-box-pi-arm64
-        path: dist/*.zip
+        path: |
+          dist/*.AppImage
+          dist/latest-linux-arm64.yml
 
     - name: Create GitHub Release
       if: startsWith(github.ref, 'refs/tags/v')
       uses: softprops/action-gh-release@v1
       with:
-        files: dist/*.zip
+        files: |
+          dist/*.AppImage
+          dist/latest-linux-arm64.yml
         draft: false
         prerelease: false
