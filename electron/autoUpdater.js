@@ -1,5 +1,5 @@
 const { autoUpdater } = require('electron-updater');
-const { ipcMain } = require('electron');
+const { ipcMain, app } = require('electron');
 
 let mainWindow = null;
 
@@ -85,6 +85,11 @@ ipcMain.handle('download-update', async () => {
 });
 
 ipcMain.handle('install-update', () => {
+  // On Linux/AppImage, quitAndInstall doesn't always relaunch properly
+  // Use app.relaunch() to ensure restart
+  if (process.platform === 'linux') {
+    app.relaunch();
+  }
   autoUpdater.quitAndInstall(false, true);
 });
 
