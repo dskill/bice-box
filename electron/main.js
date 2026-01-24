@@ -6,7 +6,8 @@ const { app, BrowserWindow, ipcMain } = require('electron');
 // Determine if we're in development mode
 const isDev = process.env.NODE_ENV === 'development';
 
-if (!isDev) {
+// Only apply Pi-specific GPU flags on Linux (not Mac/Windows)
+if (!isDev && process.platform === 'linux') {
   app.commandLine.appendSwitch('use-gl', 'angle');          // Use ANGLE for GL implementation
   app.commandLine.appendSwitch('use-angle', 'gles');         // Tell ANGLE to use native GLES backend
   app.commandLine.appendSwitch('ignore-gpu-blocklist');   // Pi's VC4 is black-listed
