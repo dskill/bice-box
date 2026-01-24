@@ -110,7 +110,7 @@ function startHttpServer(getState) {
                             },
                             {
                                 name: 'list_effects',
-                                description: 'List all available audio effect presets.',
+                                description: 'List all available audio effect presets with their categories and descriptions.',
                                 inputSchema: {
                                     type: 'object',
                                     properties: {}
@@ -445,9 +445,13 @@ async function handleToolCall(params, getState) {
                     };
                 }
                 
-                const effectNames = synthsArray.map(s => s.name);
+                const effects = synthsArray.map(s => ({
+                    name: s.name,
+                    category: s.category || 'Uncategorized',
+                    description: s.description || ''
+                }));
                 return {
-                    content: [{ type: 'text', text: JSON.stringify(effectNames, null, 2) }]
+                    content: [{ type: 'text', text: JSON.stringify(effects, null, 2) }]
                 };
             } catch (error) {
                 console.error('[MCP] Error in list_effects:', error);
