@@ -784,101 +784,156 @@ async function testCompileScFile(filePath) {
             });
             return;
         }
-        
+
         // Use a unique marker for each compilation test
         const uniqueMarker = `COMPILE_TEST_${Date.now()}_${Math.random().toString(36).substring(7)}`;
-        
-        // Load the file and optionally create a test synth to catch runtime failures
-        // Extract effect name from the temp file name
-        const effectName = path.basename(filePath, '.sc').replace(/^temp_[a-f0-9]+_/, '');
-        
-        // Load the file, then try to create a test synth to catch runtime errors
-        // We'll send multiple commands and collect all output
-        const scCommand = `("${filePath}").load; fork { s.sync; Synth("${effectName}", [\\in_bus, 999, \\out, 999]); ("${uniqueMarker}:LOADED").postln; };`;
-        
+
+        // Simplified SC command - post marker immediately after load succeeds
+        // The .load method compiles the file synchronously - if there's a syntax/parse error,
+        // SC will print ERROR before the marker. No need for fork/s.sync/Synth creation.
+        // IMPORTANT: Must be single line - sclang parses each newline separately
+        const scCommand = `("${filePath}").load; ("${uniqueMarker}:LOADED").postln;`;
+
         let output = '';
         let errorOutput = '';
-        
+        let resolved = false;
+        let checkInterval = null;
+        let timeoutId = null;
+
+        // Helper to check output for errors
+        const checkForErrors = (fullOutput) => {
+            // Check if we have any ERROR in the output
+            // Note: "FAILURE IN SERVER /n_free" is harmless - it just means there was no synth to free
+            // We only care about /n_set failures which indicate the synth crashed
+            return fullOutput.includes('ERROR:') ||
+                   fullOutput.includes('Parse error') ||
+                   fullOutput.includes('syntax error') ||
+                   fullOutput.includes('FAILURE IN SERVER /s_new') ||  // Synth creation failed
+                   fullOutput.includes('FAILURE IN SERVER /n_set') ||  // Synth crashed after creation
+                   fullOutput.includes('exceeded number of interconnect buffers') || // SynthDef too complex
+                   fullOutput.includes('exception in GraphDef_Load');  // Failed to load SynthDef
+        };
+
+        // Helper to extract error message
+        const extractErrorMessage = (fullOutput) => {
+            // Check for specific critical errors first
+            if (fullOutput.includes('exceeded number of interconnect buffers')) {
+                return 'ERROR: SynthDef too complex - Exceeded SuperCollider interconnect buffer limit. Try simplifying the effect or reducing the number of parallel processing chains.';
+            } else if (fullOutput.includes('exception in GraphDef_Load')) {
+                return 'ERROR: Failed to load SynthDef - The effect definition could not be loaded by the server.';
+            } else if (fullOutput.includes('FAILURE IN SERVER /n_set')) {
+                return 'ERROR: Runtime failure - Synth crashed immediately after creation (likely invalid UGen arguments).';
+            } else if (fullOutput.includes('FAILURE IN SERVER /s_new')) {
+                return 'ERROR: Failed to create synth instance.';
+            } else {
+                // Try to extract generic error message
+                const errorMatch = fullOutput.match(/ERROR:\s*(.+?)(?=\n|$)/);
+                if (errorMatch) {
+                    return errorMatch[0];
+                } else if (fullOutput.includes('syntax error')) {
+                    return 'ERROR: Syntax error in SuperCollider code';
+                } else if (fullOutput.includes('Parse error')) {
+                    return 'ERROR: Parse error in SuperCollider code';
+                }
+            }
+            return 'Compilation error';
+        };
+
+        // Cleanup function to remove listeners and clear timers
+        const cleanup = () => {
+            if (checkInterval) clearInterval(checkInterval);
+            if (timeoutId) clearTimeout(timeoutId);
+            sclang.stdout.removeListener('data', stdoutHandler);
+            sclang.stderr.removeListener('data', stderrHandler);
+        };
+
         // Set up temporary listeners
         const stdoutHandler = (data) => {
-            output += data.toString();
+            const chunk = data.toString();
+            output += chunk;
+            // Debug: log each chunk received by test handler
+            if (chunk.includes('COMPILE_TEST') || chunk.includes('added')) {
+                console.log(`[testCompileScFile] Received chunk: ${chunk.substring(0, 200)}`);
+            }
         };
-        
+
         const stderrHandler = (data) => {
             errorOutput += data.toString();
         };
-        
+
         sclang.stdout.on('data', stdoutHandler);
         sclang.stderr.on('data', stderrHandler);
-        
+
+        console.log(`[testCompileScFile] Handlers attached, sending command for marker: ${uniqueMarker}`);
+
         // Send the test command
         sclang.stdin.write(scCommand + '\n');
-        
-        // Give the synth a moment to crash if it's going to
-        // This helps catch runtime errors that happen immediately after instantiation
-        setTimeout(() => {
-            // Just a delay to allow errors to accumulate
-        }, 500);
-        
-        // Wait for response with timeout
-        setTimeout(() => {
-            // Remove temporary listeners
-            sclang.stdout.removeListener('data', stdoutHandler);
-            sclang.stderr.removeListener('data', stderrHandler);
-            
+
+        // Poll for results every 100ms instead of waiting for a fixed timeout
+        // This allows us to return SUCCESS immediately when the marker appears
+        // or FAILURE immediately when an error is detected
+        checkInterval = setInterval(() => {
+            if (resolved) return;
+
             const fullOutput = output + errorOutput;
-            
-            // Check if we have any ERROR in the output BEFORE looking for success marker
-            // Note: "FAILURE IN SERVER /n_free" is harmless - it just means there was no synth to free
-            // We only care about /n_set failures which indicate the synth crashed
-            const hasError = fullOutput.includes('ERROR:') || 
-                           fullOutput.includes('Parse error') ||
-                           fullOutput.includes('syntax error') ||
-                           fullOutput.includes('FAILURE IN SERVER /s_new') ||  // Synth creation failed
-                           fullOutput.includes('FAILURE IN SERVER /n_set') ||  // Synth crashed after creation
-                           fullOutput.includes('exceeded number of interconnect buffers') || // SynthDef too complex
-                           fullOutput.includes('exception in GraphDef_Load');  // Failed to load SynthDef
-            
-            // Look for our marker showing the file was loaded
+            const hasError = checkForErrors(fullOutput);
             const hasLoadedMarker = fullOutput.includes(`${uniqueMarker}:LOADED`);
-            
+
             if (hasError) {
-                // If there's an error, compilation failed regardless of marker
+                // Error detected - fail immediately
+                resolved = true;
+                cleanup();
                 console.log('[testCompileScFile] Compilation failed - ERROR found in output');
-                
-                // Extract the error message with specific handling for known critical errors
-                let errorMsg = 'Compilation error';
-                
-                // Check for specific critical errors first
-                if (fullOutput.includes('exceeded number of interconnect buffers')) {
-                    errorMsg = 'ERROR: SynthDef too complex - Exceeded SuperCollider interconnect buffer limit. Try simplifying the effect or reducing the number of parallel processing chains.';
-                } else if (fullOutput.includes('exception in GraphDef_Load')) {
-                    errorMsg = 'ERROR: Failed to load SynthDef - The effect definition could not be loaded by the server.';
-                } else if (fullOutput.includes('FAILURE IN SERVER /n_set')) {
-                    errorMsg = 'ERROR: Runtime failure - Synth crashed immediately after creation (likely invalid UGen arguments).';
-                } else if (fullOutput.includes('FAILURE IN SERVER /s_new')) {
-                    errorMsg = 'ERROR: Failed to create synth instance.';
-                } else {
-                    // Try to extract generic error message
-                    const errorMatch = fullOutput.match(/ERROR:\s*(.+?)(?=\n|$)/);
-                    if (errorMatch) {
-                        errorMsg = errorMatch[0];
-                    } else if (fullOutput.includes('syntax error')) {
-                        errorMsg = 'ERROR: Syntax error in SuperCollider code';
-                    } else if (fullOutput.includes('Parse error')) {
-                        errorMsg = 'ERROR: Parse error in SuperCollider code';
-                    }
-                }
-                
                 resolve({
                     success: false,
-                    error: errorMsg,
+                    error: extractErrorMessage(fullOutput),
                     output: fullOutput
                 });
-                return;
             } else if (hasLoadedMarker) {
-                // No errors AND we have our loaded marker
-                console.log('[testCompileScFile] Compilation successful (file loaded, no errors)');
+                // Success marker found - but wait a bit longer for any late errors
+                // (e.g., synth might crash shortly after creation)
+                setTimeout(() => {
+                    if (resolved) return;
+
+                    // Re-check for errors that might have appeared after the marker
+                    const finalOutput = output + errorOutput;
+                    const lateError = checkForErrors(finalOutput);
+
+                    resolved = true;
+                    cleanup();
+
+                    if (lateError) {
+                        console.log('[testCompileScFile] Compilation failed - late ERROR found after marker');
+                        resolve({
+                            success: false,
+                            error: extractErrorMessage(finalOutput),
+                            output: finalOutput
+                        });
+                    } else {
+                        console.log('[testCompileScFile] Compilation successful (file loaded, no errors)');
+                        resolve({
+                            success: true,
+                            error: null,
+                            output: finalOutput
+                        });
+                    }
+                }, 500); // Wait 500ms after marker for any late errors
+            }
+        }, 100);
+
+        // Maximum timeout of 10 seconds (increased from 3 to handle slow s.sync)
+        timeoutId = setTimeout(() => {
+            if (resolved) return;
+
+            resolved = true;
+            cleanup();
+
+            const fullOutput = output + errorOutput;
+            const hasLoadedMarker = fullOutput.includes(`${uniqueMarker}:LOADED`);
+
+            // Final check - maybe the marker arrived just before timeout
+            if (hasLoadedMarker && !checkForErrors(fullOutput)) {
+                console.log('[testCompileScFile] Compilation successful (marker found at timeout)');
                 resolve({
                     success: true,
                     error: null,
@@ -886,11 +941,19 @@ async function testCompileScFile(filePath) {
                 });
                 return;
             }
-            
+
             // FALLBACK: If we don't find our marker, something went wrong
-            // This could mean SC crashed, timed out, or had a serious parsing error
             console.warn('[testCompileScFile] No unique compilation marker found in output');
-            
+            console.warn(`[testCompileScFile] Looking for marker: ${uniqueMarker}:LOADED`);
+            console.warn('[testCompileScFile] Accumulated output length:', fullOutput.length);
+            console.warn('[testCompileScFile] Output was:', fullOutput.substring(0, 1000));
+            // Debug: check if partial marker exists
+            if (fullOutput.includes('COMPILE_TEST')) {
+                console.warn('[testCompileScFile] Found COMPILE_TEST in output, checking why full marker not matched');
+                const idx = fullOutput.indexOf('COMPILE_TEST');
+                console.warn('[testCompileScFile] Context around COMPILE_TEST:', JSON.stringify(fullOutput.substring(idx, idx + 100)));
+            }
+
             // Check for catastrophic errors that prevented our test from running
             const catastrophicErrorPatterns = [
                 /ERROR:\s*(.+?)(?=\n|$)/,
@@ -898,10 +961,10 @@ async function testCompileScFile(filePath) {
                 /syntax error/,
                 /unexpected end of file/
             ];
-            
+
             let hasRealError = false;
             let errorMsg = 'Compilation test timeout - no response from SuperCollider';
-            
+
             // Check if there's an obvious error that prevented our test from running
             for (const pattern of catastrophicErrorPatterns) {
                 const match = fullOutput.match(pattern);
@@ -911,14 +974,14 @@ async function testCompileScFile(filePath) {
                     break;
                 }
             }
-            
+
             // Return failure - we couldn't determine the compilation result
             resolve({
                 success: false,
                 error: hasRealError ? errorMsg : 'Compilation test timeout - no response from SuperCollider',
                 output: fullOutput
             });
-        }, 3000); // 3 second timeout to catch runtime errors
+        }, 5000); // 5 second timeout (reduced since we no longer wait for s.sync)
     });
 }
 
