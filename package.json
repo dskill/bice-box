@@ -2,7 +2,7 @@
   "name": "bice-box",
   "main": "electron/main.js",
   "homepage": ".",
-  "version": "0.1.221",
+  "version": "0.1.222",
   "private": true,
   "dependencies": {
     "electron-updater": "^6.3.9",
