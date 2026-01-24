@@ -12,6 +12,9 @@
   justify-content: flex-end;
   padding: 40px 0 20px 0; /* Reduced top padding for grid */
   box-sizing: border-box;
+  /* PERFORMANCE: Contain layout and paint to prevent fader updates
+     from triggering reflow/repaint of the entire document */
+  contain: layout paint;
 }
 
 .param-fader.rotated-layout {
@@ -45,7 +48,11 @@
   left: 50%;
   transform-origin: bottom;
   transform: translateX(-50%) scaleY(var(--fader-scale, 0));
-  transition: transform 0.1s ease-out;
+  /* PERFORMANCE: Use will-change to hint browser to use GPU compositor
+     This prevents CSS transitions from interrupting WebGL rendering */
+  will-change: transform;
+  /* Reduced transition time for snappier response and less GPU composite work */
+  transition: transform 0.05s linear;
 }
 
 .fader-thumb.dragging {
@@ -56,7 +63,8 @@
     var(--fader-color) 50%,
     var(--fader-color) 100%
   );
-  transition: transform 0.1s ease-out; /* Disable transition during dragging for immediate response */
+  /* PERFORMANCE: Faster transition during dragging for immediate response */
+  transition: transform 0.02s linear;
 }
 
 .fader-label {

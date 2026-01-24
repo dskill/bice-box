@@ -51,10 +51,12 @@ function VisualizationCanvas({
   const canvasRef = useRef(null);
   const p5InstanceRef = useRef(null);
   const shaderToyInstanceRef = useRef(null); // New ref for ShaderToyLite
-  const waveformTextureRef = useRef(null); // <-- New Ref for waveform texture
 
-  const [waveform0Data, setWaveform0Data] = useState([]);
+  // Use refs instead of state for audio data to avoid React re-renders at 60Hz
+  const waveform0DataRef = useRef([]);
   const waveform1DataRef = useRef([]);
+  // Pre-allocated buffer for audio texture to avoid GC pressure
+  const audioTextureBufferRef = useRef(null);
   const errorRef = useRef(null);
   const rmsInputRef = useRef(0);
   const rmsOutputRef = useRef(0);
@@ -81,14 +83,14 @@ function VisualizationCanvas({
   const updateWaveform0Data = useCallback((event, data) => {
     if (Array.isArray(data)) {
       numUpdates.current++;
-      setWaveform0Data(data);
+      waveform0DataRef.current = data;
       if (p5InstanceRef.current) {
         p5InstanceRef.current.waveform0 = data;
       }
     } else {
       console.warn('Received invalid waveform0 data:', data);
     }
-  }, [setWaveform0Data]);
+  }, []);
 
   const updateWaveform1Data = useCallback((event, data) => {
     if (Array.isArray(data)) {
@@ -204,7 +206,70 @@ function VisualizationCanvas({
     }
   }, []);
 
+  // PERFORMANCE: Direct audio texture update using pre-allocated buffer
+  // This avoids creating new Uint8Array every frame (was causing GC pressure)
+  const updateAudioTextureDirectly = useCallback(() => {
+    // Early exit if shader not ready
+    if (!shaderToyInstanceRef.current || !shaderToyInstanceRef.current.gl) {
+      return;
+    }
+
+    // Early exit if updateAudioTexture method doesn't exist
+    if (!shaderToyInstanceRef.current.updateAudioTexture) {
+      return;
+    }
+
+    const textureWidth = 1024;
+    const textureHeight = 2;
+
+    // Reuse pre-allocated buffer to avoid GC pressure
+    if (!audioTextureBufferRef.current) {
+      audioTextureBufferRef.current = new Uint8Array(textureWidth * textureHeight * 4);
+    }
+    const uint8AudioData = audioTextureBufferRef.current;
+
+    // Get data from refs - use empty arrays if not populated yet
+    const waveformData = waveform0DataRef.current || [];
+    const fftData = fft0DataRef.current || [];
+
+    // Fill row 0 with FFT data (frequency spectrum)
+    for (let i = 0; i < textureWidth; i++) {
+      let fftMagnitude = 0;
+      if (fftData.length > 0 && i < fftData.length) {
+        fftMagnitude = fftData[i] || 0;
+      }
+      // Normalize to 0-255 range for 8-bit texture
+      const normalizedFFT = Math.max(0, Math.min(255, Math.round(fftMagnitude * 100)));
+
+      const row0Index = i * 4;
+      uint8AudioData[row0Index + 0] = normalizedFFT; // R
+      uint8AudioData[row0Index + 1] = normalizedFFT; // G
+      uint8AudioData[row0Index + 2] = normalizedFFT; // B
+      uint8AudioData[row0Index + 3] = 255; // A (opaque)
+    }
+
+    // Fill row 1 with waveform data (time domain)
+    for (let i = 0; i < textureWidth; i++) {
+      const waveformValue = (waveformData.length > 0 && waveformData[i] !== undefined) ? waveformData[i] : 0;
+      // Normalize waveform data (assuming it's -1 to 1) to 0-255 for 8-bit texture
+      const normalizedWaveform = Math.max(0, Math.min(255, Math.round((waveformValue * 0.5 + 0.5) * 255)));
+
+      const row1Index = (textureWidth + i) * 4;
+      uint8AudioData[row1Index + 0] = normalizedWaveform; // R
+      uint8AudioData[row1Index + 1] = normalizedWaveform; // G
+      uint8AudioData[row1Index + 2] = normalizedWaveform; // B
+      uint8AudioData[row1Index + 3] = 255; // A (opaque)
+    }
+
+    try {
+      shaderToyInstanceRef.current.updateAudioTexture(uint8AudioData, textureWidth, textureHeight);
+    } catch (error) {
+      console.error('Error updating audio texture:', error);
+    }
+  }, []);
+
   // Add new update function for combined data
+  // PERFORMANCE: This runs at 60Hz - no React state updates allowed here
   const updateCombinedData = useCallback((event, data) => {
     const rmsMultiplier = 1.0;
     // Ensure data is an array and has the expected new length
@@ -221,8 +286,8 @@ function VisualizationCanvas({
       rmsInputRef.current = rmsInput;
       rmsOutputRef.current = rmsOutput;
 
-      // Update individual data refs for backward compatibility or other uses
-      setWaveform0Data(waveformData); // This updates state, causing re-renders if used in JSX
+      // Update refs only - no React state to avoid re-renders at 60Hz
+      waveform0DataRef.current = waveformData;
       fft0DataRef.current = fftData;
 
       if (p5InstanceRef.current) {
@@ -230,7 +295,7 @@ function VisualizationCanvas({
         p5InstanceRef.current.waveform0 = waveformData;
         p5InstanceRef.current.waveform1 = waveformData;
         p5InstanceRef.current.fft0 = fftData;
-        p5InstanceRef.current.fft1 = fftData; 
+        p5InstanceRef.current.fft1 = fftData;
         p5InstanceRef.current.rmsInput = rmsInput; // Pass new RMS values
         p5InstanceRef.current.rmsOutput = rmsOutput; // Pass new RMS values
       }
@@ -239,20 +304,24 @@ function VisualizationCanvas({
         // Call the new methods to set RMS uniforms for ShaderToy
         shaderToyInstanceRef.current.setRMSInput(rmsInput);
         shaderToyInstanceRef.current.setRMSOutput(rmsOutput);
-        
+
         // Update and set iRMSTime.
         // magic number to get it closer to iTime roughly
-        iRMSTimeRef.current += rmsOutput; // Accumulate rmsOutput 
+        iRMSTimeRef.current += rmsOutput; // Accumulate rmsOutput
         if (isNaN(iRMSTimeRef.current)) {
           iRMSTimeRef.current = 0;
         }
         shaderToyInstanceRef.current.setRmsTime(iRMSTimeRef.current);
+
+        // PERFORMANCE: Update audio texture directly here instead of via useEffect
+        // This avoids the useEffect dependency issues and React reconciliation
+        updateAudioTextureDirectly();
       }
     } else {
       // Update warning for incorrect data length
       console.warn('Received invalid combined data (expected 2050 floats):', data);
     }
-  }, [setWaveform0Data]); // setWaveform0Data is a dependency
+  }, [updateAudioTextureDirectly]); // Depends on updateAudioTextureDirectly callback
 
   // Detect WebGL capabilities on mount
   useEffect(() => {
@@ -499,7 +568,7 @@ function VisualizationCanvas({
           containerElement.targetHeight = Math.floor(rect.height);
           // And the sketch's setup would do: p.createCanvas(p.canvas.parentElement.targetWidth, p.canvas.parentElement.targetHeight);
 
-          newP5Instance.waveform0 = waveform0Data;
+          newP5Instance.waveform0 = waveform0DataRef.current;
           newP5Instance.waveform1 = waveform1DataRef.current;
           newP5Instance.fft0 = fft0DataRef.current;
           newP5Instance.fft1 = fft1DataRef.current;
@@ -547,98 +616,9 @@ function VisualizationCanvas({
     }
   }, [paramValues]);
 
-  // Effect to update audio texture when combined data or waveform data changes
-  useEffect(() => {
-    if (shaderToyInstanceRef.current && shaderToyInstanceRef.current.gl) {
-      // const gl = shaderToyInstanceRef.current.gl; // Not needed directly
-      // const texture = waveformTextureRef.current; // REMOVED
-      const textureWidth = 1024; 
-      const textureHeight = 2; // 2 rows: FFT (row 0) and waveform (row 1)
-
-      // Prepare Uint8Array for RGBA texture (1024x2x4 = 8192 bytes)
-      let uint8AudioData = new Uint8Array(textureWidth * textureHeight * 4);
-      
-      // Use combined data if available, otherwise fall back to individual arrays
-      let fftData = [];
-      let waveformData = [];
-      
-      // Use the full combinedDataRef which might be 2050 long
-      if (combinedDataRef.current.length >= 2048) { // Check for at least 1024 waveform + 1024 FFT
-        // Waveform and FFT data are always in the first 2048 elements
-        waveformData = combinedDataRef.current.slice(0, 1024);
-        fftData = combinedDataRef.current.slice(1024, 2048);
-      } else {
-        // Fall back to individual data arrays if combinedData isn't populated yet or is too short
-        fftData = fft0DataRef.current.length > 0 ? fft0DataRef.current : [];
-        waveformData = waveform0Data.length > 0 ? waveform0Data : [];
-      }
-
-      /*
-      // Debug logging (only log occasionally to avoid spam)
-      if (Math.random() < 0.01) { // Log ~1% of the time
-        console.log('Audio texture update:', {
-          fftDataLength: fftData.length,
-          waveformDataLength: waveformData.length,
-          fftDataType: 'pre-computed magnitudes',
-          firstFewFFTValues: fftData.slice(0, 8),
-          firstFewWaveformValues: waveformData.slice(0, 8),
-          rmsInput: rmsInputRef.current,
-          rmsOutput: rmsOutputRef.current
-        });
-      }
-      */
-
-      // Fill row 0 with FFT data (frequency spectrum)
-      // FFT data now contains pre-computed magnitudes from SuperCollider (no longer complex pairs)
-      for (let i = 0; i < textureWidth; i++) {
-        let fftMagnitude = 0;
-        
-        if (i < fftData.length && fftData.length > 0) {
-          // FFT data now contains pre-computed magnitudes with logarithmic scaling applied
-          fftMagnitude = fftData[i] || 0;
-        }
-        
-        // Normalize to 0-255 range for 8-bit texture
-        // The data is already logarithmically scaled, so we just need to normalize
-        // the FFT Data ranges above 1 a bit, so we have are just 100 as a magic number
-        // to try and get the data into the 0:255 range
-        const normalizedFFT = Math.max(0, Math.min(255, Math.round(fftMagnitude * 100)));
-        
-        const row0Index = i * 4; // Row 0, pixel i
-        uint8AudioData[row0Index + 0] = normalizedFFT; // R
-        uint8AudioData[row0Index + 1] = normalizedFFT; // G
-        uint8AudioData[row0Index + 2] = normalizedFFT; // B
-        uint8AudioData[row0Index + 3] = 255; // A (opaque)
-      }
-
-      // Fill row 1 with waveform data (time domain)
-      for (let i = 0; i < textureWidth; i++) {
-        const waveformValue = waveformData[i] !== undefined ? waveformData[i] : 0;
-        // Normalize waveform data (assuming it's -1 to 1) to 0-255 for 8-bit texture
-        const normalizedWaveform = Math.max(0, Math.min(255, Math.round((waveformValue * 0.5 + 0.5) * 255)));
-        
-        const row1Index = (textureWidth + i) * 4; // Row 1, pixel i
-        uint8AudioData[row1Index + 0] = normalizedWaveform; // R
-        uint8AudioData[row1Index + 1] = normalizedWaveform; // G
-        uint8AudioData[row1Index + 2] = normalizedWaveform; // B
-        uint8AudioData[row1Index + 3] = 255; // A (opaque)
-      }
-      
-      try {
-        // Call the new updateAudioTexture method on ShaderToyLite instance
-        if (shaderToyInstanceRef.current.updateAudioTexture) {
-            shaderToyInstanceRef.current.updateAudioTexture(uint8AudioData, textureWidth, textureHeight);
-        } else {
-            console.warn("shaderToyInstanceRef.current.updateAudioTexture is not defined");
-        }
-        // gl.bindTexture(gl.TEXTURE_2D, texture); // REMOVED
-        // gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, textureWidth, textureHeight, gl.RGBA, gl.UNSIGNED_BYTE, uint8AudioData); // REMOVED
-        // gl.bindTexture(gl.TEXTURE_2D, null); // REMOVED
-      } catch (error) {
-        console.error('Error updating audio texture:', error);
-      }
-    }
-  }, [waveform0Data, combinedDataRef.current]);
+  // REMOVED: useEffect for audio texture update
+  // Audio texture is now updated directly in updateCombinedData callback
+  // This eliminates React reconciliation overhead and useEffect dependency issues
 
   // Effect for FPS calculation
   useEffect(() => {

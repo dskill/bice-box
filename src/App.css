@@ -142,6 +142,9 @@ body {
   width: 100%;
   padding: 0 20px;
   box-sizing: border-box;
+  /* PERFORMANCE: Contain layout changes from faders to prevent
+     affecting the WebGL canvas or causing full document reflow */
+  contain: layout style;
 }
 
 /* Responsive breakpoints are now handled in VisualizationMode.js */
