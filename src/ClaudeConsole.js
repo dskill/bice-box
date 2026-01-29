@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import ipcProxy from './ipcProxy';
 import './ClaudeConsole.css';
 
-const ClaudeConsole = ({ 
-  isOpen, 
+const ClaudeConsole = ({
+  isOpen,
   onOpen,
-  onClose, 
-  isRecording, 
-  onRecordingStart, 
+  onClose,
+  isRecording,
+  onRecordingStart,
   onRecordingEnd,
   devMode,
   // Add props to sync responding state
@@ -30,8 +31,6 @@ const ClaudeConsole = ({
   const initialScrollTopRef = useRef(null);
   const lastUpdateTimeRef = useRef(0);
   const DRAG_THRESHOLD = 15;
-
-  const electron = window.electron;
 
   // Touch scrolling handler for Raspberry Pi compatibility - matching ParamFader pattern
   useEffect(() => {
@@ -147,21 +146,27 @@ const ClaudeConsole = ({
 
   // Listen for Claude responses and session resets
   useEffect(() => {
-    if (electron) {
-      electron.ipcRenderer.on('claude-response', handleClaudeResponse);
-      
-      // Listen for session reset events to clear the output
-      const handleSessionReset = () => {
-        setClaudeOutput('');
-      };
-      electron.ipcRenderer.on('claude-session-reset', handleSessionReset);
+    const unsubscribeResponse = ipcProxy.on('claude-response', handleClaudeResponse);
 
-      return () => {
-        electron.ipcRenderer.removeAllListeners('claude-response');
-        electron.ipcRenderer.removeAllListeners('claude-session-reset');
-      };
-    }
-  }, [electron, handleClaudeResponse]);
+    // Listen for session reset events to clear the output
+    const handleSessionReset = () => {
+      setClaudeOutput('');
+    };
+    const unsubscribeReset = ipcProxy.on('claude-session-reset', handleSessionReset);
+
+    return () => {
+      if (typeof unsubscribeResponse === 'function') {
+        unsubscribeResponse();
+      } else {
+        ipcProxy.removeAllListeners('claude-response');
+      }
+      if (typeof unsubscribeReset === 'function') {
+        unsubscribeReset();
+      } else {
+        ipcProxy.removeAllListeners('claude-session-reset');
+      }
+    };
+  }, [handleClaudeResponse]);
 
   // handleSendToClaude removed - now using floating controls
 
@@ -178,10 +183,10 @@ const ClaudeConsole = ({
     if (hasDraggedBeyondThresholdRef.current) {
       return;
     }
-    
-    if (electron && isClaudeResponding) {
+
+    if (isClaudeResponding) {
       setIsClaudeResponding(false);
-      electron.ipcRenderer.send('cancel-claude');
+      ipcProxy.send('cancel-claude');
     }
   };
 

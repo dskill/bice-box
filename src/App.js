@@ -5,6 +5,7 @@ import Whisper from './Whisper';
 import ParamFader from './ParamFader';
 import EffectManagement from './EffectManagement';
 import ClaudeConsole from './ClaudeConsole';
+import ipcProxy from './ipcProxy';
 import './App.css';
 
 const styles = {
@@ -17,7 +18,9 @@ const styles = {
   }
 };
 
+// Use ipcProxy which works for both Electron and remote browser
 const electron = window.electron;
+const ipc = ipcProxy;
 
 function App() {
   const [synths, setSynths] = useState([]);
@@ -48,8 +51,19 @@ function App() {
   const [isClaudeConsoleOpen, setIsClaudeConsoleOpen] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
 
+  // --- State for Remote Connection (when running in browser) ---
+  const [connectionStatus, setConnectionStatus] = useState('connected');
+  const isRemoteMode = !electron;
+
   // --- State for Faders ---
   const [useRotatedLabels, setUseRotatedLabels] = useState(false);
+
+  // Subscribe to connection status changes in remote mode
+  useEffect(() => {
+    if (isRemoteMode) {
+      return ipc.onStatusChange(setConnectionStatus);
+    }
+  }, [isRemoteMode]);
 
   // Calculate responsive fader layout (moved from VisualizationMode)
   useEffect(() => {
@@ -96,12 +110,10 @@ function App() {
   }, [synths]);
 
   const reloadEffectList = useCallback(() => {
-    electron?.ipcRenderer?.send('reload-all-effects');
+    ipc.send('reload-all-effects');
   }, []);
 
   useEffect(() => {
-    if (!electron) return;
-
     const handleEffectsData = (event, data) => {
       if (!Array.isArray(data)) {
         console.warn("Received invalid audio effects data", data);
@@ -118,30 +130,35 @@ function App() {
       });
     };
 
-    electron.ipcRenderer.on('effects-data', handleEffectsData);
+    const unsubscribe = ipc.on('effects-data', handleEffectsData);
     return () => {
-      electron.ipcRenderer.removeListener('effects-data', handleEffectsData);
+      if (typeof unsubscribe === 'function') {
+        unsubscribe();
+      } else {
+        ipc.removeListener('effects-data', handleEffectsData);
+      }
     };
   }, []);
 
   const checkEffectsRepoStatus = useCallback(async () => {
+    // Only check effects repo when running in Electron
     if (!electron) return;
 
     setEffectsRepoStatus(prev => ({ ...prev, isChecking: true, error: null }));
 
     try {
       const statusPayload = await new Promise((resolve, reject) => {
-        electron.ipcRenderer.send('check-effects-repo');
+        ipc.send('check-effects-repo');
 
         const timeout = setTimeout(() => {
-          electron.ipcRenderer.removeAllListeners('effects-repo-status');
-          electron.ipcRenderer.removeAllListeners('effects-repo-error');
+          ipc.removeAllListeners('effects-repo-status');
+          ipc.removeAllListeners('effects-repo-error');
           reject(new Error('Request to check effects repo timed out'));
         }, 10000);
 
-        electron.ipcRenderer.once('effects-repo-status', (event, data) => {
+        ipc.once('effects-repo-status', (event, data) => {
           clearTimeout(timeout);
-          electron.ipcRenderer.removeAllListeners('effects-repo-error');
+          ipc.removeAllListeners('effects-repo-error');
           if (typeof data === 'object' && data !== null && typeof data.hasUpdates === 'boolean') {
             resolve(data);
           } else {
@@ -149,9 +166,9 @@ function App() {
           }
         });
 
-        electron.ipcRenderer.once('effects-repo-error', (event, errorDetails) => {
+        ipc.once('effects-repo-error', (event, errorDetails) => {
           clearTimeout(timeout);
-          electron.ipcRenderer.removeAllListeners('effects-repo-status');
+          ipc.removeAllListeners('effects-repo-status');
           reject(errorDetails);
         });
       });
@@ -173,15 +190,13 @@ function App() {
   }, []);
 
   const handleScReady = useCallback(() => {
-    if (!electron?.ipcRenderer) return;
-
     if (currentAudioSource && synths?.length > 0) {
       const match = synths.find(s => s.scFilePath?.toLowerCase() === currentAudioSource.toLowerCase());
       if (match) {
-        electron.ipcRenderer.send('effects/actions:set_current_effect', { name: match.name });
+        ipc.send('effects/actions:set_current_effect', { name: match.name });
       }
     } else if (synths?.length > 0) {
-      electron.ipcRenderer.send('effects/actions:set_current_effect', { name: synths[0].name });
+      ipc.send('effects/actions:set_current_effect', { name: synths[0].name });
     }
   }, [currentAudioSource, synths]);
 
@@ -200,10 +215,10 @@ function App() {
       return;
     }
 
-    if (electron?.ipcRenderer && selectedVisual.name) {
-      electron.ipcRenderer.send('visualizers/actions:set_current_visualizer', { name: selectedVisual.name });
+    if (selectedVisual.name) {
+      ipc.send('visualizers/actions:set_current_visualizer', { name: selectedVisual.name });
       if (!fromMcp) {
-        electron.ipcRenderer.send('set-current-visual-source', selectedVisual.path);
+        ipc.send('set-current-visual-source', selectedVisual.path);
       }
     }
     if (!fromMcp) setShowEffectSelector(false);
@@ -211,16 +226,17 @@ function App() {
 
   const pullEffectsRepo = () => {
     return new Promise((resolve, reject) => {
+      // Only available in Electron mode
       if (!electron) {
         reject(new Error("Electron not available"));
         return;
       }
 
-      electron.ipcRenderer.send('pull-effects-repo');
-      electron.ipcRenderer.once('pull-effects-repo-success', (event, message) => {
+      ipc.send('pull-effects-repo');
+      ipc.once('pull-effects-repo-success', (event, message) => {
         resolve(message);
       });
-      electron.ipcRenderer.once('pull-effects-repo-error', (event, error) => {
+      ipc.once('pull-effects-repo-error', (event, error) => {
         console.error('Error pulling effects repo:', error);
         setError(`Failed to pull effects repo: ${error}`);
         reject(new Error(error));
@@ -233,16 +249,16 @@ function App() {
 
     const { path } = data;
     try {
-      const visualizers = await electron.ipcRenderer.invoke('visualizers/queries:list_visualizers');
+      const visualizers = await ipc.invoke('visualizers/queries:list_visualizers');
       const matchingVisualizer = visualizers?.visualizers?.find(v => v.path === path);
       if (matchingVisualizer) {
-        electron.ipcRenderer.send('visualizers/actions:set_current_visualizer', { name: matchingVisualizer.name });
+        ipc.send('visualizers/actions:set_current_visualizer', { name: matchingVisualizer.name });
       } else {
-        electron.ipcRenderer.send('set-current-visual-source', path);
+        ipc.send('set-current-visual-source', path);
       }
     } catch (error) {
       console.error('Error auto-loading visualizer:', error);
-      electron.ipcRenderer.send('set-current-visual-source', path);
+      ipc.send('set-current-visual-source', path);
     }
   }, []);
 
@@ -264,62 +280,71 @@ function App() {
   }, [setShaderError]);
 
   const handleDevModeChange = useCallback((event, newMode) => {
+    console.log('[App] dev-mode-changed received:', newMode);
     setDevMode(newMode);
   }, [setDevMode]);
 
   useEffect(() => {
-    if (!electron) return;
-
-    electron.ipcRenderer.on('visual-effect-updated', handleVisualEffectUpdate);
+    const unsubscribe = ipc.on('visual-effect-updated', handleVisualEffectUpdate);
     return () => {
-      electron.ipcRenderer.removeListener('visual-effect-updated', handleVisualEffectUpdate);
+      if (typeof unsubscribe === 'function') {
+        unsubscribe();
+      } else {
+        ipc.removeListener('visual-effect-updated', handleVisualEffectUpdate);
+      }
     };
   }, [currentVisualSource, synths, handleVisualEffectUpdate]);
 
   useEffect(() => {
-    if (!electron) return;
-
-    electron.ipcRenderer.on('sc-ready', handleScReady);
+    const unsubscribe = ipc.on('sc-ready', handleScReady);
     return () => {
-      electron.ipcRenderer.removeListener('sc-ready', handleScReady);
+      if (typeof unsubscribe === 'function') {
+        unsubscribe();
+      } else {
+        ipc.removeListener('sc-ready', handleScReady);
+      }
     };
   }, [currentAudioSource, synths, handleScReady]);
 
   useEffect(() => {
-    if (!electron) return;
-
-    electron.ipcRenderer.on('sc-compilation-error', handleScErrorCallback);
+    const unsubscribe = ipc.on('sc-compilation-error', handleScErrorCallback);
     return () => {
-      electron.ipcRenderer.removeListener('sc-compilation-error', handleScErrorCallback);
+      if (typeof unsubscribe === 'function') {
+        unsubscribe();
+      } else {
+        ipc.removeListener('sc-compilation-error', handleScErrorCallback);
+      }
     };
   }, [handleScErrorCallback]);
 
   useEffect(() => {
-    if (!electron) return;
-
-    electron.ipcRenderer.on('shader-loading-error', handleShaderErrorCallback);
+    const unsubscribe = ipc.on('shader-loading-error', handleShaderErrorCallback);
     return () => {
-      electron.ipcRenderer.removeListener('shader-loading-error', handleShaderErrorCallback);
+      if (typeof unsubscribe === 'function') {
+        unsubscribe();
+      } else {
+        ipc.removeListener('shader-loading-error', handleShaderErrorCallback);
+      }
     };
   }, [handleShaderErrorCallback]);
 
   useEffect(() => {
-    if (!electron?.ipcRenderer) return;
-
-    electron.ipcRenderer.invoke('get-dev-mode').then(setDevMode);
-    electron.ipcRenderer.invoke('get-platform-info').then(setPlatformInfo);
-    electron.ipcRenderer.on('dev-mode-changed', handleDevModeChange);
+    ipc.invoke('get-dev-mode').then(setDevMode).catch(() => setDevMode(false));
+    ipc.invoke('get-platform-info').then(setPlatformInfo).catch(() => {});
+    const unsubscribe = ipc.on('dev-mode-changed', handleDevModeChange);
 
     return () => {
-      electron.ipcRenderer.removeListener('dev-mode-changed', handleDevModeChange);
+      if (typeof unsubscribe === 'function') {
+        unsubscribe();
+      } else {
+        ipc.removeListener('dev-mode-changed', handleDevModeChange);
+      }
     };
   }, [handleDevModeChange]);
 
   const lastEffectUpdateRef = useRef({ name: null, paramValues: null, timestamp: 0 });
 
   useEffect(() => {
-    if (!electron?.ipcRenderer) return;
-
     const handleEffectsState = (event, payload) => {
       if (!payload?.effect) return;
       const { effect } = payload;
@@ -339,17 +364,19 @@ function App() {
       if (effect.paramValues) setParamValues(effect.paramValues);
     };
 
-    electron.ipcRenderer.on('effects/state', handleEffectsState);
+    const unsubscribe = ipc.on('effects/state', handleEffectsState);
     return () => {
-      electron.ipcRenderer.removeListener('effects/state', handleEffectsState);
+      if (typeof unsubscribe === 'function') {
+        unsubscribe();
+      } else {
+        ipc.removeListener('effects/state', handleEffectsState);
+      }
     };
   }, []);
 
   const lastVisualizerUpdateRef = useRef({ name: null, timestamp: 0 });
 
   useEffect(() => {
-    if (!electron?.ipcRenderer) return;
-
     const handleVisualizersState = (event, payload) => {
       if (!payload?.visualizer) return;
       const { visualizer } = payload;
@@ -375,9 +402,13 @@ function App() {
       }
     };
 
-    electron.ipcRenderer.on('visualizers/state', handleVisualizersState);
+    const unsubscribe = ipc.on('visualizers/state', handleVisualizersState);
     return () => {
-      electron.ipcRenderer.removeListener('visualizers/state', handleVisualizersState);
+      if (typeof unsubscribe === 'function') {
+        unsubscribe();
+      } else {
+        ipc.removeListener('visualizers/state', handleVisualizersState);
+      }
     };
   }, []);
 
@@ -390,18 +421,16 @@ function App() {
     const scFilePath = selected.scFilePath || selected;
     const effectName = selected.name;
     if (scFilePath) setCurrentAudioSource(scFilePath);
-    if (electron?.ipcRenderer && effectName) {
-      electron.ipcRenderer.send('effects/actions:set_current_effect', { name: effectName });
+    if (effectName) {
+      ipc.send('effects/actions:set_current_effect', { name: effectName });
     }
     setShowEffectSelector(false);
   }, [setCurrentAudioSource]);
 
   const openEffectSelect = async () => {
     try {
-      if (electron) {
-        const fetchedVisualizers = await electron.ipcRenderer.invoke('get-visualizers');
-        setVisualizerList(fetchedVisualizers || []);
-      }
+      const fetchedVisualizers = await ipc.invoke('get-visualizers');
+      setVisualizerList(fetchedVisualizers || []);
     } catch (err) {
       console.error("Failed to fetch visualizers:", err);
       setVisualizerList([]);
@@ -431,18 +460,18 @@ function App() {
   }, []);
 
   const handleCancelClaude = useCallback(() => {
-    if (electron && isClaudeResponding) {
+    if (isClaudeResponding) {
       setIsClaudeResponding(false);
-      electron.ipcRenderer.send('cancel-claude');
+      ipc.send('cancel-claude');
     }
   }, [isClaudeResponding]);
 
   const handleTranscriptionComplete = useCallback((text) => {
-    electron?.ipcRenderer?.send('send-to-claude', text);
+    ipc.send('send-to-claude', text);
   }, []);
 
   const handleParamChange = useCallback((paramName, value) => {
-    electron?.ipcRenderer?.send('effects/actions:set_effect_parameters', { params: { [paramName]: value } });
+    ipc.send('effects/actions:set_effect_parameters', { params: { [paramName]: value } });
   }, []);
 
   const handleShaderEffectUpdated = useCallback((event, data) => {
@@ -469,29 +498,35 @@ function App() {
   }, [isClaudeResponding, isClaudeConsoleOpen, handleCancelClaude]);
 
   useEffect(() => {
-    if (!electron?.ipcRenderer) return;
-
-    electron.ipcRenderer.on('shader-effect-updated', handleShaderEffectUpdated);
+    const unsubscribe = ipc.on('shader-effect-updated', handleShaderEffectUpdated);
     return () => {
-      electron.ipcRenderer.removeAllListeners('shader-effect-updated');
+      if (typeof unsubscribe === 'function') {
+        unsubscribe();
+      } else {
+        ipc.removeAllListeners('shader-effect-updated');
+      }
     };
   }, [handleShaderEffectUpdated]);
 
   useEffect(() => {
-    if (!electron?.ipcRenderer) return;
-
-    electron.ipcRenderer.on('auto-visualizer-loaded', handleAutoVisualizerLoaded);
+    const unsubscribe = ipc.on('auto-visualizer-loaded', handleAutoVisualizerLoaded);
     return () => {
-      electron.ipcRenderer.removeAllListeners('auto-visualizer-loaded');
+      if (typeof unsubscribe === 'function') {
+        unsubscribe();
+      } else {
+        ipc.removeAllListeners('auto-visualizer-loaded');
+      }
     };
   }, [handleAutoVisualizerLoaded]);
 
   useEffect(() => {
-    if (!electron?.ipcRenderer) return;
-
-    electron.ipcRenderer.on('midi-cc117', handleMidiCC117);
+    const unsubscribe = ipc.on('midi-cc117', handleMidiCC117);
     return () => {
-      electron.ipcRenderer.removeAllListeners('midi-cc117');
+      if (typeof unsubscribe === 'function') {
+        unsubscribe();
+      } else {
+        ipc.removeAllListeners('midi-cc117');
+      }
     };
   }, [handleMidiCC117]);
 
@@ -501,8 +536,17 @@ function App() {
 
   return (
     <div className="App" style={styles.app}>
-      <EffectManagement 
-        reloadEffectList={reloadEffectList} 
+      {/* Connection status indicator for remote mode */}
+      {isRemoteMode && (
+        <div className={`remote-connection-status ${connectionStatus}`}>
+          {connectionStatus === 'connected' ? 'Connected' :
+           connectionStatus === 'connecting' ? 'Connecting...' :
+           'Disconnected'}
+        </div>
+      )}
+
+      <EffectManagement
+        reloadEffectList={reloadEffectList}
         pullEffectsRepo={pullEffectsRepo}
         effectsRepoStatus={effectsRepoStatus}
         onCheckEffectsRepo={checkEffectsRepoStatus}
@@ -547,20 +591,20 @@ function App() {
                 className="floating-claude-input"
                 placeholder="Type to AI..."
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' && e.target.value.trim() && electron) {
+                  if (e.key === 'Enter' && e.target.value.trim()) {
                     const message = e.target.value.trim();
-                    electron.ipcRenderer.send('send-to-claude', message);
+                    ipc.send('send-to-claude', message);
                     e.target.value = '';
                   }
                 }}
               />
-              <button 
+              <button
                 className="floating-claude-send"
                 onClick={(e) => {
                   const input = e.target.parentElement.querySelector('.floating-claude-input');
-                  if (input.value.trim() && electron) {
+                  if (input.value.trim()) {
                     const message = input.value.trim();
-                    electron.ipcRenderer.send('send-to-claude', message);
+                    ipc.send('send-to-claude', message);
                     input.value = '';
                   }
                 }}

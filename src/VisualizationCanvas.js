@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useCallback, useState } from 'react';
 import p5 from 'p5';
 import WebGLDetector from './utils/webGLDetector';
+import ipcProxy from './ipcProxy';
 
 // ShaderToyLite will be available globally via script tag in index.html
 // const ShaderToyLite = window.ShaderToyLite;
@@ -351,25 +352,39 @@ function VisualizationCanvas({
 
   useEffect(() => {
     console.log('Setting up all event listeners');
-    window.electron.ipcRenderer.on('waveform0-data', updateWaveform0Data);
-    window.electron.ipcRenderer.on('waveform1-data', updateWaveform1Data);
-    window.electron.ipcRenderer.on('audio-analysis', updateAudioAnalysis);
-    window.electron.ipcRenderer.on('tuner-data', updateTunerData);
-    window.electron.ipcRenderer.on('fft0-data', updateFFT0Data);
-    window.electron.ipcRenderer.on('fft1-data', updateFFT1Data);
-    window.electron.ipcRenderer.on('custom-message', updateCustomMessage);
-    window.electron.ipcRenderer.on('combined-data', updateCombinedData);
+    // Use ipcProxy which works for both Electron and remote browser
+    const unsub1 = ipcProxy.on('waveform0-data', updateWaveform0Data);
+    const unsub2 = ipcProxy.on('waveform1-data', updateWaveform1Data);
+    const unsub3 = ipcProxy.on('audio-analysis', updateAudioAnalysis);
+    const unsub4 = ipcProxy.on('tuner-data', updateTunerData);
+    const unsub5 = ipcProxy.on('fft0-data', updateFFT0Data);
+    const unsub6 = ipcProxy.on('fft1-data', updateFFT1Data);
+    const unsub7 = ipcProxy.on('custom-message', updateCustomMessage);
+    const unsub8 = ipcProxy.on('combined-data', updateCombinedData);
+    // Also listen for audioData from WebSocket (remote mode)
+    const unsub9 = ipcProxy.on('audioData', (event, payload) => {
+      if (payload?.combinedData) {
+        updateCombinedData(event, payload.combinedData);
+      }
+    });
 
     return () => {
       console.log('Removing all event listeners');
-      window.electron.ipcRenderer.removeAllListeners('waveform0-data');
-      window.electron.ipcRenderer.removeAllListeners('waveform1-data');
-      window.electron.ipcRenderer.removeAllListeners('audio-analysis');
-      window.electron.ipcRenderer.removeAllListeners('tuner-data');
-      window.electron.ipcRenderer.removeAllListeners('fft0-data');
-      window.electron.ipcRenderer.removeAllListeners('fft1-data');
-      window.electron.ipcRenderer.removeAllListeners('custom-message');
-      window.electron.ipcRenderer.removeAllListeners('combined-data');
+      [unsub1, unsub2, unsub3, unsub4, unsub5, unsub6, unsub7, unsub8, unsub9].forEach(unsub => {
+        if (typeof unsub === 'function') unsub();
+      });
+      // Fallback cleanup for Electron mode
+      if (window.electron) {
+        ipcProxy.removeAllListeners('waveform0-data');
+        ipcProxy.removeAllListeners('waveform1-data');
+        ipcProxy.removeAllListeners('audio-analysis');
+        ipcProxy.removeAllListeners('tuner-data');
+        ipcProxy.removeAllListeners('fft0-data');
+        ipcProxy.removeAllListeners('fft1-data');
+        ipcProxy.removeAllListeners('custom-message');
+        ipcProxy.removeAllListeners('combined-data');
+        ipcProxy.removeAllListeners('audioData');
+      }
     };
   }, [updateWaveform0Data, updateWaveform1Data, updateAudioAnalysis, updateTunerData, updateFFT0Data, updateFFT1Data, updateCustomMessage, updateCombinedData]);
 
@@ -582,11 +597,8 @@ function VisualizationCanvas({
           newP5Instance.params = paramValues; // <-- Set params on creation
 
           newP5Instance.sendOscToSc = (address, ...args) => {
-            if (window.electron && window.electron.ipcRenderer) {
-              window.electron.ipcRenderer.send('send-osc-to-sc', { address, args });
-            } else {
-              console.warn('Electron IPC not available for sending OSC.');
-            }
+            // Use ipcProxy which works for both Electron and remote
+            ipcProxy.send('send-osc-to-sc', { address, args });
           };
 
           p5InstanceRef.current = newP5Instance;

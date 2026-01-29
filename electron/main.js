@@ -44,7 +44,7 @@ const {
   loadVisualizerContent
 } = require('./superColliderManager');
 const wifi = require('node-wifi');
-const { startHttpServer, stopHttpServer, broadcast } = require('./httpServer');
+const { startHttpServer, stopHttpServer, broadcast, broadcastIPCEvent } = require('./httpServer');
 
 // Auto-updater (production only)
 let initAutoUpdater = null;
@@ -521,7 +521,28 @@ app.whenReady().then(() =>
             const { testSuperColliderCode } = require('./superColliderManager');
             return await testSuperColliderCode(scCode);
         },
-        getLogBuffer: getLogBuffer
+        getLogBuffer: getLogBuffer,
+        // Additional getters for remote IPC handlers
+        getDevMode: () => devMode,
+        getPlatformInfo: () => ({
+            isLinux: process.platform === 'linux',
+            isPi: process.platform === 'linux' && os.arch() === 'arm64'
+        }),
+        getOpenAIKey: async () => openaiApiKey,
+        getClaudeManager: () => claudeManager,
+        toggleDevMode: () => {
+            devMode = !devMode;
+            if (mainWindow && mainWindow.webContents) {
+                mainWindow.webContents.send('dev-mode-changed', devMode);
+            }
+            broadcastIPCEvent('dev-mode-changed', devMode);
+            // Reload effects list with new mode
+            const loadedSynths = loadEffectsList(mainWindow, getEffectsRepoPath, getEffectsPath);
+            if (mainWindow && mainWindow.webContents) {
+                mainWindow.webContents.send('effects-data', loadedSynths);
+            }
+            broadcastIPCEvent('effects-data', loadedSynths);
+        }
     };
     startHttpServer(getState);
   }
@@ -1822,10 +1843,14 @@ ipcMain.handle('get-platform-info', () => ({
 ipcMain.on('toggle-dev-mode', (event) => {
     devMode = !devMode;
     mainWindow.webContents.send('dev-mode-changed', devMode);
-    
+    // Also broadcast to remote clients
+    broadcastIPCEvent('dev-mode-changed', devMode);
+
     // Reload effects list with new mode
     const loadedSynths = loadEffectsList(mainWindow, getEffectsRepoPath, getEffectsPath);
     event.reply('effects-data', loadedSynths);
+    // Also broadcast to remote clients
+    broadcastIPCEvent('effects-data', loadedSynths);
 });
 
 // --- Function to Scan for Visualizers ---
@@ -2009,6 +2034,8 @@ function initializeClaudeManager() {
     if (mainWindow) {
         claudeManager.setMainWindow(mainWindow);
     }
+    // Connect broadcast function for remote clients
+    claudeManager.setBroadcastIPCEvent(broadcastIPCEvent);
 }
 
 // Add main Claude message handler
@@ -2142,7 +2169,6 @@ function getActiveEffectSnapshot() {
 }
 
 function broadcastEffectsState(targetEffectName) {
-  if (!mainWindow || !mainWindow.webContents) return;
   const name = typeof targetEffectName === 'string' ? targetEffectName : effectsStore.activeEffectName;
   const effect = name ? effectsStore.byName[name] : null;
   const payload = {
@@ -2154,7 +2180,14 @@ function broadcastEffectsState(targetEffectName) {
       paramValues: effect.paramValues
     } : null
   };
-  mainWindow.webContents.send('effects/state', payload);
+
+  // Broadcast to Electron renderer
+  if (mainWindow && mainWindow.webContents) {
+    mainWindow.webContents.send('effects/state', payload);
+  }
+
+  // Broadcast to remote WebSocket clients
+  broadcastIPCEvent('effects/state', payload);
 }
 
 function sendOscParamSet(paramName, value) {
@@ -2309,7 +2342,6 @@ function getActiveVisualizerSnapshot() {
 }
 
 function broadcastVisualizersState(targetVisualizerName) {
-  if (!mainWindow || !mainWindow.webContents) return;
   const name = typeof targetVisualizerName === 'string' ? targetVisualizerName : visualizersStore.activeVisualizerName;
   const visualizer = name ? visualizersStore.byName[name] : null;
   const payload = {
@@ -2321,7 +2353,14 @@ function broadcastVisualizersState(targetVisualizerName) {
       content: visualizer.content
     } : null
   };
-  mainWindow.webContents.send('visualizers/state', payload);
+
+  // Broadcast to Electron renderer
+  if (mainWindow && mainWindow.webContents) {
+    mainWindow.webContents.send('visualizers/state', payload);
+  }
+
+  // Broadcast to remote WebSocket clients
+  broadcastIPCEvent('visualizers/state', payload);
 }
 
 async function loadAndBroadcastVisualizerContent(visualizerName) {

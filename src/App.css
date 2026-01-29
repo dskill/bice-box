@@ -1966,3 +1966,204 @@ button:disabled {
   color: #f59e0b !important;
   border: 1px solid #f59e0b !important;
 }
+
+/* ============================================
+   MOBILE REMOTE CONTROL STYLES
+   Phone-optimized touch targets and layout
+   ============================================ */
+
+/* Connection status indicator for remote mode */
+.remote-connection-status {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  z-index: 3000;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-family: 'Aldrich', 'Inconsolata', monospace;
+  font-size: 11px;
+  pointer-events: none;
+}
+
+.remote-connection-status.connected {
+  background: rgba(34, 197, 94, 0.2);
+  color: #22c55e;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.remote-connection-status.connecting {
+  background: rgba(245, 158, 11, 0.2);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.remote-connection-status.disconnected {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+/* Mobile viewport adjustments */
+@media (max-width: 800px) {
+  /* Larger touch targets for all buttons */
+  button,
+  .toggle-button,
+  .nav-button,
+  .effect-tab,
+  .category-item,
+  .effect-item {
+    min-height: 48px;
+  }
+
+  /* Adjust fader container for mobile */
+  .fader-container {
+    gap: 10px;
+    padding: 0 10px;
+  }
+
+  /* Stack source selector vertically on narrow screens */
+  .source-select-container {
+    width: 90%;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .source-select-container .nav-button {
+    flex: 1 1 auto;
+    min-width: 100px;
+  }
+
+  /* Adjust effect management panel */
+  .effect-management__content {
+    padding: 15px;
+  }
+
+  /* Larger Claude button for touch */
+  .claude-button {
+    min-width: 120px;
+    min-height: 48px;
+    font-size: 14px;
+  }
+
+  /* Effect selector adjustments */
+  .effect-select-header-bar {
+    padding: 8px 10px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .effect-search-input {
+    width: 140px;
+    padding: 12px 35px 12px 12px;
+  }
+
+  .effect-categories-sidebar {
+    width: 140px;
+  }
+
+  .category-item {
+    padding: 16px 10px;
+  }
+
+  .effect-item {
+    padding: 16px 12px;
+  }
+
+  /* Floating Claude controls - make full width on mobile */
+  .floating-claude-controls {
+    width: calc(100% - 20px);
+    left: 10px;
+    transform: none;
+    bottom: 0;
+  }
+
+  .floating-claude-input {
+    flex: 1;
+    width: auto;
+  }
+}
+
+/* Portrait phone layout (narrow and tall) */
+@media (max-width: 480px) {
+  /* Hide visualization on very narrow screens - focus on controls */
+  .visualization-canvas-container {
+    height: 30vh;
+  }
+
+  /* Adjust effect nav buttons position */
+  .effect-nav-buttons-container {
+    bottom: 10px;
+  }
+
+  /* Smaller gaps */
+  .fader-container {
+    gap: 8px;
+    padding: 0 5px;
+  }
+
+  /* Single column effect selector */
+  .effect-categories-sidebar {
+    width: 120px;
+  }
+
+  /* Adjust QR code for mobile (hide on very small screens) */
+  .effect-management__qr-code {
+    display: none;
+  }
+
+  /* Stack buttons on narrow screens */
+  .effect-management__buttons {
+    gap: 2px;
+  }
+
+  .effect-management__buttons button {
+    font-size: 12px;
+    padding: 10px 8px;
+  }
+}
+
+/* Landscape phone layout */
+@media (max-height: 500px) and (max-width: 900px) {
+  /* Reduce vertical space usage */
+  .source-select-container {
+    top: 2px;
+  }
+
+  .effect-nav-buttons-container {
+    bottom: 5px;
+  }
+
+  .fader-container {
+    max-height: 50vh;
+  }
+
+  /* Smaller header in effect selector */
+  .effect-select-header-bar {
+    padding: 5px 10px;
+  }
+
+  .effect-tab {
+    padding: 8px 15px;
+    font-size: 12px;
+  }
+
+  .effect-list-header {
+    padding: 8px 12px;
+  }
+}
+
+/* Hide cursor on touch devices */
+@media (hover: none) and (pointer: coarse) {
+  .App {
+    cursor: default;
+  }
+
+  /* Ensure all interactive elements show touch feedback */
+  button:active,
+  .toggle-button:active,
+  .nav-button:active,
+  .effect-item:active,
+  .category-item:active {
+    opacity: 0.7;
+  }
+}

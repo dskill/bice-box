@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useCallback } from 'react';
 import { generateColor } from './theme';
+import ipcProxy from './ipcProxy';
 import './ParamFader.css';
 
 // High-performance ParamFader using direct DOM manipulation
@@ -136,9 +137,7 @@ const ParamFader = ({ param, onParamChange, useRotatedLabels }) => {
 
   // Throttled version of dispatching unified param action
   const throttledDispatchParam = throttle((paramName, paramValue) => {
-    if (window.electron && window.electron.ipcRenderer) {
-      window.electron.ipcRenderer.send('effects/actions:set_effect_parameters', { params: { [paramName]: paramValue } });
-    }
+    ipcProxy.send('effects/actions:set_effect_parameters', { params: { [paramName]: paramValue } });
   }, 50); // 50ms throttle for SuperCollider Single Source of Truth
 
   // Throttled version of onParamChange callback

@@ -1,6 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import OpenAI from 'openai';
 import { toFile } from 'openai/uploads';
+import ipcProxy from './ipcProxy';
 
 const Whisper = ({ isRecording, onTranscriptionComplete }) => {
     const mediaRecorder = useRef(null);
@@ -12,11 +13,13 @@ const Whisper = ({ isRecording, onTranscriptionComplete }) => {
 
     useEffect(() => {
         const initOpenAI = async () => {
-            if (window.electron) {
-                const apiKey = await window.electron.ipcRenderer.getOpenAIKey();
+            try {
+                const apiKey = await ipcProxy.getOpenAIKey();
                 if (apiKey) {
                     setOpenai(new OpenAI({ apiKey, dangerouslyAllowBrowser: true }));
                 }
+            } catch (err) {
+                console.error('Failed to get OpenAI key:', err);
             }
         };
         initOpenAI();

@@ -6,9 +6,11 @@ import Button from './Button';
 import ToggleButton from './ToggleButton';
 import WifiSettings from './WifiSettings';
 import CommitPreview from './CommitPreview';
+import ipcProxy from './ipcProxy';
 import './App.css';
 
 const electron = window.electron;
+const ipc = ipcProxy;
 
 function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, switchSynth, effectsRepoStatus, onCheckEffectsRepo })
 {
@@ -41,10 +43,8 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
     const [isPlatformRaspberryPi, setIsPlatformRaspberryPi] = useState(false);
 
     useEffect(() => {
-        if (!electron || !electron.ipcRenderer) {
-            console.warn("Electron or ipcRenderer not available");
-            return;
-        }
+        // These are only available in Electron mode
+        if (!electron) return;
 
         const handleIpAddressReply = (event, address) => {
             setIpAddress(address);
@@ -54,30 +54,32 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
             setVersion(ver);
         };
 
-        electron.ipcRenderer.on('ip-address-reply', handleIpAddressReply);
-        electron.ipcRenderer.on('version-reply', handleVersionReply);
+        const unsub1 = ipc.on('ip-address-reply', handleIpAddressReply);
+        const unsub2 = ipc.on('version-reply', handleVersionReply);
 
-        electron.ipcRenderer.send('get-ip-address');
-        electron.ipcRenderer.send('get-version');
+        ipc.send('get-ip-address');
+        ipc.send('get-version');
 
         return () => {
-            electron.ipcRenderer.removeListener('ip-address-reply', handleIpAddressReply);
-            electron.ipcRenderer.removeListener('version-reply', handleVersionReply);
+            if (typeof unsub1 === 'function') unsub1();
+            else ipc.removeListener('ip-address-reply', handleIpAddressReply);
+            if (typeof unsub2 === 'function') unsub2();
+            else ipc.removeListener('version-reply', handleVersionReply);
         };
     }, []);
 
     useEffect(() => {
-        if (!electron || !electron.ipcRenderer) return;
+        if (!electron) return;
 
         const timer = setTimeout(() => onCheckEffectsRepo(), 1500);
         return () => clearTimeout(timer);
-    }, []);
+    }, [onCheckEffectsRepo]);
 
     useEffect(() => {
-        if (!electron || !electron.ipcRenderer) return;
+        if (!electron) return;
 
         const handleAutoUpdateStatus = (event, data) => {
-            const { status, version, percent, message, currentVersion } = data;
+            const { status, version, percent, message } = data;
             setAutoUpdateState(prev => ({
                 ...prev,
                 status: status || prev.status,
@@ -90,58 +92,57 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
             }
         };
 
-        electron.ipcRenderer.on('auto-update-status', handleAutoUpdateStatus);
+        const unsub = ipc.on('auto-update-status', handleAutoUpdateStatus);
 
         return () => {
-            electron.ipcRenderer.removeListener('auto-update-status', handleAutoUpdateStatus);
+            if (typeof unsub === 'function') unsub();
+            else ipc.removeListener('auto-update-status', handleAutoUpdateStatus);
         };
     }, []);
 
     useEffect(() => {
-        if (!electron || !electron.ipcRenderer) return;
+        if (!electron) return;
 
         const handleWifiStatus = (event, status) => {
             setWifiStatus(status);
-            electron.ipcRenderer.send('get-ip-address');
+            ipc.send('get-ip-address');
         };
 
-        electron.ipcRenderer.on('wifi-status', handleWifiStatus);
-        electron.ipcRenderer.send('check-wifi-status');
+        const unsub = ipc.on('wifi-status', handleWifiStatus);
+        ipc.send('check-wifi-status');
 
         return () => {
-            electron.ipcRenderer.removeListener('wifi-status', handleWifiStatus);
+            if (typeof unsub === 'function') unsub();
+            else ipc.removeListener('wifi-status', handleWifiStatus);
         };
     }, []);
 
     useEffect(() => {
-        if (!electron || !electron.ipcRenderer) return;
-
-        electron.ipcRenderer.invoke('get-dev-mode').then(setDevMode);
+        ipc.invoke('get-dev-mode').then(setDevMode).catch(() => setDevMode(false));
 
         const handleModeChange = (event, newMode) => {
             setDevMode(newMode);
         };
 
-        electron.ipcRenderer.on('dev-mode-changed', handleModeChange);
+        const unsub = ipc.on('dev-mode-changed', handleModeChange);
 
         return () => {
-            electron.ipcRenderer.removeListener('dev-mode-changed', handleModeChange);
+            if (typeof unsub === 'function') unsub();
+            else ipc.removeListener('dev-mode-changed', handleModeChange);
         };
     }, []);
 
     useEffect(() => {
-        if (!electron || !electron.ipcRenderer) return;
-
-        electron.ipcRenderer.invoke('get-platform-info').then(info => {
+        ipc.invoke('get-platform-info').then(info => {
             if (info?.isPi !== undefined) {
                 setIsPlatformRaspberryPi(info.isPi);
             }
-        });
+        }).catch(() => {});
     }, []);
 
     const refreshIpAddress = () => {
-        if (electron?.ipcRenderer) {
-            electron.ipcRenderer.send('get-ip-address');
+        if (electron) {
+            ipc.send('get-ip-address');
         }
     };
 
@@ -157,10 +158,10 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
                 return;
             }
 
-            return new Promise((resolve, reject) =>
+            return new Promise((resolve) =>
             {
-                electron.ipcRenderer.send('get-audio-devices');
-                electron.ipcRenderer.once('audio-devices-reply', (event, devices) =>
+                ipc.send('get-audio-devices');
+                ipc.once('audio-devices-reply', (event, devices) =>
                 {
                     console.log("audio devices received:", devices);
                     if (Array.isArray(devices) && devices.length > 0)
@@ -194,29 +195,33 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
     };
 
     const rebootServer = () => {
-        electron?.ipcRenderer?.send('reboot-server');
+        if (electron) ipc.send('reboot-server');
     };
 
     const resetClaudeConversation = () => {
-        electron?.ipcRenderer?.send('reset-claude-session');
+        ipc.send('reset-claude-session');
     };
 
     const handleInputDeviceChange = (event) => {
         const selectedDevice = event.target.value;
         setSelectedInputDevice(selectedDevice);
-        electron?.ipcRenderer?.send('set-audio-devices', {
-            inputDevice: selectedDevice,
-            outputDevice: selectedOutputDevice
-        });
+        if (electron) {
+            ipc.send('set-audio-devices', {
+                inputDevice: selectedDevice,
+                outputDevice: selectedOutputDevice
+            });
+        }
     };
 
     const handleOutputDeviceChange = (event) => {
         const selectedDevice = event.target.value;
         setSelectedOutputDevice(selectedDevice);
-        electron?.ipcRenderer?.send('set-audio-devices', {
-            inputDevice: selectedInputDevice,
-            outputDevice: selectedDevice
-        });
+        if (electron) {
+            ipc.send('set-audio-devices', {
+                inputDevice: selectedInputDevice,
+                outputDevice: selectedDevice
+            });
+        }
     };
 
     const refreshDevices = () => {
@@ -225,27 +230,27 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
     };
 
     const fetchGitBranches = () => {
-        if (!electron?.ipcRenderer) return;
+        if (!electron) return;
 
-        electron.ipcRenderer.send('get-git-branches');
-        electron.ipcRenderer.once('git-branches-reply', (event, data) => {
+        ipc.send('get-git-branches');
+        ipc.once('git-branches-reply', (event, data) => {
             setAvailableBranches(data.branches);
             setCurrentBranch(data.currentBranch);
         });
-        electron.ipcRenderer.once('git-branches-error', (event, error) => {
+        ipc.once('git-branches-error', (event, error) => {
             console.error('Failed to fetch branches:', error);
             setErrorMessage(`Failed to fetch branches: ${error}`);
         });
     };
 
     const checkLocalChanges = () => {
-        if (!electron?.ipcRenderer) return;
+        if (!electron) return;
 
-        electron.ipcRenderer.send('check-git-local-changes');
-        electron.ipcRenderer.once('git-local-changes-reply', (event, data) => {
+        ipc.send('check-git-local-changes');
+        ipc.once('git-local-changes-reply', (event, data) => {
             setHasLocalChanges(data.hasLocalChanges);
         });
-        electron.ipcRenderer.once('git-local-changes-error', (event, error) => {
+        ipc.once('git-local-changes-error', (event, error) => {
             console.error('Failed to check local changes:', error);
         });
     };
@@ -254,16 +259,16 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
         if (newBranch === currentBranch) return;
 
         setIsSwitchingBranch(true);
-        electron.ipcRenderer.send('switch-git-branch', newBranch);
+        ipc.send('switch-git-branch', newBranch);
 
-        electron.ipcRenderer.once('switch-branch-success', (event, data) => {
+        ipc.once('switch-branch-success', (event, data) => {
             setCurrentBranch(data.branch);
             setIsSwitchingBranch(false);
             reloadEffectList();
             checkLocalChanges();
         });
 
-        electron.ipcRenderer.once('switch-branch-error', (event, error) => {
+        ipc.once('switch-branch-error', (event, error) => {
             console.error('Failed to switch branch:', error);
             setErrorMessage(`Failed to switch branch: ${error}`);
             setIsSwitchingBranch(false);
@@ -272,7 +277,7 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
 
     useEffect(() => {
         const hasConnectivity = !isPlatformRaspberryPi || wifiStatus.connected;
-        if (!electron?.ipcRenderer || !hasConnectivity) return;
+        if (!electron || !hasConnectivity) return;
 
         fetchGitBranches();
         checkLocalChanges();
@@ -296,31 +301,31 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
     };
 
     const handleCheckUpdate = async () => {
-        if (!electron?.ipcRenderer) return;
+        if (!electron) return;
         setAutoUpdateState(prev => ({ ...prev, status: 'checking' }));
         try {
-            await electron.ipcRenderer.invoke('check-for-updates');
+            await ipc.invoke('check-for-updates');
         } catch (err) {
             setAutoUpdateState(prev => ({ ...prev, status: 'error', error: err.message }));
         }
     };
 
     const handleDownloadUpdate = async () => {
-        if (!electron?.ipcRenderer) return;
+        if (!electron) return;
         try {
-            await electron.ipcRenderer.invoke('download-update');
+            await ipc.invoke('download-update');
         } catch (err) {
             setAutoUpdateState(prev => ({ ...prev, status: 'error', error: err.message }));
         }
     };
 
     const handleInstallUpdate = () => {
-        if (!electron?.ipcRenderer) return;
-        electron.ipcRenderer.invoke('install-update');
+        if (!electron) return;
+        ipc.invoke('install-update');
     };
 
     const handleQuit = () => {
-        electron?.ipcRenderer?.send('quit-app');
+        if (electron) ipc.send('quit-app');
     };
 
     const renderSyncButton = () =>
@@ -467,8 +472,10 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
     };
 
     const handleDevModeToggle = () => {
-        electron.ipcRenderer.send('toggle-dev-mode');
-        reloadEffectList();
+        if (electron) {
+            ipc.send('toggle-dev-mode');
+            reloadEffectList();
+        }
     };
 
     return (
@@ -523,13 +530,13 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
 
                 {ipAddress && (
                     <div className="effect-management__qr-code">
-                        <QRCode 
-                            value={`http://${ipAddress}:31337/remote/`}
+                        <QRCode
+                            value={`http://${ipAddress}:31337/app/`}
                             size={80}
                             viewBox={`0 0 256 256`}
                         />
                         <p className="effect-management__qr-label">
-                            {ipAddress}
+                            {ipAddress} (Remote Control)
                         </p>
                     </div>
                 )}

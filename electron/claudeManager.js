@@ -813,6 +813,15 @@ class ClaudeManager {
         if (this.mainWindow && this.mainWindow.webContents) {
             this.mainWindow.webContents.send('claude-response', message);
         }
+        // Also broadcast to remote WebSocket clients
+        if (this.broadcastIPCEvent) {
+            this.broadcastIPCEvent('claude-response', message);
+        }
+    }
+
+    // Set the broadcast function for remote clients
+    setBroadcastIPCEvent(fn) {
+        this.broadcastIPCEvent = fn;
     }
 
     async handleFileError(filePath, errorMessage) {

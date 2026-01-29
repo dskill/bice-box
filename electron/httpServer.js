@@ -6,9 +6,11 @@ const fs = require('fs');
 const PORT = 31337;
 let httpServerInstance = null;
 let wss = null;
+let currentGetState = null; // Store getState for IPC routing
 
 // Simple MCP server without SDK transport complexity
 function startHttpServer(getState) {
+    currentGetState = getState; // Store for later use
     if (httpServerInstance) {
         console.log('HTTP server is already running.');
         return;
@@ -56,7 +58,63 @@ function startHttpServer(getState) {
     }
     
     console.log(`[HTTP Server] Serving static files from: ${publicPath}`);
+
+    // Determine the React build path for serving the remote control UI
+    let reactBuildPath;
+    if (process.env.NODE_ENV === 'development') {
+        // In development, the React dev server handles this, but we still need a fallback
+        reactBuildPath = path.join(__dirname, '..', 'build');
+    } else {
+        const possibleReactPaths = [
+            path.join(__dirname, '..', 'build'),
+            path.join(process.resourcesPath, 'build'),
+            path.join(process.resourcesPath, 'app', 'build'),
+        ];
+        reactBuildPath = possibleReactPaths.find(p => {
+            try {
+                fs.accessSync(path.join(p, 'index.html'));
+                return true;
+            } catch {
+                return false;
+            }
+        });
+    }
+
+    if (reactBuildPath) {
+        console.log(`[HTTP Server] React build available at: ${reactBuildPath}`);
+    }
+
+    // Serve public static files (for /remote/ visualizer)
     app.use(express.static(publicPath));
+
+    // Debug endpoint
+    app.get('/debug', (req, res) => {
+        res.json({
+            reactBuildPath,
+            exists: reactBuildPath ? fs.existsSync(reactBuildPath) : false,
+            publicPath
+        });
+    });
+
+    // Serve React build for remote control UI (at /app/ path)
+    if (reactBuildPath && fs.existsSync(reactBuildPath)) {
+        console.log(`[HTTP Server] Found React build at: ${reactBuildPath}`);
+
+        app.use('/app', express.static(reactBuildPath));
+
+        // SPA fallback for React routes under /app (handles /app, /app/, /app/anything)
+        // Express 5 uses path-to-regexp v8 which requires named params for wildcards
+        app.get('/app', (req, res) => {
+            res.sendFile(path.join(reactBuildPath, 'index.html'));
+        });
+        app.get('/app/{*splat}', (req, res) => {
+            res.sendFile(path.join(reactBuildPath, 'index.html'));
+        });
+
+        console.log(`[HTTP Server] Remote control UI available at http://127.0.0.1:${PORT}/app/`);
+    } else {
+        console.log(`[HTTP Server] React build NOT found at: ${reactBuildPath}`);
+    }
 
     // Handle MCP requests
     app.post('/mcp', async (req, res) => {
@@ -311,10 +369,20 @@ function startHttpServer(getState) {
 
     wss.on('connection', (ws) => {
         console.log('[WSS] Client connected');
-        
+
+        // Mark this as a remote control client (will be set to true when it sends IPC messages)
+        ws.isRemoteControl = false;
+
         // Send current shader state to newly connected client
         sendCurrentShaderToClient(ws, getState);
-        
+
+        // Send current effect and visualizer state to remote control clients
+        sendCurrentStateToClient(ws, getState);
+
+        ws.on('message', (data) => {
+            handleWebSocketMessage(ws, data, getState);
+        });
+
         ws.on('close', () => {
             console.log('[WSS] Client disconnected');
         });
@@ -322,6 +390,237 @@ function startHttpServer(getState) {
             console.error('[WSS] WebSocket error:', error);
         });
     });
+}
+
+/**
+ * Handle incoming WebSocket messages from remote control clients
+ */
+function handleWebSocketMessage(ws, data, getState) {
+    try {
+        const message = JSON.parse(data.toString());
+
+        switch (message.type) {
+            case 'ipc-send':
+                ws.isRemoteControl = true;
+                handleRemoteIPCSend(message.channel, message.data, getState);
+                break;
+
+            case 'ipc-invoke':
+                ws.isRemoteControl = true;
+                handleRemoteIPCInvoke(ws, message.channel, message.args, message.requestId, getState);
+                break;
+
+            default:
+                // Ignore unknown message types (could be visualizer-specific)
+                break;
+        }
+    } catch (error) {
+        console.error('[WSS] Error handling message:', error);
+    }
+}
+
+/**
+ * Handle IPC send messages from remote clients (fire and forget)
+ */
+function handleRemoteIPCSend(channel, data, getState) {
+    console.log(`[WSS] Remote IPC send: ${channel}`);
+
+    const {
+        setCurrentEffectAction,
+        setEffectParametersAction,
+        setCurrentVisualizerAction,
+        getClaudeManager,
+        mainWindow
+    } = getState;
+    const claudeManager = getClaudeManager ? getClaudeManager() : null;
+
+    switch (channel) {
+        case 'effects/actions:set_current_effect':
+            if (setCurrentEffectAction && data?.name) {
+                const result = setCurrentEffectAction({ name: data.name });
+                if (result?.error) {
+                    console.error('[WSS] Error setting effect:', result.error);
+                }
+            }
+            break;
+
+        case 'effects/actions:set_effect_parameters':
+            if (setEffectParametersAction && data?.params) {
+                setEffectParametersAction({ params: data.params });
+            }
+            break;
+
+        case 'visualizers/actions:set_current_visualizer':
+            if (setCurrentVisualizerAction && data?.name) {
+                const result = setCurrentVisualizerAction({ name: data.name });
+                if (result?.error) {
+                    console.error('[WSS] Error setting visualizer:', result.error);
+                }
+            }
+            break;
+
+        case 'send-to-claude':
+            if (claudeManager?.handleMessage) {
+                claudeManager.handleMessage(data);
+            } else if (mainWindow?.webContents) {
+                // Forward to main window which handles Claude
+                mainWindow.webContents.send('remote-claude-message', data);
+            }
+            break;
+
+        case 'cancel-claude':
+            if (claudeManager?.cancel) {
+                claudeManager.cancel();
+            } else if (mainWindow?.webContents) {
+                mainWindow.webContents.send('cancel-claude');
+            }
+            break;
+
+        case 'reload-all-effects':
+            if (getState.loadEffectsList && mainWindow) {
+                getState.loadEffectsList(mainWindow, getState.getEffectsRepoPath, () => getState.getEffectsRepoPath() + '/effects');
+            }
+            break;
+
+        case 'reset-claude-session':
+            if (claudeManager?.resetSession) {
+                claudeManager.resetSession();
+            }
+            break;
+
+        case 'toggle-dev-mode':
+            if (getState.toggleDevMode) {
+                getState.toggleDevMode();
+            }
+            break;
+
+        default:
+            console.log(`[WSS] Unhandled IPC send channel: ${channel}`);
+    }
+}
+
+/**
+ * Handle IPC invoke messages from remote clients (request/response)
+ */
+async function handleRemoteIPCInvoke(ws, channel, args, requestId, getState) {
+    console.log(`[WSS] Remote IPC invoke: ${channel}`);
+
+    const WebSocket = require('ws');
+    if (ws.readyState !== WebSocket.OPEN) return;
+
+    let result = null;
+    let error = null;
+
+    try {
+        const {
+            getSynths,
+            getAvailableVisualizers,
+            getCurrentEffectSnapshot,
+            getActiveVisualizerSnapshot
+        } = getState;
+
+        switch (channel) {
+            case 'get-visualizers':
+                result = getAvailableVisualizers ? getAvailableVisualizers() : [];
+                break;
+
+            case 'visualizers/queries:list_visualizers':
+                result = { visualizers: getAvailableVisualizers ? getAvailableVisualizers() : [] };
+                break;
+
+            case 'get-dev-mode':
+                result = getState.getDevMode ? getState.getDevMode() : false;
+                break;
+
+            case 'get-platform-info':
+                result = getState.getPlatformInfo ? getState.getPlatformInfo() : { isLinux: false, isPi: false };
+                break;
+
+            case 'get-openai-key':
+                result = getState.getOpenAIKey ? await getState.getOpenAIKey() : null;
+                break;
+
+            case 'effects/queries:list_effects':
+                result = getSynths ? getSynths() : [];
+                break;
+
+            case 'effects/queries:get_current_effect':
+                result = getCurrentEffectSnapshot ? getCurrentEffectSnapshot() : null;
+                break;
+
+            case 'visualizers/queries:get_current_visualizer':
+                result = getActiveVisualizerSnapshot ? getActiveVisualizerSnapshot() : null;
+                break;
+
+            default:
+                error = `Unknown invoke channel: ${channel}`;
+                console.log(`[WSS] ${error}`);
+        }
+    } catch (err) {
+        error = err.message;
+        console.error(`[WSS] Error in invoke ${channel}:`, err);
+    }
+
+    // Send response back to client
+    ws.send(JSON.stringify({
+        type: 'ipc-response',
+        requestId,
+        result,
+        error
+    }));
+}
+
+/**
+ * Send current effect and visualizer state to a newly connected remote control client
+ */
+function sendCurrentStateToClient(ws, getState) {
+    const WebSocket = require('ws');
+    if (ws.readyState !== WebSocket.OPEN) return;
+
+    try {
+        const { getCurrentEffectSnapshot, getActiveVisualizerSnapshot, getSynths } = getState;
+
+        // Send effects list
+        const synths = getSynths ? getSynths() : [];
+        if (synths.length > 0) {
+            ws.send(JSON.stringify({
+                type: 'ipc-event',
+                channel: 'effects-data',
+                data: synths
+            }));
+        }
+
+        // Send current effect state
+        const effect = getCurrentEffectSnapshot ? getCurrentEffectSnapshot() : null;
+        if (effect) {
+            ws.send(JSON.stringify({
+                type: 'ipc-event',
+                channel: 'effects/state',
+                data: { effect }
+            }));
+        }
+
+        // Send current visualizer state
+        const visualizer = getActiveVisualizerSnapshot ? getActiveVisualizerSnapshot() : null;
+        if (visualizer) {
+            ws.send(JSON.stringify({
+                type: 'ipc-event',
+                channel: 'visualizers/state',
+                data: { visualizer }
+            }));
+        }
+
+        // Send dev mode state
+        const devMode = getState.getDevMode ? getState.getDevMode() : false;
+        ws.send(JSON.stringify({
+            type: 'ipc-event',
+            channel: 'dev-mode-changed',
+            data: devMode
+        }));
+
+    } catch (error) {
+        console.error('[WSS] Error sending current state to client:', error);
+    }
 }
 
 function sendCurrentShaderToClient(ws, getState) {
@@ -386,7 +685,7 @@ function sendCurrentShaderToClient(ws, getState) {
 
 function broadcast(message) {
     if (!wss) {
-        console.error('[WSS] WebSocket server not initialized.');
+        // Silently return - broadcasts may happen during startup before server is ready
         return;
     }
 
@@ -395,6 +694,27 @@ function broadcast(message) {
     wss.clients.forEach(client => {
         if (client.readyState === WebSocket.OPEN) {
             client.send(messageString);
+        }
+    });
+}
+
+/**
+ * Broadcast an IPC event to all connected remote control clients
+ * This is used to sync state changes from main process to remote phones
+ */
+function broadcastIPCEvent(channel, data) {
+    if (!wss) return;
+
+    const WebSocket = require('ws');
+    const message = JSON.stringify({
+        type: 'ipc-event',
+        channel,
+        data
+    });
+
+    wss.clients.forEach(client => {
+        if (client.readyState === WebSocket.OPEN) {
+            client.send(message);
         }
     });
 }
@@ -689,4 +1009,4 @@ function stopHttpServer() {
     }
 }
 
-module.exports = { startHttpServer, stopHttpServer, broadcast }; 
+module.exports = { startHttpServer, stopHttpServer, broadcast, broadcastIPCEvent }; 
