@@ -26,6 +26,8 @@ const Whisper = ({ isRecording, onTranscriptionComplete }) => {
     }, []);
 
     useEffect(() => {
+        // mediaDevices API requires HTTPS on mobile browsers - skip silently if unavailable
+        if (!navigator.mediaDevices?.enumerateDevices) return;
         navigator.mediaDevices.enumerateDevices()
             .then(devices => {
                 const filteredDevices = devices.filter(device => device.kind === 'audioinput');
@@ -33,7 +35,8 @@ const Whisper = ({ isRecording, onTranscriptionComplete }) => {
                 if (filteredDevices.length > 0) {
                     setSelectedDeviceId(filteredDevices[0].deviceId);
                 }
-            });
+            })
+            .catch(() => {});
     }, []);
 
     useEffect(() => {
@@ -49,7 +52,10 @@ const Whisper = ({ isRecording, onTranscriptionComplete }) => {
     };
 
     const startRecording = () => {
-        if (mediaRecorder.current) return; 
+        if (mediaRecorder.current) return;
+
+        // mediaDevices API requires HTTPS on mobile browsers
+        if (!navigator.mediaDevices?.getUserMedia) return;
 
         audioChunks.current = [];
 

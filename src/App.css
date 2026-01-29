@@ -2003,167 +2003,160 @@ button:disabled {
   border: 1px solid rgba(239, 68, 68, 0.3);
 }
 
-/* Mobile viewport adjustments */
+/* Mobile viewport adjustments - ONLY for remote mode (not Pi) */
 @media (max-width: 800px) {
-  /* Larger touch targets for all buttons */
-  button,
-  .toggle-button,
-  .nav-button,
-  .effect-tab,
-  .category-item,
-  .effect-item {
+  /* Larger touch targets for all buttons - remote mode only */
+  .remote-mode button,
+  .remote-mode .toggle-button,
+  .remote-mode .nav-button,
+  .remote-mode .effect-tab,
+  .remote-mode .category-item,
+  .remote-mode .effect-item {
     min-height: 48px;
   }
 
   /* Adjust fader container for mobile */
-  .fader-container {
+  .remote-mode .fader-container {
     gap: 10px;
     padding: 0 10px;
   }
 
   /* Stack source selector vertically on narrow screens */
-  .source-select-container {
+  .remote-mode .source-select-container {
     width: 90%;
     flex-wrap: wrap;
     gap: 8px;
   }
 
-  .source-select-container .nav-button {
+  .remote-mode .source-select-container .nav-button {
     flex: 1 1 auto;
     min-width: 100px;
   }
 
   /* Adjust effect management panel */
-  .effect-management__content {
+  .remote-mode .effect-management__content {
     padding: 15px;
   }
 
   /* Larger Claude button for touch */
-  .claude-button {
+  .remote-mode .claude-button {
     min-width: 120px;
     min-height: 48px;
     font-size: 14px;
   }
 
   /* Effect selector adjustments */
-  .effect-select-header-bar {
+  .remote-mode .effect-select-header-bar {
     padding: 8px 10px;
     flex-wrap: wrap;
     gap: 8px;
   }
 
-  .effect-search-input {
+  .remote-mode .effect-search-input {
     width: 140px;
     padding: 12px 35px 12px 12px;
   }
 
-  .effect-categories-sidebar {
+  .remote-mode .effect-categories-sidebar {
     width: 140px;
   }
 
-  .category-item {
+  .remote-mode .category-item {
     padding: 16px 10px;
   }
 
-  .effect-item {
+  .remote-mode .effect-item {
     padding: 16px 12px;
   }
 
   /* Floating Claude controls - make full width on mobile */
-  .floating-claude-controls {
+  .remote-mode .floating-claude-controls {
     width: calc(100% - 20px);
     left: 10px;
     transform: none;
     bottom: 0;
   }
 
-  .floating-claude-input {
+  .remote-mode .floating-claude-input {
     flex: 1;
     width: auto;
   }
 }
 
-/* Portrait phone layout (narrow and tall) */
+/* Portrait phone layout (narrow and tall) - remote mode only */
 @media (max-width: 480px) {
   /* Hide visualization on very narrow screens - focus on controls */
-  .visualization-canvas-container {
+  .remote-mode .visualization-canvas-container {
     height: 30vh;
   }
 
   /* Adjust effect nav buttons position */
-  .effect-nav-buttons-container {
+  .remote-mode .effect-nav-buttons-container {
     bottom: 10px;
   }
 
   /* Smaller gaps */
-  .fader-container {
+  .remote-mode .fader-container {
     gap: 8px;
     padding: 0 5px;
   }
 
   /* Single column effect selector */
-  .effect-categories-sidebar {
+  .remote-mode .effect-categories-sidebar {
     width: 120px;
   }
 
   /* Adjust QR code for mobile (hide on very small screens) */
-  .effect-management__qr-code {
+  .remote-mode .effect-management__qr-code {
     display: none;
   }
 
   /* Stack buttons on narrow screens */
-  .effect-management__buttons {
+  .remote-mode .effect-management__buttons {
     gap: 2px;
   }
 
-  .effect-management__buttons button {
+  .remote-mode .effect-management__buttons button {
     font-size: 12px;
     padding: 10px 8px;
   }
 }
 
-/* Landscape phone layout */
+/* Landscape phone layout - remote mode only */
 @media (max-height: 500px) and (max-width: 900px) {
   /* Reduce vertical space usage */
-  .source-select-container {
+  .remote-mode .source-select-container {
     top: 2px;
   }
 
-  .effect-nav-buttons-container {
+  .remote-mode .effect-nav-buttons-container {
     bottom: 5px;
   }
 
-  .fader-container {
+  .remote-mode .fader-container {
     max-height: 50vh;
   }
 
   /* Smaller header in effect selector */
-  .effect-select-header-bar {
+  .remote-mode .effect-select-header-bar {
     padding: 5px 10px;
   }
 
-  .effect-tab {
+  .remote-mode .effect-tab {
     padding: 8px 15px;
     font-size: 12px;
   }
 
-  .effect-list-header {
+  .remote-mode .effect-list-header {
     padding: 8px 12px;
   }
 }
 
-/* Hide cursor on touch devices */
-@media (hover: none) and (pointer: coarse) {
-  .App {
-    cursor: default;
-  }
-
-  /* Ensure all interactive elements show touch feedback */
-  button:active,
-  .toggle-button:active,
-  .nav-button:active,
-  .effect-item:active,
-  .category-item:active {
-    opacity: 0.7;
-  }
+/* Touch feedback for remote mode only */
+.remote-mode button:active,
+.remote-mode .toggle-button:active,
+.remote-mode .nav-button:active,
+.remote-mode .effect-item:active,
+.remote-mode .category-item:active {
+  opacity: 0.7;
 }

@@ -535,7 +535,7 @@ function App() {
   }
 
   return (
-    <div className="App" style={styles.app}>
+    <div className={`App${isRemoteMode ? ' remote-mode' : ''}`} style={styles.app}>
       {/* Connection status indicator for remote mode */}
       {isRemoteMode && (
         <div className={`remote-connection-status ${connectionStatus}`}>

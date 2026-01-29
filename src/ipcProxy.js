@@ -33,7 +33,9 @@ class IPCProxy {
       return Promise.resolve();
     }
 
-    this.wsUrl = wsUrl || `ws://${window.location.hostname}:31337`;
+    // Use the same host and port as the page was served from
+    const port = window.location.port || '31337';
+    this.wsUrl = wsUrl || `ws://${window.location.hostname}:${port}`;
 
     return new Promise((resolve, reject) => {
       this.connectionStatus = 'connecting';
@@ -43,7 +45,6 @@ class IPCProxy {
         this.ws = new WebSocket(this.wsUrl);
 
         this.ws.onopen = () => {
-          console.log('[ipcProxy] WebSocket connected');
           this.connectionStatus = 'connected';
           this.reconnectAttempts = 0;
           this.notifyStatusListeners();
@@ -62,14 +63,12 @@ class IPCProxy {
         };
 
         this.ws.onclose = () => {
-          console.log('[ipcProxy] WebSocket disconnected');
           this.connectionStatus = 'disconnected';
           this.notifyStatusListeners();
           this.scheduleReconnect();
         };
 
         this.ws.onerror = (error) => {
-          console.error('[ipcProxy] WebSocket error:', error);
           this.connectionStatus = 'error';
           this.notifyStatusListeners();
           reject(error);
@@ -191,11 +190,40 @@ class IPCProxy {
   }
 
   /**
+   * Wait for WebSocket connection to be established
+   */
+  waitForConnection(timeout = 10000) {
+    if (this.isElectron) return Promise.resolve();
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) return Promise.resolve();
+
+    return new Promise((resolve, reject) => {
+      const timeoutId = setTimeout(() => {
+        this.statusListeners.delete(listener);
+        reject(new Error('Connection timeout'));
+      }, timeout);
+
+      const listener = (status) => {
+        if (status === 'connected') {
+          clearTimeout(timeoutId);
+          this.statusListeners.delete(listener);
+          resolve();
+        }
+      };
+      this.statusListeners.add(listener);
+    });
+  }
+
+  /**
    * Invoke a method and wait for response
    */
-  invoke(channel, ...args) {
+  async invoke(channel, ...args) {
     if (this.isElectron) {
       return window.electron.ipcRenderer.invoke(channel, ...args);
+    }
+
+    // Wait for connection if not connected yet
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+      await this.waitForConnection();
     }
 
     return new Promise((resolve, reject) => {
@@ -213,6 +241,7 @@ class IPCProxy {
       if (this.ws && this.ws.readyState === WebSocket.OPEN) {
         this.ws.send(JSON.stringify(message));
       } else {
+        this.invokeCallbacks.delete(requestId);
         reject(new Error('WebSocket not connected'));
       }
 
