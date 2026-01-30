@@ -536,7 +536,7 @@ function EffectManagement({ reloadEffectList, pullEffectsRepo, currentSynth, swi
                             viewBox={`0 0 256 256`}
                         />
                         <p className="effect-management__qr-label">
-                            {ipAddress} (Remote Control)
+                            http://{ipAddress}:31337/app/
                         </p>
                     </div>
                 )}

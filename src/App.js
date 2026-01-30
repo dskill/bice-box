@@ -541,6 +541,7 @@ function App() {
         <div className={`remote-connection-status ${connectionStatus}`}>
           {connectionStatus === 'connected' ? 'Connected' :
            connectionStatus === 'connecting' ? 'Connecting...' :
+           connectionStatus === 'error' ? 'Connection Error' :
            'Disconnected'}
         </div>
       )}

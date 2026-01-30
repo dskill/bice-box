@@ -34,8 +34,7 @@ class IPCProxy {
     }
 
     // Use the same host and port as the page was served from
-    const port = window.location.port || '31337';
-    this.wsUrl = wsUrl || `ws://${window.location.hostname}:${port}`;
+    this.wsUrl = wsUrl || `ws://${window.location.host}`;
 
     return new Promise((resolve, reject) => {
       this.connectionStatus = 'connecting';
@@ -375,17 +374,17 @@ const ipcProxy = new IPCProxy();
 
 // Auto-connect for browser mode
 if (!ipcProxy.isRunningInElectron()) {
-  // Connect when DOM is ready
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-      ipcProxy.connect().catch(error => {
-        console.error('[ipcProxy] Initial connection failed:', error);
-      });
-    });
-  } else {
+  const doConnect = () => {
     ipcProxy.connect().catch(error => {
       console.error('[ipcProxy] Initial connection failed:', error);
     });
+  };
+
+  // Connect when DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', doConnect);
+  } else {
+    doConnect();
   }
 }
 
