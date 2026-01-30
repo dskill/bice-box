@@ -13,10 +13,13 @@ const ClaudeConsole = ({
   onRecordingStart,
   onRecordingEnd,
   devMode,
+  isPi = false, // Whether running on Raspberry Pi (use voice input)
   // Add props to sync responding state
   isResponding,
   onRespondingChange
 }) => {
+  // Show text input on non-Pi devices (Mac, remote phone, etc.)
+  const useTextInput = !isPi || isRemoteMode;
   const [claudeOutput, setClaudeOutput] = useState('');
   // Use prop if available, otherwise local state (for backward compatibility if needed)
   const [localIsClaudeResponding, setLocalIsClaudeResponding] = useState(false);
@@ -205,13 +208,13 @@ const ClaudeConsole = ({
     setTextInput('');
   };
 
-  // Focus input when console opens in remote mode
+  // Focus input when console opens with text input mode
   useEffect(() => {
-    if (isOpen && isRemoteMode && inputRef.current) {
+    if (isOpen && useTextInput && inputRef.current) {
       // Small delay to ensure the input is rendered
       setTimeout(() => inputRef.current?.focus(), 100);
     }
-  }, [isOpen]);
+  }, [isOpen, useTextInput]);
 
   if (!devMode) {
     return null;
@@ -220,8 +223,8 @@ const ClaudeConsole = ({
   return (
     <div className="claude-ui-container">
       {isOpen ? (
-        // In remote mode, show a smaller toggle button; on Pi, show Hold to Talk
-        isRemoteMode ? (
+        // On Pi, show Hold to Talk; otherwise show simple Vibe button (text input below)
+        useTextInput ? (
           <button
             className={`claude-button ${isClaudeResponding ? 'thinking' : ''}`}
             onClick={isClaudeResponding ? handleCancelClaude : onClose}
@@ -272,8 +275,8 @@ const ClaudeConsole = ({
             {claudeOutput}
           </pre>
 
-          {/* Text input for remote mode (phone) */}
-          {isRemoteMode && (
+          {/* Text input for non-Pi devices (Mac, remote phone, etc.) */}
+          {useTextInput && (
             <form className="claude-input-form" onSubmit={handleTextSubmit}>
               <input
                 ref={inputRef}

@@ -565,6 +565,7 @@ function App() {
         onRecordingStart={handleInteractionStart}
         onRecordingEnd={handleInteractionEnd}
         devMode={devMode}
+        isPi={platformInfo.isPi}
         isResponding={isClaudeResponding}
         onRespondingChange={setIsClaudeResponding}
       />
@@ -584,36 +585,6 @@ function App() {
 
       <div className="effect-nav-buttons-container">
         <div className="visualization-controls">
-          {/* Floating Claude Controls above faders - Desktop only */}
-          {devMode && !platformInfo.isPi && (
-            <div className="floating-claude-controls">
-              <input
-                type="text"
-                className="floating-claude-input"
-                placeholder="Type to AI..."
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && e.target.value.trim()) {
-                    const message = e.target.value.trim();
-                    ipc.send('send-to-claude', message);
-                    e.target.value = '';
-                  }
-                }}
-              />
-              <button
-                className="floating-claude-send"
-                onClick={(e) => {
-                  const input = e.target.parentElement.querySelector('.floating-claude-input');
-                  if (input.value.trim()) {
-                    const message = input.value.trim();
-                    ipc.send('send-to-claude', message);
-                    input.value = '';
-                  }
-                }}
-              >
-                Send
-              </button>
-            </div>
-          )}
           <div className="fader-container">
             {currentAudioParams && Object.entries(currentAudioParams)
               .sort(([a], [b]) => a.localeCompare(b)) // Sort parameters alphabetically

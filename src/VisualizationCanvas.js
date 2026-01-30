@@ -423,8 +423,13 @@ function VisualizationCanvas({
       if (currentShaderContent && window.ShaderToyLite) {
         console.log('Shader content found, creating canvas and loading ShaderToyLite sketch...');
 
-        // Determine resolution scale from metadata or default
-        const actualResolutionScale = getResolutionScaleFromMetadata(currentShaderContent);
+        // Determine resolution scale:
+        // - On Pi: use shader metadata (for performance)
+        // - On Mac/remote: always use full resolution (1.0)
+        const isRemote = !window.electron;
+        const useFullResolution = !isPlatformRaspberryPi || isRemote;
+        const actualResolutionScale = useFullResolution ? 1.0 : getResolutionScaleFromMetadata(currentShaderContent);
+        console.log(`Resolution scale: ${actualResolutionScale} (Pi: ${isPlatformRaspberryPi}, Remote: ${isRemote})`);
 
         if (!webGLCapabilities || !webGLCapabilities.webGL2) {
           console.error("WebGL2 not supported, cannot run ShaderToyLite effect.");
