@@ -1975,7 +1975,7 @@ button:disabled {
 /* Connection status indicator for remote mode */
 .remote-connection-status {
   position: fixed;
-  top: 10px;
+  bottom: 10px;
   left: 10px;
   z-index: 3000;
   padding: 6px 12px;

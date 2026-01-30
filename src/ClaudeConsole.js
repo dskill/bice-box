@@ -2,6 +2,9 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import ipcProxy from './ipcProxy';
 import './ClaudeConsole.css';
 
+// Detect if we're in remote mode (browser, not Electron)
+const isRemoteMode = !window.electron;
+
 const ClaudeConsole = ({
   isOpen,
   onOpen,
@@ -20,8 +23,9 @@ const ClaudeConsole = ({
   const isClaudeResponding = isResponding !== undefined ? isResponding : localIsClaudeResponding;
   const setIsClaudeResponding = onRespondingChange || setLocalIsClaudeResponding;
 
-  const [isLoading, setIsLoading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [textInput, setTextInput] = useState('');
+  const inputRef = useRef(null);
   // Using optimized --continue approach, no toggle needed
   const outputRef = useRef(null);
   const lastOutputLength = useRef(0);
@@ -192,7 +196,22 @@ const ClaudeConsole = ({
 
   // handleResetClaude moved to EffectManagement component
 
-  // Removed toggle functionality - using optimized --continue approach
+  // Handle text input submission (for remote mode)
+  const handleTextSubmit = (e) => {
+    e.preventDefault();
+    if (!textInput.trim() || isClaudeResponding) return;
+
+    ipcProxy.send('send-to-claude', textInput.trim());
+    setTextInput('');
+  };
+
+  // Focus input when console opens in remote mode
+  useEffect(() => {
+    if (isOpen && isRemoteMode && inputRef.current) {
+      // Small delay to ensure the input is rendered
+      setTimeout(() => inputRef.current?.focus(), 100);
+    }
+  }, [isOpen]);
 
   if (!devMode) {
     return null;
@@ -201,19 +220,28 @@ const ClaudeConsole = ({
   return (
     <div className="claude-ui-container">
       {isOpen ? (
-        // Show Hold to Talk button when console is open
-        <button
-          className={`claude-button ${isRecording ? 'recording' : ''} ${isClaudeResponding ? 'thinking' : ''}`}
-          onMouseDown={isClaudeResponding ? undefined : onRecordingStart}
-          onMouseUp={isClaudeResponding ? undefined : onRecordingEnd}
-          onMouseLeave={isClaudeResponding ? undefined : onRecordingEnd}
-          onTouchStart={isClaudeResponding ? undefined : onRecordingStart}
-          onTouchEnd={isClaudeResponding ? undefined : onRecordingEnd}
-          onClick={isClaudeResponding ? handleCancelClaude : undefined}
-          disabled={false}
-        >
-          {isRecording ? 'Listening...' : isClaudeResponding ? 'Thinking...' : 'Hold to Talk'}
-        </button>
+        // In remote mode, show a smaller toggle button; on Pi, show Hold to Talk
+        isRemoteMode ? (
+          <button
+            className={`claude-button ${isClaudeResponding ? 'thinking' : ''}`}
+            onClick={isClaudeResponding ? handleCancelClaude : onClose}
+          >
+            {isClaudeResponding ? 'Thinking...' : 'Vibe'}
+          </button>
+        ) : (
+          <button
+            className={`claude-button ${isRecording ? 'recording' : ''} ${isClaudeResponding ? 'thinking' : ''}`}
+            onMouseDown={isClaudeResponding ? undefined : onRecordingStart}
+            onMouseUp={isClaudeResponding ? undefined : onRecordingEnd}
+            onMouseLeave={isClaudeResponding ? undefined : onRecordingEnd}
+            onTouchStart={isClaudeResponding ? undefined : onRecordingStart}
+            onTouchEnd={isClaudeResponding ? undefined : onRecordingEnd}
+            onClick={isClaudeResponding ? handleCancelClaude : undefined}
+            disabled={false}
+          >
+            {isRecording ? 'Listening...' : isClaudeResponding ? 'Thinking...' : 'Hold to Talk'}
+          </button>
+        )
       ) : (
         // Show Claude button when console is closed
         <button
@@ -223,7 +251,7 @@ const ClaudeConsole = ({
           Vibe
         </button>
       )}
-      
+
       {isOpen && (
         <button className="claude-console-close" onClick={handleCloseClick}>
           ×
@@ -232,19 +260,42 @@ const ClaudeConsole = ({
 
       {isOpen && (
         <div className="claude-console">
-          <pre 
-            className="claude-output" 
+          <pre
+            className="claude-output"
             ref={outputRef}
             onPointerDown={handlePointerDown}
-            style={{ 
+            style={{
               touchAction: 'none', // Match ParamFader
               cursor: isDragging ? 'grabbing' : 'default'
             }}
           >
             {claudeOutput}
           </pre>
-          
 
+          {/* Text input for remote mode (phone) */}
+          {isRemoteMode && (
+            <form className="claude-input-form" onSubmit={handleTextSubmit}>
+              <input
+                ref={inputRef}
+                type="text"
+                className="claude-input"
+                value={textInput}
+                onChange={(e) => setTextInput(e.target.value)}
+                placeholder="Type a message..."
+                disabled={isClaudeResponding}
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+              />
+              <button
+                type="submit"
+                className="claude-send-button"
+                disabled={isClaudeResponding || !textInput.trim()}
+              >
+                Send
+              </button>
+            </form>
+          )}
         </div>
       )}
     </div>

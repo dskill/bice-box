@@ -247,7 +247,8 @@
   padding: 8px 0;
   border-radius: 0;
   font-family: 'Aldrich', 'Inconsolata', monospace;
-  font-size: 13px;
+  /* 16px minimum prevents iOS auto-zoom on focus */
+  font-size: 16px;
 }
 
 .claude-input:focus {
