@@ -58,3 +58,17 @@ npm run release:publish    # Build arm64 and publish to GitHub
 
 ## Documentation
 - `docs/ui.md` - UI design guidelines, Pi display constraints (800x480), CSS performance rules, Playwright MCP setup for visual testing
+
+## Finding the Pi on the network
+The Pi is on wifi with power-save, so a fast parallel ping sweep will miss it (replies arrive after the timeout, no ARP entry gets cached). Use a real discovery tool with longer per-host waits:
+```bash
+nmap -sn 192.168.50.0/24            # ICMP + ARP, retries built in
+arp-scan -l                          # ARP-only, fastest on local subnet
+```
+mDNS (`raspberrypi.local`) is unreliable — avahi may not be advertising. SSH user is `patch`; recent Pi addresses live in `~/.ssh/known_hosts`. If TLS downloads fail with "certificate is not yet valid", the Pi's clock drifted to the past on boot — wait for NTP sync or set the date from an HTTP `Date:` header.
+
+## Updating / launching the Pi remotely
+Launcher script on the Pi: `~/bice-box-launcher/launch.sh` (no args = update + run, `-u` = update only). To start the GUI over SSH, set `DISPLAY=:0`:
+```bash
+ssh patch@<pi-ip> "DISPLAY=:0 /home/patch/bice-box-launcher/launch.sh"
+```
